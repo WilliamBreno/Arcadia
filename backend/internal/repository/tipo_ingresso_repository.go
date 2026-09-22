@@ -57,3 +57,39 @@ func (r *TipoIngressoRepository) ExisteComPrecoMaiorQueZero(eventoID int64) (boo
 		Count(&total).Error
 	return total > 0, err
 }
+
+// ListarAtivosPublicoPorEvento retorna os tipos ativos de um evento, para
+// exibir preço/quantidade na página pública do evento.
+func (r *TipoIngressoRepository) ListarAtivosPublicoPorEvento(eventoID int64) ([]domain.TipoIngresso, error) {
+	var tipos []domain.TipoIngresso
+	err := r.db.Where("evento_id = ? AND ativo = true", eventoID).Order("ordem, id").Find(&tipos).Error
+	return tipos, err
+}
+
+// PrecoMinimoPorEvento retorna, para cada evento_id em eventoIDs, o menor
+// preco_centavos entre os tipos ativos — usado no "a partir de R$ X" dos
+// cards de evento (evita N+1 ao montar a listagem pública).
+func (r *TipoIngressoRepository) PrecoMinimoPorEvento(eventoIDs []int64) (map[int64]int64, error) {
+	if len(eventoIDs) == 0 {
+		return map[int64]int64{}, nil
+	}
+
+	var linhas []struct {
+		EventoID      int64
+		PrecoCentavos int64
+	}
+	err := r.db.Model(&domain.TipoIngresso{}).
+		Select("evento_id, MIN(preco_centavos) as preco_centavos").
+		Where("evento_id IN ? AND ativo = true", eventoIDs).
+		Group("evento_id").
+		Scan(&linhas).Error
+	if err != nil {
+		return nil, err
+	}
+
+	resultado := make(map[int64]int64, len(linhas))
+	for _, l := range linhas {
+		resultado[l.EventoID] = l.PrecoCentavos
+	}
+	return resultado, nil
+}

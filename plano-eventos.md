@@ -335,7 +335,7 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - [x] 1.1 Auth (e-mail/senha + Google), verificação de e-mail, recuperação de senha, papéis por evento
 - [x] 1.2 Perfil de organizador (dados de recebimento) e CRUD de locais com mapa (Leaflet)
 - [x] 1.3 CRUD de eventos em etapas, `tipo_acesso`, `modo_participantes`, tipos de ingresso/cadastro, publicação com validações
-- [ ] 1.4 Site público: home, busca com filtros, página do evento, página do organizador, meta tags OG
+- [x] 1.4 Site público: home, busca com filtros, página do evento, página do organizador, meta tags OG
 - [ ] 1.5 Convites (jurado e participante especial) + fichas + upload de mídia
 - [ ] 1.6 Inscrição aberta de participantes + aprovação/rejeição pelo organizador + área do jurado (leitura)
 - [ ] 1.7 Checkout completo: reserva de estoque, cálculo no servidor, Mercado Pago (custódia), webhook idempotente, ledger, QR + e-mail
@@ -421,6 +421,8 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - **Item 1.3 — "em etapas" simplificado:** em vez de um wizard rígido de 5 passos, a edição do evento é uma página única com seções (básico, local/data, ingressos, publicar) — mais simples de manter e o organizador pode ir e voltar livremente. A etapa "participantes/convites" fica só com o campo `modo_participantes` por enquanto; convites/fichas de verdade entram no item 1.5.
 - **Item 1.3 — publicar sem checar `organizador.status == 'ativo'`:** não existe ainda fluxo de aprovação de organizador pelo admin (não está em nenhum item do checklist até agora). A validação de publicação checa `chave_pix` preenchida (quando há ingresso pago), não o status. Quando o painel admin de organizadores existir, reforçar essa checagem.
 - **Item 1.3 — regras regionais não checadas na publicação ainda** (tabela `regras_regionais` só existe a partir do item 1.9, que também cuida de semear os dados).
+- **Item 1.4 — "atalho" de data (hoje/amanhã/fim de semana) usa o fuso do servidor (UTC)**, não o do evento nem o do visitante. Simplificação aceitável para o MVP; ajustar se virar problema real.
+- **Item 1.4 — meta tags OG via Vercel Edge Middleware** (`frontend/middleware.ts`), só reescreve a resposta para user-agents de crawler conhecidos (WhatsApp, Facebook, Twitter/X, Telegram, Discord, Slack, LinkedIn, Pinterest); para humanos a SPA carrega normal. **Não testável localmente** — só roda de verdade num deploy Vercel. Precisa da env `BACKEND_API_URL` configurada no projeto Vercel (diferente de `VITE_API_URL`, que só existe no bundle do cliente).
 
 **Pendências para validar fora do código:**
 - Contador/advogado: custódia de recursos de terceiros, nome "Garantia de vaga" (vs. "seguro"), retenção ou não da taxa no arrependimento, regras regionais por UF (incluindo Sergipe), emissão de nota fiscal e tributação da taxa/garantia.

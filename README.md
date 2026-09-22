@@ -54,4 +54,5 @@ docker compose up -d
 
 - Backend: Render (root directory `backend/`)
 - Frontend: Vercel (root directory `frontend/`)
+  - Configurar a env `BACKEND_API_URL` no projeto Vercel (URL da API em produção) — usada só pelo `middleware.ts` (meta tags Open Graph em `/e/:slug`), não pelo bundle do cliente.
 - Postgres: Neon

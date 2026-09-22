@@ -51,6 +51,7 @@ func main() {
 	localHandler := handler.NovoLocalHandler(organizadorHandler, localService)
 	eventoHandler := handler.NovoEventoHandler(organizadorHandler, eventoService)
 	tipoIngressoHandler := handler.NovoTipoIngressoHandler(organizadorHandler, tipoIngressoService)
+	publicoHandler := handler.NovoPublicoHandler(eventoRepo, tipoIngressoRepo, localRepo, organizadorRepo)
 
 	router := gin.New()
 	router.Use(middleware.LogRequisicoes(), middleware.TratadorDeErros())
@@ -68,6 +69,11 @@ func main() {
 
 	v1 := router.Group("/api/v1")
 	{
+		v1.GET("/eventos", publicoHandler.ListarEventos)
+		v1.GET("/eventos/:slug", publicoHandler.ObterEvento)
+		v1.GET("/organizadores/:slug", publicoHandler.ObterOrganizador)
+		v1.GET("/categorias", publicoHandler.Categorias)
+
 		auth := v1.Group("/auth")
 		auth.POST("/cadastro", limiteAuth, authHandler.Cadastro)
 		auth.POST("/login", limiteAuth, authHandler.Login)
