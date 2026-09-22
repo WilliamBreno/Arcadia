@@ -332,7 +332,7 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - [x] 0.8 **Fechar a fase:** commit, push e `git tag fase-0` + `git push --tags`
 
 ### Fase 1 — MVP (não abrir vendas reais antes de concluir 1.7 e 1.8)
-- [ ] 1.1 Auth (e-mail/senha + Google), verificação de e-mail, recuperação de senha, papéis por evento
+- [x] 1.1 Auth (e-mail/senha + Google), verificação de e-mail, recuperação de senha, papéis por evento
 - [ ] 1.2 Perfil de organizador (dados de recebimento) e CRUD de locais com mapa (Leaflet)
 - [ ] 1.3 CRUD de eventos em etapas, `tipo_acesso`, `modo_participantes`, tipos de ingresso/cadastro, publicação com validações
 - [ ] 1.4 Site público: home, busca com filtros, página do evento, página do organizador, meta tags OG
@@ -409,8 +409,15 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - O jurado só vê participantes `aprovado`.
 - **IDs (seção 5):** `bigserial` (inteiro autoincremento) em todas as tabelas, em vez de `uuid`. Consistente com o alerta do item 0.4 sobre `setval()` em sequences após seeds — só se aplica a IDs numéricos com sequence.
 - **Migrations:** ferramenta `golang-migrate` (SQL puro em `backend/migrations/`, arquivos `NNNNNN_descricao.up.sql`/`.down.sql`), executada via `go run ./cmd/migrate up|down`. Consultas via GORM.
+- **Item 1.1 — `papéis por evento` adiado:** `papeis_evento` referencia `eventos(id)`, que só existe a partir do item 1.3. Implementei apenas o papel global (`usuarios.papel_plataforma`, `usuario`\|`admin_plataforma`); a tabela `papeis_evento` fica para quando `eventos` existir.
+- **Item 1.1 — tokens de verificação/reset:** guardados como colunas (`*_token_hash`, `*_expira_em`) direto em `usuarios`, em vez de tabelas separadas — mais simples, um token ativo por vez é suficiente no MVP.
+- **Item 1.1 — sessão:** access token JWT (HS256, 15 min, `JWT_SECRET`) + refresh token opaco (32 bytes, hash sha256 salvo em `refresh_tokens`) em cookie httpOnly, `SameSite=Lax`, escopado a `/api/v1/auth`, com rotação a cada refresh.
+- **Item 1.1 — Google:** verificação do `id_token` via `google.golang.org/api/idtoken` contra `GOOGLE_CLIENT_ID`. Sem essa env, `POST /auth/google` responde 503 (não quebra o resto do auth) — o dono precisa criar as credenciais OAuth no Google Cloud Console.
+- **Item 1.1 — e-mail:** `RESEND_API_KEY` vazio faz o envio só logar no console (dev sem conta Resend) em vez de falhar.
+- **Item 1.1 — rate limit:** em memória, por IP, nas rotas `/auth/cadastro`, `/auth/login`, `/auth/google`, `/auth/esqueci-senha`. Não é compartilhado entre instâncias — se o backend escalar horizontalmente, precisa migrar para um store como Redis.
 
 **Pendências para validar fora do código:**
 - Contador/advogado: custódia de recursos de terceiros, nome "Garantia de vaga" (vs. "seguro"), retenção ou não da taxa no arrependimento, regras regionais por UF (incluindo Sergipe), emissão de nota fiscal e tributação da taxa/garantia.
 - Mercado Pago: valor mínimo de pagamento, devolução da taxa do processador em estornos, prazo de liberação do dinheiro na conta da plataforma.
 - Nome do produto e domínio.
+- Credenciais reais: `GOOGLE_CLIENT_ID`/secret (Google Cloud Console, para login com Google) e `RESEND_API_KEY` (conta Resend, para e-mails saírem de verdade). Sem elas, o backend funciona normalmente em modo degradado (Google desabilitado, e-mails só logados).
