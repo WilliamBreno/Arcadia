@@ -322,14 +322,14 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 > **Lembrete em TODOS os itens:** depois de concluir, rodar build/testes, **commit e push no GitHub** (seção 4.1). Item só conta como concluído com o push feito.
 
 ### Fase 0 — Fundação
-- [ ] 0.1 **Criar as duas pastas `backend/` e `frontend/`** (seção 4.1): backend Go com `GET /healthz`, frontend Vite + React + TS rodando, `.env.example` em cada uma
-- [ ] 0.2 **Git/GitHub:** `git init` se necessário, configurar `origin` (perguntar a URL ao dono), `.gitignore`, `.gitattributes`, `README.md`, `CLAUDE.md` referenciando este plano, **primeiro commit e push**
-- [ ] 0.3 Config por env, logging, tratamento de erros padronizado
-- [ ] 0.4 Docker + `docker-compose` (Postgres local), migrations/seeds sem IDs fixos
-- [ ] 0.5 GitHub Actions: `go vet`, `go test`, build do frontend
-- [ ] 0.6 Design tokens, layout base, shadcn/ui, tema claro/escuro
-- [ ] 0.7 `config_plataforma` com taxas, garantia, dias de repasse e minutos de reserva
-- [ ] 0.8 **Fechar a fase:** commit, push e `git tag fase-0` + `git push --tags`
+- [x] 0.1 **Criar as duas pastas `backend/` e `frontend/`** (seção 4.1): backend Go com `GET /healthz`, frontend Vite + React + TS rodando, `.env.example` em cada uma
+- [x] 0.2 **Git/GitHub:** `git init` se necessário, configurar `origin` (perguntar a URL ao dono), `.gitignore`, `.gitattributes`, `README.md`, `CLAUDE.md` referenciando este plano, **primeiro commit e push**
+- [x] 0.3 Config por env, logging, tratamento de erros padronizado
+- [x] 0.4 Docker + `docker-compose` (Postgres local), migrations/seeds sem IDs fixos
+- [x] 0.5 GitHub Actions: `go vet`, `go test`, build do frontend
+- [x] 0.6 Design tokens, layout base, shadcn/ui, tema claro/escuro
+- [x] 0.7 `config_plataforma` com taxas, garantia, dias de repasse e minutos de reserva
+- [x] 0.8 **Fechar a fase:** commit, push e `git tag fase-0` + `git push --tags`
 
 ### Fase 1 — MVP (não abrir vendas reais antes de concluir 1.7 e 1.8)
 - [ ] 1.1 Auth (e-mail/senha + Google), verificação de e-mail, recuperação de senha, papéis por evento
