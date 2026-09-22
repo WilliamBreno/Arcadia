@@ -333,7 +333,7 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 
 ### Fase 1 — MVP (não abrir vendas reais antes de concluir 1.7 e 1.8)
 - [x] 1.1 Auth (e-mail/senha + Google), verificação de e-mail, recuperação de senha, papéis por evento
-- [ ] 1.2 Perfil de organizador (dados de recebimento) e CRUD de locais com mapa (Leaflet)
+- [x] 1.2 Perfil de organizador (dados de recebimento) e CRUD de locais com mapa (Leaflet)
 - [ ] 1.3 CRUD de eventos em etapas, `tipo_acesso`, `modo_participantes`, tipos de ingresso/cadastro, publicação com validações
 - [ ] 1.4 Site público: home, busca com filtros, página do evento, página do organizador, meta tags OG
 - [ ] 1.5 Convites (jurado e participante especial) + fichas + upload de mídia
@@ -415,6 +415,9 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - **Item 1.1 — Google:** verificação do `id_token` via `google.golang.org/api/idtoken` contra `GOOGLE_CLIENT_ID`. Sem essa env, `POST /auth/google` responde 503 (não quebra o resto do auth) — o dono precisa criar as credenciais OAuth no Google Cloud Console.
 - **Item 1.1 — e-mail:** `RESEND_API_KEY` vazio faz o envio só logar no console (dev sem conta Resend) em vez de falhar.
 - **Item 1.1 — rate limit:** em memória, por IP, nas rotas `/auth/cadastro`, `/auth/login`, `/auth/google`, `/auth/esqueci-senha`. Não é compartilhado entre instâncias — se o backend escalar horizontalmente, precisa migrar para um store como Redis.
+- **Item 1.1 — auth no frontend:** access token só em memória (nunca em localStorage), renovado via `POST /auth/refresh` (cookie httpOnly) ao carregar a página. `AuthProvider` em `src/hooks/use-auth.tsx`, rota protegida via `<ProtectedRoute>`.
+- **Item 1.2 — um perfil de organizador por usuário** (não múltiplos), com validação simples de CPF/CNPJ (contagem de dígitos, sem dígito verificador — ver seção 14 se precisar de validação forte).
+- **Padrão de frontend — `Button` não suporta `asChild`:** o componente `Button` deste projeto usa `@base-ui/react`, não Radix, e não tem a prop `asChild`. Para um link com estilo de botão, usar `buttonVariants({...})` como `className` de um `<Link>`, não `<Button asChild>`.
 
 **Pendências para validar fora do código:**
 - Contador/advogado: custódia de recursos de terceiros, nome "Garantia de vaga" (vs. "seguro"), retenção ou não da taxa no arrependimento, regras regionais por UF (incluindo Sergipe), emissão de nota fiscal e tributação da taxa/garantia.

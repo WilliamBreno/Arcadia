@@ -32,13 +32,19 @@ func main() {
 
 	usuarioRepo := repository.NovoUsuarioRepository(db)
 	refreshTokenRepo := repository.NovoRefreshTokenRepository(db)
+	organizadorRepo := repository.NovoOrganizadorRepository(db)
+	localRepo := repository.NovoLocalRepository(db)
 
 	jwtService := service.NovoJWTService(cfg.JWTSecret, cfg.AccessTokenTTLMin)
 	authService := service.NovoAuthService(usuarioRepo, refreshTokenRepo, jwtService, cfg.RefreshTokenTTLDias)
 	googleAuthService := service.NovoGoogleAuthService(cfg.GoogleClientID)
 	mailCliente := mail.NovoCliente(cfg.ResendAPIKey, cfg.EmailRemetente)
+	organizadorService := service.NovoOrganizadorService(organizadorRepo)
+	localService := service.NovoLocalService(localRepo)
 
 	authHandler := handler.NovoAuthHandler(usuarioRepo, authService, googleAuthService, mailCliente, cfg)
+	organizadorHandler := handler.NovoOrganizadorHandler(organizadorRepo, organizadorService)
+	localHandler := handler.NovoLocalHandler(organizadorHandler, localService)
 
 	router := gin.New()
 	router.Use(middleware.LogRequisicoes(), middleware.TratadorDeErros())
@@ -67,6 +73,15 @@ func main() {
 		auth.POST("/redefinir-senha", authHandler.RedefinirSenha)
 
 		v1.GET("/me", middleware.ExigirAutenticacao(jwtService), authHandler.Me)
+
+		org := v1.Group("/org", middleware.ExigirAutenticacao(jwtService))
+		org.POST("/perfil", organizadorHandler.CriarPerfil)
+		org.GET("/perfil", organizadorHandler.MeuPerfil)
+		org.PUT("/perfil", organizadorHandler.AtualizarPerfil)
+		org.GET("/locais", localHandler.Listar)
+		org.POST("/locais", localHandler.Criar)
+		org.PUT("/locais/:id", localHandler.Atualizar)
+		org.DELETE("/locais/:id", localHandler.Excluir)
 	}
 
 	endereco := ":" + cfg.Porta
