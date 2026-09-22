@@ -22,6 +22,9 @@ type Config struct {
 
 	ResendAPIKey   string
 	EmailRemetente string
+
+	UploadsDir     string
+	UploadsBaseURL string
 }
 
 func getEnv(chave, padrao string) string {
@@ -58,5 +61,8 @@ func Carregar() Config {
 
 		ResendAPIKey:   getEnv("RESEND_API_KEY", ""),
 		EmailRemetente: getEnv("EMAIL_REMETENTE", "Arcadia <no-reply@arcadia.local>"),
+
+		UploadsDir:     getEnv("UPLOADS_DIR", "./uploads"),
+		UploadsBaseURL: getEnv("UPLOADS_BASE_URL", "http://localhost:8080/uploads"),
 	}
 }

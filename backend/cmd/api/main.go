@@ -14,6 +14,7 @@ import (
 	"github.com/WilliamBreno/Arcadia/backend/internal/middleware"
 	"github.com/WilliamBreno/Arcadia/backend/internal/repository"
 	"github.com/WilliamBreno/Arcadia/backend/internal/service"
+	"github.com/WilliamBreno/Arcadia/backend/internal/storage"
 )
 
 func main() {
@@ -36,6 +37,9 @@ func main() {
 	localRepo := repository.NovoLocalRepository(db)
 	eventoRepo := repository.NovoEventoRepository(db)
 	tipoIngressoRepo := repository.NovoTipoIngressoRepository(db)
+	conviteRepo := repository.NovoConviteRepository(db)
+	papelEventoRepo := repository.NovoPapelEventoRepository(db)
+	fichaRepo := repository.NovoFichaParticipacaoRepository(db)
 
 	jwtService := service.NovoJWTService(cfg.JWTSecret, cfg.AccessTokenTTLMin)
 	authService := service.NovoAuthService(usuarioRepo, refreshTokenRepo, jwtService, cfg.RefreshTokenTTLDias)
@@ -45,6 +49,14 @@ func main() {
 	localService := service.NovoLocalService(localRepo)
 	eventoService := service.NovoEventoService(eventoRepo, tipoIngressoRepo, organizadorRepo)
 	tipoIngressoService := service.NovoTipoIngressoService(eventoService, tipoIngressoRepo)
+	conviteService := service.NovoConviteService(conviteRepo, eventoService, papelEventoRepo, fichaRepo)
+	fichaService := service.NovoFichaService(fichaRepo)
+
+	armazenamento, err := storage.NovoDiscoLocal(cfg.UploadsDir, cfg.UploadsBaseURL)
+	if err != nil {
+		slog.Error("erro ao preparar armazenamento de uploads", "erro", err)
+		os.Exit(1)
+	}
 
 	authHandler := handler.NovoAuthHandler(usuarioRepo, authService, googleAuthService, mailCliente, cfg)
 	organizadorHandler := handler.NovoOrganizadorHandler(organizadorRepo, organizadorService)
@@ -52,6 +64,9 @@ func main() {
 	eventoHandler := handler.NovoEventoHandler(organizadorHandler, eventoService)
 	tipoIngressoHandler := handler.NovoTipoIngressoHandler(organizadorHandler, tipoIngressoService)
 	publicoHandler := handler.NovoPublicoHandler(eventoRepo, tipoIngressoRepo, localRepo, organizadorRepo)
+	conviteHandler := handler.NovoConviteHandler(organizadorHandler, eventoRepo, conviteService)
+	fichaHandler := handler.NovoFichaHandler(eventoRepo, fichaService)
+	uploadHandler := handler.NovoUploadHandler(armazenamento)
 
 	router := gin.New()
 	router.Use(middleware.LogRequisicoes(), middleware.TratadorDeErros())
@@ -64,6 +79,7 @@ func main() {
 	}))
 
 	router.GET("/healthz", handler.Healthz)
+	router.Static("/uploads", cfg.UploadsDir)
 
 	limiteAuth := middleware.LimitarTaxaPorIP(1, 10)
 
@@ -73,6 +89,7 @@ func main() {
 		v1.GET("/eventos/:slug", publicoHandler.ObterEvento)
 		v1.GET("/organizadores/:slug", publicoHandler.ObterOrganizador)
 		v1.GET("/categorias", publicoHandler.Categorias)
+		v1.GET("/convites/:token", conviteHandler.Consultar)
 
 		auth := v1.Group("/auth")
 		auth.POST("/cadastro", limiteAuth, authHandler.Cadastro)
@@ -84,7 +101,12 @@ func main() {
 		auth.POST("/esqueci-senha", limiteAuth, authHandler.EsqueciSenha)
 		auth.POST("/redefinir-senha", authHandler.RedefinirSenha)
 
-		v1.GET("/me", middleware.ExigirAutenticacao(jwtService), authHandler.Me)
+		autenticado := v1.Group("", middleware.ExigirAutenticacao(jwtService))
+		autenticado.GET("/me", authHandler.Me)
+		autenticado.POST("/convites/:token/aceitar", conviteHandler.Aceitar)
+		autenticado.GET("/eventos/:slug/minha-ficha", fichaHandler.ObterMinha)
+		autenticado.PUT("/eventos/:slug/minha-ficha", fichaHandler.AtualizarMinha)
+		autenticado.POST("/uploads", uploadHandler.Criar)
 
 		org := v1.Group("/org", middleware.ExigirAutenticacao(jwtService))
 		org.POST("/perfil", organizadorHandler.CriarPerfil)
@@ -104,6 +126,10 @@ func main() {
 		org.POST("/eventos/:id/ingressos", tipoIngressoHandler.Criar)
 		org.PUT("/eventos/:id/ingressos/:ingressoId", tipoIngressoHandler.Atualizar)
 		org.DELETE("/eventos/:id/ingressos/:ingressoId", tipoIngressoHandler.Excluir)
+
+		org.GET("/eventos/:id/convites", conviteHandler.Listar)
+		org.POST("/eventos/:id/convites", conviteHandler.Gerar)
+		org.DELETE("/eventos/:id/convites/:conviteId", conviteHandler.Revogar)
 	}
 
 	endereco := ":" + cfg.Porta

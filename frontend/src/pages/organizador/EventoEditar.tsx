@@ -225,6 +225,8 @@ export default function EventoEditar() {
 
       <TiposIngressoCard eventoId={Number(id)} tipos={tiposIngresso ?? []} />
 
+      <ConvitesCard eventoId={Number(id)} />
+
       <Card className="mt-6">
         <CardHeader>
           <CardTitle>Publicação</CardTitle>
@@ -333,6 +335,102 @@ function TiposIngressoCard({ eventoId, tipos }: { eventoId: number; tipos: TipoI
           </Button>
         </div>
         {erro && <p className="text-sm text-destructive">{erro}</p>}
+      </CardContent>
+    </Card>
+  )
+}
+
+type Convite = {
+  id: number
+  tipo: 'jurado' | 'participante_especial'
+  token?: string
+  max_usos: number | null
+  usos: number
+  revogado_em: string | null
+}
+
+const rotuloTipoConvite: Record<Convite['tipo'], string> = {
+  jurado: 'Jurado',
+  participante_especial: 'Participante especial',
+}
+
+function ConvitesCard({ eventoId }: { eventoId: number }) {
+  const queryClient = useQueryClient()
+  const [tipo, setTipo] = useState<Convite['tipo']>('jurado')
+  const [ultimoLink, setUltimoLink] = useState<string | null>(null)
+  const [erro, setErro] = useState<string | null>(null)
+
+  const { data: convites } = useQuery({
+    queryKey: ['org-evento-convites', eventoId],
+    queryFn: () => api<Convite[]>(`/org/eventos/${eventoId}/convites`),
+  })
+
+  const invalidar = () => queryClient.invalidateQueries({ queryKey: ['org-evento-convites', eventoId] })
+
+  const gerar = async () => {
+    setErro(null)
+    try {
+      const convite = await api<Convite>(`/org/eventos/${eventoId}/convites`, { method: 'POST', body: { tipo } })
+      setUltimoLink(`${window.location.origin}/convite/${convite.token}`)
+      invalidar()
+    } catch (e) {
+      setErro(e instanceof ApiError ? e.message : 'Erro ao gerar convite')
+    }
+  }
+
+  const revogar = async (conviteId: number) => {
+    await api(`/org/eventos/${eventoId}/convites/${conviteId}`, { method: 'DELETE' })
+    invalidar()
+  }
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle>Convites (jurados e participantes especiais)</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <div className="flex items-end gap-2">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="tipo-convite">Tipo</Label>
+            <select
+              id="tipo-convite"
+              className="h-8 rounded-lg border border-border bg-background px-2.5 text-sm"
+              value={tipo}
+              onChange={(e) => setTipo(e.target.value as Convite['tipo'])}
+            >
+              <option value="jurado">Jurado</option>
+              <option value="participante_especial">Participante especial</option>
+            </select>
+          </div>
+          <Button type="button" onClick={gerar}>
+            Gerar link
+          </Button>
+        </div>
+
+        {ultimoLink && (
+          <p className="rounded-lg border border-border p-2 text-sm break-all text-muted-foreground">{ultimoLink}</p>
+        )}
+        {erro && <p className="text-sm text-destructive">{erro}</p>}
+
+        <div className="flex flex-col gap-2">
+          {convites?.length === 0 && <p className="text-sm text-muted-foreground">Nenhum convite gerado ainda.</p>}
+          {convites?.map((c) => (
+            <div key={c.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+              <div>
+                <p className="text-sm font-medium text-foreground">{rotuloTipoConvite[c.tipo]}</p>
+                <p className="text-xs text-muted-foreground">
+                  {c.usos} uso(s){c.max_usos ? ` de ${c.max_usos}` : ''}
+                  {c.revogado_em ? ' · revogado' : ''}
+                </p>
+              </div>
+              {!c.revogado_em && (
+                <Button variant="destructive" size="sm" onClick={() => revogar(c.id)}>
+                  Revogar
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
       </CardContent>
     </Card>
   )

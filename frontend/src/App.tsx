@@ -3,6 +3,7 @@ import { Route, Routes } from 'react-router-dom'
 import { ProtectedRoute } from '@/components/protected-route'
 import { SiteLayout } from '@/components/layout/site-layout'
 import Cadastro from '@/pages/Cadastro'
+import Convite from '@/pages/Convite'
 import EventoDetalhe from '@/pages/EventoDetalhe'
 import Home from '@/pages/Home'
 import Login from '@/pages/Login'
@@ -21,6 +22,7 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/e/:slug" element={<EventoDetalhe />} />
         <Route path="/o/:slug" element={<OrganizadorPublico />} />
+        <Route path="/convite/:token" element={<Convite />} />
         <Route path="/login" element={<Login />} />
         <Route path="/cadastro" element={<Cadastro />} />
 

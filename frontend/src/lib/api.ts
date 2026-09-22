@@ -16,6 +16,10 @@ export function definirAccessToken(token: string | null) {
   accessTokenAtual = token
 }
 
+export function obterAccessToken(): string | null {
+  return accessTokenAtual
+}
+
 type Opcoes = {
   method?: string
   body?: unknown

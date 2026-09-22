@@ -336,7 +336,7 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - [x] 1.2 Perfil de organizador (dados de recebimento) e CRUD de locais com mapa (Leaflet)
 - [x] 1.3 CRUD de eventos em etapas, `tipo_acesso`, `modo_participantes`, tipos de ingresso/cadastro, publicação com validações
 - [x] 1.4 Site público: home, busca com filtros, página do evento, página do organizador, meta tags OG
-- [ ] 1.5 Convites (jurado e participante especial) + fichas + upload de mídia
+- [x] 1.5 Convites (jurado e participante especial) + fichas + upload de mídia
 - [ ] 1.6 Inscrição aberta de participantes + aprovação/rejeição pelo organizador + área do jurado (leitura)
 - [ ] 1.7 Checkout completo: reserva de estoque, cálculo no servidor, Mercado Pago (custódia), webhook idempotente, ledger, QR + e-mail
 - [ ] 1.8 Cancelamento com **direito de arrependimento (CDC)** + cancelamento de evento pelo organizador com reembolso integral
@@ -423,6 +423,11 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - **Item 1.3 — regras regionais não checadas na publicação ainda** (tabela `regras_regionais` só existe a partir do item 1.9, que também cuida de semear os dados).
 - **Item 1.4 — "atalho" de data (hoje/amanhã/fim de semana) usa o fuso do servidor (UTC)**, não o do evento nem o do visitante. Simplificação aceitável para o MVP; ajustar se virar problema real.
 - **Item 1.4 — meta tags OG via Vercel Edge Middleware** (`frontend/middleware.ts`), só reescreve a resposta para user-agents de crawler conhecidos (WhatsApp, Facebook, Twitter/X, Telegram, Discord, Slack, LinkedIn, Pinterest); para humanos a SPA carrega normal. **Não testável localmente** — só roda de verdade num deploy Vercel. Precisa da env `BACKEND_API_URL` configurada no projeto Vercel (diferente de `VITE_API_URL`, que só existe no bundle do cliente).
+- **Item 1.5 — `papeis_evento` implementado** (estava adiado desde o item 1.1). Único por (evento, usuario, papel); em modo convite a ficha já nasce `aprovado` ao confirmar (seção 7.11).
+- **Item 1.5 — uploads em disco local** (`internal/storage`), não S3. Funciona para dev, **não funciona em host com filesystem efêmero** (Render, por exemplo) — trocar por Supabase Storage/Cloudflare R2 antes de produção (interface `storage.Armazenamento` já isola essa troca). Imagens são decodificadas e recodificadas como JPEG (remove EXIF), WebP não é aceito (sem decoder na stdlib do Go). Sem redimensionamento ainda.
+- **Item 1.5 — aceitar convite não usa transação de banco:** cria `papel_evento` e depois a `ficha_participacao` em passos separados. Se o segundo passo falhar, o primeiro fica persistido — mas o fluxo é auto-recuperável: uma nova tentativa encontra o papel já criado (não duplica, não reincrementa `usos` do convite) e só tenta de novo a parte que faltou. Encontrado e verificado via teste manual (bug real de `dados` JSONB nulo, corrigido).
+- **Item 1.5 — validação de "menor de 18" simplificada:** checa só se `responsavel_nome`, `responsavel_contato` e `autorizacao_responsavel_url` estão preenchidos, sem validar o conteúdo do arquivo de autorização.
+- **Item 1.5 — campos condicionais por `tipo_apresentacao`:** implementados só os principais de cada tipo (não os 100% do detalhamento da seção 5.1) para não alongar demais o formulário; o campo `dados` é um JSON livre, então dá pra completar depois sem migration.
 
 **Pendências para validar fora do código:**
 - Contador/advogado: custódia de recursos de terceiros, nome "Garantia de vaga" (vs. "seguro"), retenção ou não da taxa no arrependimento, regras regionais por UF (incluindo Sergipe), emissão de nota fiscal e tributação da taxa/garantia.
