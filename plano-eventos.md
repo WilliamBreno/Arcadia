@@ -407,6 +407,8 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - Alteração de data/local abre janela de 7 dias de cancelamento com reembolso integral.
 - Pagamento à vista (Pix e cartão) no MVP; parcelamento fica para depois.
 - O jurado só vê participantes `aprovado`.
+- **IDs (seção 5):** `bigserial` (inteiro autoincremento) em todas as tabelas, em vez de `uuid`. Consistente com o alerta do item 0.4 sobre `setval()` em sequences após seeds — só se aplica a IDs numéricos com sequence.
+- **Migrations:** ferramenta `golang-migrate` (SQL puro em `backend/migrations/`, arquivos `NNNNNN_descricao.up.sql`/`.down.sql`), executada via `go run ./cmd/migrate up|down`. Consultas via GORM.
 
 **Pendências para validar fora do código:**
 - Contador/advogado: custódia de recursos de terceiros, nome "Garantia de vaga" (vs. "seguro"), retenção ou não da taxa no arrependimento, regras regionais por UF (incluindo Sergipe), emissão de nota fiscal e tributação da taxa/garantia.

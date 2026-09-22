@@ -7,6 +7,7 @@ type Config struct {
 	Porta          string
 	NomePlataforma string
 	AmbienteApp    string
+	DatabaseURL    string
 }
 
 func getEnv(chave, padrao string) string {
@@ -22,5 +23,6 @@ func Carregar() Config {
 		Porta:          getEnv("PORTA", "8080"),
 		NomePlataforma: getEnv("NOME_PLATAFORMA", "Arcadia"),
 		AmbienteApp:    getEnv("AMBIENTE_APP", "development"),
+		DatabaseURL:    getEnv("DATABASE_URL", "postgres://arcadia:arcadia@localhost:5442/arcadia?sslmode=disable"),
 	}
 }
