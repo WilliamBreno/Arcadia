@@ -34,6 +34,8 @@ func main() {
 	refreshTokenRepo := repository.NovoRefreshTokenRepository(db)
 	organizadorRepo := repository.NovoOrganizadorRepository(db)
 	localRepo := repository.NovoLocalRepository(db)
+	eventoRepo := repository.NovoEventoRepository(db)
+	tipoIngressoRepo := repository.NovoTipoIngressoRepository(db)
 
 	jwtService := service.NovoJWTService(cfg.JWTSecret, cfg.AccessTokenTTLMin)
 	authService := service.NovoAuthService(usuarioRepo, refreshTokenRepo, jwtService, cfg.RefreshTokenTTLDias)
@@ -41,10 +43,14 @@ func main() {
 	mailCliente := mail.NovoCliente(cfg.ResendAPIKey, cfg.EmailRemetente)
 	organizadorService := service.NovoOrganizadorService(organizadorRepo)
 	localService := service.NovoLocalService(localRepo)
+	eventoService := service.NovoEventoService(eventoRepo, tipoIngressoRepo, organizadorRepo)
+	tipoIngressoService := service.NovoTipoIngressoService(eventoService, tipoIngressoRepo)
 
 	authHandler := handler.NovoAuthHandler(usuarioRepo, authService, googleAuthService, mailCliente, cfg)
 	organizadorHandler := handler.NovoOrganizadorHandler(organizadorRepo, organizadorService)
 	localHandler := handler.NovoLocalHandler(organizadorHandler, localService)
+	eventoHandler := handler.NovoEventoHandler(organizadorHandler, eventoService)
+	tipoIngressoHandler := handler.NovoTipoIngressoHandler(organizadorHandler, tipoIngressoService)
 
 	router := gin.New()
 	router.Use(middleware.LogRequisicoes(), middleware.TratadorDeErros())
@@ -82,6 +88,16 @@ func main() {
 		org.POST("/locais", localHandler.Criar)
 		org.PUT("/locais/:id", localHandler.Atualizar)
 		org.DELETE("/locais/:id", localHandler.Excluir)
+
+		org.GET("/eventos", eventoHandler.Listar)
+		org.POST("/eventos", eventoHandler.Criar)
+		org.GET("/eventos/:id", eventoHandler.Obter)
+		org.PUT("/eventos/:id", eventoHandler.Atualizar)
+		org.POST("/eventos/:id/publicar", eventoHandler.Publicar)
+		org.GET("/eventos/:id/ingressos", tipoIngressoHandler.Listar)
+		org.POST("/eventos/:id/ingressos", tipoIngressoHandler.Criar)
+		org.PUT("/eventos/:id/ingressos/:ingressoId", tipoIngressoHandler.Atualizar)
+		org.DELETE("/eventos/:id/ingressos/:ingressoId", tipoIngressoHandler.Excluir)
 	}
 
 	endereco := ":" + cfg.Porta

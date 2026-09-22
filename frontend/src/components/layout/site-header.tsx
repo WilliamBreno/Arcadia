@@ -17,7 +17,7 @@ export function SiteHeader() {
         </Link>
         <nav className="flex items-center gap-2">
           {!carregando && usuario && (
-            <Link to="/organizador/locais" className="px-2 text-sm text-muted-foreground hover:text-foreground">
+            <Link to="/organizador/eventos" className="px-2 text-sm text-muted-foreground hover:text-foreground">
               Painel do organizador
             </Link>
           )}

@@ -1,0 +1,339 @@
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { useParams } from 'react-router-dom'
+import { z } from 'zod'
+
+import { api, ApiError } from '@/lib/api'
+import { formatarCentavos, type Evento, type TipoIngresso } from '@/lib/evento'
+import type { Local } from '@/lib/organizador'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+
+function paraDatetimeLocal(iso: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function paraISO(datetimeLocal: string): string | null {
+  if (!datetimeLocal) return null
+  return new Date(datetimeLocal).toISOString()
+}
+
+const schemaBasico = z.object({
+  titulo: z.string().min(2),
+  categoria: z.string(),
+  descricao: z.string(),
+  classificacao_etaria: z.string(),
+  tipo_acesso: z.enum(['ingresso', 'cadastro']),
+  modo_participantes: z.enum(['nenhum', 'convite', 'inscricao_aberta', 'ambos']),
+  visibilidade: z.enum(['publico', 'nao_listado', 'privado']),
+  local_id: z.string(),
+  inicio_em: z.string(),
+  fim_em: z.string(),
+})
+
+type FormBasico = z.infer<typeof schemaBasico>
+
+export default function EventoEditar() {
+  const { id } = useParams()
+  const queryClient = useQueryClient()
+  const [erro, setErro] = useState<string | null>(null)
+  const [problemasPublicacao, setProblemasPublicacao] = useState<string[] | null>(null)
+
+  const { data: evento } = useQuery({
+    queryKey: ['org-evento', id],
+    queryFn: () => api<Evento>(`/org/eventos/${id}`),
+  })
+  const { data: locais } = useQuery({
+    queryKey: ['org-locais'],
+    queryFn: () => api<Local[]>('/org/locais'),
+  })
+  const { data: tiposIngresso } = useQuery({
+    queryKey: ['org-evento-ingressos', id],
+    queryFn: () => api<TipoIngresso[]>(`/org/eventos/${id}/ingressos`),
+    enabled: evento !== undefined,
+  })
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { isSubmitting },
+  } = useForm<FormBasico>({ resolver: zodResolver(schemaBasico) })
+
+  useEffect(() => {
+    if (evento) {
+      reset({
+        ...evento,
+        local_id: evento.local_id?.toString() ?? '',
+        inicio_em: paraDatetimeLocal(evento.inicio_em),
+        fim_em: paraDatetimeLocal(evento.fim_em),
+      })
+    }
+  }, [evento, reset])
+
+  const salvarBasico = async (dados: FormBasico) => {
+    setErro(null)
+    try {
+      await api(`/org/eventos/${id}`, {
+        method: 'PUT',
+        body: {
+          ...dados,
+          local_id: dados.local_id ? Number(dados.local_id) : null,
+          inicio_em: paraISO(dados.inicio_em),
+          fim_em: paraISO(dados.fim_em),
+        },
+      })
+      queryClient.invalidateQueries({ queryKey: ['org-evento', id] })
+    } catch (e) {
+      setErro(e instanceof ApiError ? e.message : 'Erro ao salvar')
+    }
+  }
+
+  const publicar = async () => {
+    setErro(null)
+    setProblemasPublicacao(null)
+    try {
+      await api(`/org/eventos/${id}/publicar`, { method: 'POST' })
+      queryClient.invalidateQueries({ queryKey: ['org-evento', id] })
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 422) {
+        const corpo = e.corpo as { problemas?: string[] } | undefined
+        setProblemasPublicacao(corpo?.problemas ?? [e.message])
+      } else {
+        setErro(e instanceof ApiError ? e.message : 'Erro ao publicar')
+      }
+    }
+  }
+
+  if (!evento) {
+    return <p className="p-8 text-center text-muted-foreground">Carregando…</p>
+  }
+
+  return (
+    <main className="mx-auto max-w-2xl px-4 py-12">
+      <h1 className="mb-6 text-2xl font-semibold text-foreground">
+        {evento.titulo} <span className="text-sm font-normal text-muted-foreground">({evento.status})</span>
+      </h1>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Informações básicas</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit(salvarBasico)} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="titulo">Título</Label>
+              <Input id="titulo" {...register('titulo')} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="descricao">Descrição</Label>
+              <Textarea id="descricao" rows={4} {...register('descricao')} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="categoria">Categoria</Label>
+                <Input id="categoria" {...register('categoria')} />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="classificacao_etaria">Classificação etária</Label>
+                <Input id="classificacao_etaria" placeholder="Livre, 16 anos…" {...register('classificacao_etaria')} />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="local_id">Local</Label>
+              <select
+                id="local_id"
+                className="h-8 rounded-lg border border-border bg-background px-2.5 text-sm"
+                {...register('local_id')}
+              >
+                <option value="">Evento online (sem local)</option>
+                {locais?.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.nome} — {l.cidade}/{l.uf}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="inicio_em">Início</Label>
+                <Input id="inicio_em" type="datetime-local" {...register('inicio_em')} />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="fim_em">Término</Label>
+                <Input id="fim_em" type="datetime-local" {...register('fim_em')} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="tipo_acesso">Tipo de acesso</Label>
+                <select
+                  id="tipo_acesso"
+                  className="h-8 rounded-lg border border-border bg-background px-2.5 text-sm"
+                  {...register('tipo_acesso')}
+                >
+                  <option value="ingresso">Venda de ingressos</option>
+                  <option value="cadastro">Cadastro</option>
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="visibilidade">Visibilidade</Label>
+                <select
+                  id="visibilidade"
+                  className="h-8 rounded-lg border border-border bg-background px-2.5 text-sm"
+                  {...register('visibilidade')}
+                >
+                  <option value="publico">Público</option>
+                  <option value="nao_listado">Não listado</option>
+                  <option value="privado">Privado</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="modo_participantes">Participantes (concurso)</Label>
+              <select
+                id="modo_participantes"
+                className="h-8 rounded-lg border border-border bg-background px-2.5 text-sm"
+                {...register('modo_participantes')}
+              >
+                <option value="nenhum">Sem participantes</option>
+                <option value="convite">Só por convite</option>
+                <option value="inscricao_aberta">Inscrição aberta</option>
+                <option value="ambos">Convite + inscrição aberta</option>
+              </select>
+            </div>
+
+            {erro && <p className="text-sm text-destructive">{erro}</p>}
+            <Button type="submit" disabled={isSubmitting}>
+              Salvar
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <TiposIngressoCard eventoId={Number(id)} tipos={tiposIngresso ?? []} />
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Publicação</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {evento.status === 'publicado' ? (
+            <p className="text-sm text-muted-foreground">Evento publicado em {new Date(evento.publicado_em!).toLocaleString('pt-BR')}.</p>
+          ) : (
+            <>
+              {problemasPublicacao && (
+                <ul className="mb-4 list-inside list-disc text-sm text-destructive">
+                  {problemasPublicacao.map((p) => (
+                    <li key={p}>{p}</li>
+                  ))}
+                </ul>
+              )}
+              <Button onClick={publicar}>Publicar evento</Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </main>
+  )
+}
+
+function TiposIngressoCard({ eventoId, tipos }: { eventoId: number; tipos: TipoIngresso[] }) {
+  const queryClient = useQueryClient()
+  const [novo, setNovo] = useState({ nome: '', preco: '0', quantidade: '10' })
+  const [erro, setErro] = useState<string | null>(null)
+
+  const invalidar = () => queryClient.invalidateQueries({ queryKey: ['org-evento-ingressos', String(eventoId)] })
+
+  const adicionar = async () => {
+    setErro(null)
+    try {
+      await api(`/org/eventos/${eventoId}/ingressos`, {
+        method: 'POST',
+        body: {
+          nome: novo.nome,
+          preco_centavos: Math.round(Number(novo.preco) * 100),
+          quantidade: Number(novo.quantidade),
+          ativo: true,
+        },
+      })
+      setNovo({ nome: '', preco: '0', quantidade: '10' })
+      invalidar()
+    } catch (e) {
+      setErro(e instanceof ApiError ? e.message : 'Erro ao adicionar tipo de ingresso')
+    }
+  }
+
+  const excluir = async (tipoId: number) => {
+    await api(`/org/eventos/${eventoId}/ingressos/${tipoId}`, { method: 'DELETE' })
+    invalidar()
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Ingressos</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        {tipos.length === 0 && <p className="text-sm text-muted-foreground">Nenhum tipo de ingresso ainda.</p>}
+        {tipos.map((t) => (
+          <div key={t.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+            <div>
+              <p className="text-sm font-medium text-foreground">{t.nome}</p>
+              <p className="text-xs text-muted-foreground">
+                {formatarCentavos(t.preco_centavos)} · {t.quantidade} unidades
+              </p>
+            </div>
+            <Button variant="destructive" size="sm" onClick={() => excluir(t.id)}>
+              Excluir
+            </Button>
+          </div>
+        ))}
+
+        <div className="grid grid-cols-[2fr_1fr_1fr_auto] items-end gap-2 border-t border-border pt-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="novo-nome">Nome</Label>
+            <Input id="novo-nome" value={novo.nome} onChange={(e) => setNovo({ ...novo, nome: e.target.value })} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="novo-preco">Preço (R$)</Label>
+            <Input
+              id="novo-preco"
+              type="number"
+              min="0"
+              step="0.01"
+              value={novo.preco}
+              onChange={(e) => setNovo({ ...novo, preco: e.target.value })}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="novo-qtd">Quantidade</Label>
+            <Input
+              id="novo-qtd"
+              type="number"
+              min="1"
+              value={novo.quantidade}
+              onChange={(e) => setNovo({ ...novo, quantidade: e.target.value })}
+            />
+          </div>
+          <Button type="button" onClick={adicionar} disabled={!novo.nome}>
+            Adicionar
+          </Button>
+        </div>
+        {erro && <p className="text-sm text-destructive">{erro}</p>}
+      </CardContent>
+    </Card>
+  )
+}

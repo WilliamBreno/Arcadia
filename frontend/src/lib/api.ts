@@ -2,9 +2,11 @@ const BASE_URL = `${import.meta.env.VITE_API_URL ?? '/api'}/v1`
 
 export class ApiError extends Error {
   status: number
-  constructor(status: number, mensagem: string) {
+  corpo: unknown
+  constructor(status: number, mensagem: string, corpo?: unknown) {
     super(mensagem)
     this.status = status
+    this.corpo = corpo
   }
 }
 
@@ -39,7 +41,7 @@ export async function api<T>(caminho: string, opcoes: Opcoes = {}): Promise<T> {
   const dados = await resposta.json().catch(() => null)
 
   if (!resposta.ok) {
-    throw new ApiError(resposta.status, dados?.erro ?? 'Erro inesperado')
+    throw new ApiError(resposta.status, dados?.erro ?? 'Erro inesperado', dados)
   }
 
   return dados as T
