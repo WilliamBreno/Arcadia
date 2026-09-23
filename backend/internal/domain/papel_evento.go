@@ -16,6 +16,7 @@ type OrigemPapel string
 const (
 	OrigemConvite   OrigemPapel = "convite"
 	OrigemInscricao OrigemPapel = "inscricao"
+	OrigemManual    OrigemPapel = "manual"
 )
 
 type StatusPapel string

@@ -69,6 +69,8 @@ func main() {
 		mpCliente, mailCliente, cfg.NomePlataforma,
 	)
 	contaService := service.NovoContaService(organizadorRepo, eventoRepo, papelEventoRepo, itemPedidoRepo, pedidoRepo)
+	checkinService := service.NovoCheckinService(itemPedidoRepo, tipoIngressoRepo, eventoRepo, organizadorRepo, papelEventoRepo)
+	staffService := service.NovoStaffService(eventoRepo, usuarioRepo, papelEventoRepo)
 
 	armazenamento, err := storage.NovoDiscoLocal(cfg.UploadsDir, cfg.UploadsBaseURL)
 	if err != nil {
@@ -90,6 +92,8 @@ func main() {
 	jobHandler := handler.NovoJobHandler(checkoutService)
 	cancelamentoHandler := handler.NovoCancelamentoHandler(cancelamentoService)
 	contaHandler := handler.NovoContaHandler(contaService)
+	checkinHandler := handler.NovoCheckinHandler(checkinService)
+	staffHandler := handler.NovoStaffHandler(organizadorHandler, staffService)
 
 	router := gin.New()
 	router.Use(middleware.LogRequisicoes(), middleware.TratadorDeErros())
@@ -142,6 +146,9 @@ func main() {
 		autenticado.POST("/pedidos/:id/pagar", pedidoHandler.Pagar)
 		autenticado.GET("/itens/:id/cancelamento", cancelamentoHandler.Simular)
 		autenticado.POST("/itens/:id/cancelar", cancelamentoHandler.Cancelar)
+		autenticado.POST("/checkin/validar", checkinHandler.Validar)
+		autenticado.GET("/checkin/eventos/:id/resumo", checkinHandler.Resumo)
+		autenticado.GET("/checkin/eventos/:id/busca", checkinHandler.Buscar)
 
 		org := v1.Group("/org", middleware.ExigirAutenticacao(jwtService))
 		org.POST("/perfil", organizadorHandler.CriarPerfil)
@@ -170,6 +177,10 @@ func main() {
 		org.GET("/eventos/:id/participantes", fichaHandler.ListarDoOrganizador)
 		org.POST("/eventos/:id/participantes/:fichaId/aprovar", fichaHandler.Aprovar)
 		org.POST("/eventos/:id/participantes/:fichaId/rejeitar", fichaHandler.Rejeitar)
+
+		org.GET("/eventos/:id/staff", staffHandler.Listar)
+		org.POST("/eventos/:id/staff", staffHandler.Adicionar)
+		org.DELETE("/eventos/:id/staff/:usuarioId", staffHandler.Remover)
 
 		jobs := v1.Group("/jobs", middleware.ExigirCronSecret(cfg.CronSecret))
 		jobs.POST("/expirar-reservas", jobHandler.ExpirarReservas)

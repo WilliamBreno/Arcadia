@@ -4,6 +4,7 @@ import { ProtectedRoute } from '@/components/protected-route'
 import { SiteLayout } from '@/components/layout/site-layout'
 import AreaJurado from '@/pages/AreaJurado'
 import Cadastro from '@/pages/Cadastro'
+import Checkin from '@/pages/Checkin'
 import Convite from '@/pages/Convite'
 import EventoDetalhe from '@/pages/EventoDetalhe'
 import Home from '@/pages/Home'
@@ -37,6 +38,7 @@ function App() {
           <Route path="/pedidos/:id" element={<Pedido />} />
           <Route path="/meus-ingressos" element={<MeusIngressos />} />
           <Route path="/meus-eventos" element={<MeusEventos />} />
+          <Route path="/checkin/:eventoId" element={<Checkin />} />
           <Route path="/organizador/perfil" element={<Perfil />} />
           <Route path="/organizador/locais" element={<Locais />} />
           <Route path="/organizador/locais/novo" element={<LocalForm />} />

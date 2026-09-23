@@ -341,7 +341,7 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - [x] 1.7 Checkout completo: reserva de estoque, cálculo no servidor, Mercado Pago (custódia), webhook idempotente, ledger, QR + e-mail
 - [x] 1.8 Cancelamento com **direito de arrependimento (CDC)** + cancelamento de evento pelo organizador com reembolso integral
 - [x] 1.9 Meus ingressos, **Meus eventos** com selos, regras regionais (semear e bloquear publicação)
-- [ ] 1.10 Check-in PWA (QR, busca, contador) e papel `staff`
+- [x] 1.10 Check-in PWA (QR, busca, contador) e papel `staff`
 - [ ] 1.11 Painel básico do organizador (vendas, participantes) e e-mails transacionais
 - [ ] 1.12 **Fechar a fase:** commit, push e `git tag fase-1` + `git push --tags`
 
@@ -448,6 +448,11 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - **Item 1.9 — checagem regional só considera a UF/cidade do local do evento**, não verifica de fato se o organizador tem um "canal de venda sem taxa" alternativo (`exige_canal_sem_taxa`) — isso não é algo que dê pra confirmar programaticamente; o bloqueio só avisa que a UF exige isso, cabe ao organizador confirmar por fora.
 - **Item 1.9 — "Meus ingressos" mostra pago + utilizado**, não itens reservados (ainda não pagos, aparecem só na página do pedido) nem cancelados/expirados (sem função pro comprador depois de resolvidos).
 - **Item 1.9 — QR renderizado no cliente** (`qrcode.react`) a partir de `codigo:qr_token` — o backend nunca gera imagem, só os dois valores que a leitora do check-in (item 1.10) vai validar.
+- **Item 1.10 — origem `'manual'` adicionada ao `CHECK` de `papeis_evento.origem`.** Staff é atribuído direto pelo organizador (por e-mail de alguém que já tem conta), sem o fluxo público de link/token que `'convite'` e `'inscricao'` descrevem — nova migração (`000018`) estende o constraint para `('convite', 'inscricao', 'manual')`.
+- **Item 1.10 — tabela `checkins` da seção 5 não foi criada.** O plano lista uma tabela separada (`id, item_id, staff_usuario_id, dispositivo, resultado, criado_em`) só para auditoria de cada leitura; implementei a validação como `UPDATE itens_pedido SET status='utilizado' WHERE id=? AND status='pago'` atômico direto (a fonte de verdade já exigida pela seção 7.10), sem log de cada tentativa de leitura. Auditoria fina por leitura (inclusive tentativas inválidas) fica pendente — não bloqueia o check-in funcionar, mas se o organizador precisar depois de "quem leu esse QR e quando" isso não existe ainda.
+- **Item 1.10 — busca manual (`GET /checkin/eventos/:id/busca`) é só consulta, não faz check-in.** Ela devolve nome/e-mail/código/status pra portaria localizar alguém visualmente, mas nunca devolve `qr_token` (ficaria exposto pra qualquer staff) — então não dá pra "confirmar entrada" batendo só na busca; o check-in de verdade só acontece via `POST /checkin/validar` com o par `codigo`+`qr_token` que vem do QR. Isso bate com o texto da seção 7.10 ("busca manual… contador"), que não descreve a busca como um gatilho de entrada.
+- **Item 1.10 — acesso ao check-in é "dono do evento OU staff confirmado nesse evento"** (`CheckinService.TemAcesso`), checado em toda chamada (`validar`, `busca`, `resumo`) — jurado, participante ou qualquer outro papel sem ser `staff`/organizador toma 403.
+- **Item 1.10 — leitor de QR no frontend usa `html5-qrcode`** (câmera via `navigator.mediaDevices`, decodifica pra `codigo:qr_token` no formato que `qrcode.react` já gera desde o item 1.9). Rota `/checkin/:eventoId`, acessível a qualquer usuário autenticado — o backend é quem decide se a pessoa tem acesso (mesmo padrão já usado em `/e/:slug/jurado`). Testado o build e o fluxo via curl; a leitura de câmera de verdade (permissão do navegador, foco, iluminação) precisa ser validada num celular real pela portaria antes do evento.
 
 **Pendências para validar fora do código:**
 - Contador/advogado: custódia de recursos de terceiros, nome "Garantia de vaga" (vs. "seguro"), retenção ou não da taxa no arrependimento, regras regionais por UF (incluindo Sergipe), emissão de nota fiscal e tributação da taxa/garantia.

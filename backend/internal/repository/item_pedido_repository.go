@@ -72,6 +72,70 @@ func (r *ItemPedidoRepository) BuscarPorCodigo(codigo string) (*domain.ItemPedid
 	return &item, nil
 }
 
+// MarcarUtilizadoAtomico é o check-in de verdade (seção 7.10):
+// "UPDATE itens SET status='utilizado' WHERE id=? AND status='pago'" —
+// só um scanner "vence" se dois lerem o mesmo QR ao mesmo tempo.
+// RowsAffected=0 quer dizer que outra requisição já fez o check-in
+// primeiro (ou o item não estava mais "pago").
+func (r *ItemPedidoRepository) MarcarUtilizadoAtomico(itemID int64) (bool, error) {
+	agora := time.Now()
+	resultado := r.db.Model(&domain.ItemPedido{}).
+		Where("id = ? AND status = ?", itemID, domain.StatusItemPago).
+		Updates(map[string]any{"status": domain.StatusItemUtilizado, "utilizado_em": agora})
+	if resultado.Error != nil {
+		return false, resultado.Error
+	}
+	return resultado.RowsAffected > 0, nil
+}
+
+// ItemComTipo inclui o nome do tipo de ingresso — usado na busca manual
+// do check-in (seção 7.10), pra portaria ver o que a pessoa comprou.
+type ItemComTipo struct {
+	domain.ItemPedido
+	TipoIngressoNome string
+}
+
+// BuscarPorEventoEBusca é GET /checkin/eventos/:id/busca — por nome,
+// e-mail ou código do titular.
+func (r *ItemPedidoRepository) BuscarPorEventoEBusca(eventoID int64, busca string) ([]ItemComTipo, error) {
+	var linhas []ItemComTipo
+	like := "%" + busca + "%"
+	err := r.db.Table("itens_pedido").
+		Select("itens_pedido.*, tipos_ingresso.nome as tipo_ingresso_nome").
+		Joins("JOIN tipos_ingresso ON tipos_ingresso.id = itens_pedido.tipo_ingresso_id").
+		Where("tipos_ingresso.evento_id = ? AND itens_pedido.status IN ?", eventoID, []domain.StatusItemPedido{
+			domain.StatusItemPago, domain.StatusItemUtilizado,
+		}).
+		Where("itens_pedido.titular_nome ILIKE ? OR itens_pedido.titular_email ILIKE ? OR itens_pedido.codigo ILIKE ?", like, like, like).
+		Order("itens_pedido.titular_nome").
+		Limit(50).
+		Scan(&linhas).Error
+	return linhas, err
+}
+
+// ResumoCheckin é o contador de GET /checkin/eventos/:id/resumo.
+type ResumoCheckin struct {
+	TotalPagos      int64
+	TotalUtilizados int64
+}
+
+func (r *ItemPedidoRepository) ResumoCheckin(eventoID int64) (ResumoCheckin, error) {
+	var resumo ResumoCheckin
+	base := r.db.Table("itens_pedido").
+		Joins("JOIN tipos_ingresso ON tipos_ingresso.id = itens_pedido.tipo_ingresso_id").
+		Where("tipos_ingresso.evento_id = ?", eventoID)
+
+	if err := base.Session(&gorm.Session{}).Where("itens_pedido.status IN ?", []domain.StatusItemPedido{
+		domain.StatusItemPago, domain.StatusItemUtilizado,
+	}).Count(&resumo.TotalPagos).Error; err != nil {
+		return resumo, err
+	}
+	if err := base.Session(&gorm.Session{}).Where("itens_pedido.status = ?", domain.StatusItemUtilizado).Count(&resumo.TotalUtilizados).Error; err != nil {
+		return resumo, err
+	}
+	return resumo, nil
+}
+
 // ListarPagosPorEvento é usado no cancelamento de evento pelo organizador
 // (seção 7.5) — todo item pago do evento precisa de reembolso integral.
 func (r *ItemPedidoRepository) ListarPagosPorEvento(eventoID int64) ([]domain.ItemPedido, error) {

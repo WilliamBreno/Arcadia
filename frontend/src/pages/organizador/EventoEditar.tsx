@@ -5,10 +5,13 @@ import { useForm } from 'react-hook-form'
 import { useParams } from 'react-router-dom'
 import { z } from 'zod'
 
+import { Link } from 'react-router-dom'
+
 import { api, ApiError } from '@/lib/api'
+import { adicionarStaff, listarStaff, removerStaff, type Staff } from '@/lib/checkin'
 import { formatarCentavos, type Evento, type TipoIngresso } from '@/lib/evento'
 import type { Local } from '@/lib/organizador'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -228,6 +231,8 @@ export default function EventoEditar() {
       <ConvitesCard eventoId={Number(id)} />
 
       <ParticipantesCard eventoId={Number(id)} />
+
+      <StaffCard eventoId={Number(id)} />
 
       <Card className="mt-6">
         <CardHeader>
@@ -536,6 +541,78 @@ function ParticipantesCard({ eventoId }: { eventoId: number }) {
             ))}
           </div>
         )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function StaffCard({ eventoId }: { eventoId: number }) {
+  const queryClient = useQueryClient()
+  const [email, setEmail] = useState('')
+  const [erro, setErro] = useState<string | null>(null)
+
+  const { data: staff } = useQuery({
+    queryKey: ['org-evento-staff', eventoId],
+    queryFn: () => listarStaff(eventoId),
+  })
+
+  const invalidar = () => queryClient.invalidateQueries({ queryKey: ['org-evento-staff', eventoId] })
+
+  const adicionar = async () => {
+    setErro(null)
+    try {
+      await adicionarStaff(eventoId, email)
+      setEmail('')
+      invalidar()
+    } catch (e) {
+      setErro(e instanceof ApiError ? e.message : 'Erro ao adicionar staff')
+    }
+  }
+
+  const remover = async (staffItem: Staff) => {
+    await removerStaff(eventoId, staffItem.usuario_id)
+    invalidar()
+  }
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle>Staff e check-in</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <p className="text-sm text-muted-foreground">
+          Pessoas adicionadas aqui (já precisam ter uma conta na Arcadia) podem operar o leitor de QR na portaria.
+        </p>
+
+        <Link to={`/checkin/${eventoId}`} className={buttonVariants({ variant: 'outline' })}>
+          Abrir leitor de check-in
+        </Link>
+
+        <div className="flex flex-col gap-2">
+          {staff?.length === 0 && <p className="text-sm text-muted-foreground">Nenhum staff adicionado ainda.</p>}
+          {staff?.map((s) => (
+            <div key={s.usuario_id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+              <div>
+                <p className="text-sm font-medium text-foreground">{s.nome}</p>
+                <p className="text-xs text-muted-foreground">{s.email}</p>
+              </div>
+              <Button variant="destructive" size="sm" onClick={() => remover(s)}>
+                Remover
+              </Button>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-end gap-2 border-t border-border pt-4">
+          <div className="flex flex-1 flex-col gap-1.5">
+            <Label htmlFor="staff-email">E-mail</Label>
+            <Input id="staff-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <Button type="button" onClick={adicionar} disabled={!email}>
+            Adicionar
+          </Button>
+        </div>
+        {erro && <p className="text-sm text-destructive">{erro}</p>}
       </CardContent>
     </Card>
   )
