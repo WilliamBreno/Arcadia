@@ -343,7 +343,7 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - [x] 1.9 Meus ingressos, **Meus eventos** com selos, regras regionais (semear e bloquear publicação)
 - [x] 1.10 Check-in PWA (QR, busca, contador) e papel `staff`
 - [x] 1.11 Painel básico do organizador (vendas, participantes) e e-mails transacionais
-- [ ] 1.12 **Fechar a fase:** commit, push e `git tag fase-1` + `git push --tags`
+- [x] 1.12 **Fechar a fase:** commit, push e `git tag fase-1` + `git push --tags`
 
 ### Fase 2 — Diferencial e dinheiro
 - [ ] 2.1 **Garantia de vaga** (opt-in, cancelamento até o início do evento, estoque devolvido)
