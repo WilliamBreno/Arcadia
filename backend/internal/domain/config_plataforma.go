@@ -23,4 +23,5 @@ const (
 	ChaveGarantiaCentavos     = "GARANTIA_CENTAVOS"
 	ChaveRepasseDiasUteis     = "REPASSE_DIAS_UTEIS"
 	ChaveReservaMinutos       = "RESERVA_MINUTOS"
+	ChaveCDCReembolsaTaxa     = "CDC_REEMBOLSA_TAXA"
 )

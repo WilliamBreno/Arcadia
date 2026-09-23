@@ -250,6 +250,8 @@ export default function EventoEditar() {
           )}
         </CardContent>
       </Card>
+
+      {evento.status === 'publicado' && <CancelarEventoCard eventoId={Number(id)} />}
     </main>
   )
 }
@@ -534,6 +536,52 @@ function ParticipantesCard({ eventoId }: { eventoId: number }) {
             ))}
           </div>
         )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function CancelarEventoCard({ eventoId }: { eventoId: number }) {
+  const queryClient = useQueryClient()
+  const [enviando, setEnviando] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+
+  const cancelar = async () => {
+    const motivo = window.prompt('Motivo do cancelamento (todos os ingressos pagos serão reembolsados integralmente):')
+    if (!motivo || motivo.trim().length < 3) return
+    if (!confirm('Tem certeza? Essa ação não pode ser desfeita e reembolsa todos os compradores.')) return
+
+    setErro(null)
+    setEnviando(true)
+    try {
+      const resp = await api<{ sucessos: number; falhas: number[] }>(`/org/eventos/${eventoId}/cancelar`, {
+        method: 'POST',
+        body: { motivo },
+      })
+      if (resp.falhas.length > 0) {
+        alert(`Evento cancelado. ${resp.sucessos} reembolso(s) concluído(s), ${resp.falhas.length} falharam — fale com o suporte.`)
+      }
+      queryClient.invalidateQueries({ queryKey: ['org-evento', String(eventoId)] })
+    } catch (e) {
+      setErro(e instanceof ApiError ? e.message : 'Erro ao cancelar evento')
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  return (
+    <Card className="mt-6 border-destructive/30">
+      <CardHeader>
+        <CardTitle className="text-destructive">Cancelar evento</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2">
+        <p className="text-sm text-muted-foreground">
+          Cancela o evento e reembolsa integralmente (preço + taxa) todos os ingressos já pagos. Não pode ser desfeito.
+        </p>
+        {erro && <p className="text-sm text-destructive">{erro}</p>}
+        <Button variant="destructive" onClick={cancelar} disabled={enviando} className="w-fit">
+          {enviando ? 'Cancelando…' : 'Cancelar evento'}
+        </Button>
       </CardContent>
     </Card>
   )

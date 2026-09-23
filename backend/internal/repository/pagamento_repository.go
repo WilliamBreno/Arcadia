@@ -27,3 +27,14 @@ func (r *PagamentoRepository) BuscarPorMPPaymentID(mpPaymentID string) (*domain.
 	}
 	return &p, nil
 }
+
+// BuscarAprovadoPorPedido busca o pagamento aprovado de um pedido — um
+// pedido só deveria ter um pagamento aprovado (o resto seria rejeitado
+// ou duplicado), usado para localizar o pagamento a estornar.
+func (r *PagamentoRepository) BuscarAprovadoPorPedido(pedidoID int64) (*domain.Pagamento, error) {
+	var p domain.Pagamento
+	if err := r.db.First(&p, "pedido_id = ? AND status = ?", pedidoID, "approved").Error; err != nil {
+		return nil, err
+	}
+	return &p, nil
+}

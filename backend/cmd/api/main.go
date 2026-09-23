@@ -46,6 +46,7 @@ func main() {
 	itemPedidoRepo := repository.NovoItemPedidoRepository(db)
 	pagamentoRepo := repository.NovoPagamentoRepository(db)
 	lancamentoRepo := repository.NovoLancamentoRepository(db)
+	reembolsoRepo := repository.NovoReembolsoRepository(db)
 
 	jwtService := service.NovoJWTService(cfg.JWTSecret, cfg.AccessTokenTTLMin)
 	authService := service.NovoAuthService(usuarioRepo, refreshTokenRepo, jwtService, cfg.RefreshTokenTTLDias)
@@ -62,6 +63,10 @@ func main() {
 		db, eventoRepo, itemPedidoRepo, pedidoRepo, pagamentoRepo, lancamentoRepo, configPlataformaRepo,
 		mpCliente, mailCliente, cfg.JWTSecret, cfg.FrontendURL, cfg.BackendURL, cfg.NomePlataforma,
 	)
+	cancelamentoService := service.NovoCancelamentoService(
+		itemPedidoRepo, pedidoRepo, pagamentoRepo, reembolsoRepo, lancamentoRepo, eventoRepo, configPlataformaRepo,
+		mpCliente, mailCliente, cfg.NomePlataforma,
+	)
 
 	armazenamento, err := storage.NovoDiscoLocal(cfg.UploadsDir, cfg.UploadsBaseURL)
 	if err != nil {
@@ -72,7 +77,7 @@ func main() {
 	authHandler := handler.NovoAuthHandler(usuarioRepo, authService, googleAuthService, mailCliente, cfg)
 	organizadorHandler := handler.NovoOrganizadorHandler(organizadorRepo, organizadorService)
 	localHandler := handler.NovoLocalHandler(organizadorHandler, localService)
-	eventoHandler := handler.NovoEventoHandler(organizadorHandler, eventoService)
+	eventoHandler := handler.NovoEventoHandler(organizadorHandler, eventoService, cancelamentoService)
 	tipoIngressoHandler := handler.NovoTipoIngressoHandler(organizadorHandler, tipoIngressoService)
 	publicoHandler := handler.NovoPublicoHandler(eventoRepo, tipoIngressoRepo, localRepo, organizadorRepo)
 	conviteHandler := handler.NovoConviteHandler(organizadorHandler, eventoRepo, conviteService)
@@ -81,6 +86,7 @@ func main() {
 	pedidoHandler := handler.NovoPedidoHandler(eventoRepo, usuarioRepo, checkoutService)
 	webhookHandler := handler.NovoWebhookHandler(checkoutService, cfg.MercadoPagoWebhookSecret)
 	jobHandler := handler.NovoJobHandler(checkoutService)
+	cancelamentoHandler := handler.NovoCancelamentoHandler(cancelamentoService)
 
 	router := gin.New()
 	router.Use(middleware.LogRequisicoes(), middleware.TratadorDeErros())
@@ -128,6 +134,8 @@ func main() {
 		autenticado.POST("/eventos/:slug/pedidos", pedidoHandler.Criar)
 		autenticado.GET("/pedidos/:id", pedidoHandler.Obter)
 		autenticado.POST("/pedidos/:id/pagar", pedidoHandler.Pagar)
+		autenticado.GET("/itens/:id/cancelamento", cancelamentoHandler.Simular)
+		autenticado.POST("/itens/:id/cancelar", cancelamentoHandler.Cancelar)
 
 		org := v1.Group("/org", middleware.ExigirAutenticacao(jwtService))
 		org.POST("/perfil", organizadorHandler.CriarPerfil)
@@ -143,6 +151,7 @@ func main() {
 		org.GET("/eventos/:id", eventoHandler.Obter)
 		org.PUT("/eventos/:id", eventoHandler.Atualizar)
 		org.POST("/eventos/:id/publicar", eventoHandler.Publicar)
+		org.POST("/eventos/:id/cancelar", eventoHandler.Cancelar)
 		org.GET("/eventos/:id/ingressos", tipoIngressoHandler.Listar)
 		org.POST("/eventos/:id/ingressos", tipoIngressoHandler.Criar)
 		org.PUT("/eventos/:id/ingressos/:ingressoId", tipoIngressoHandler.Atualizar)

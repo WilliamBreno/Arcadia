@@ -339,7 +339,7 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - [x] 1.5 Convites (jurado e participante especial) + fichas + upload de mídia
 - [x] 1.6 Inscrição aberta de participantes + aprovação/rejeição pelo organizador + área do jurado (leitura)
 - [x] 1.7 Checkout completo: reserva de estoque, cálculo no servidor, Mercado Pago (custódia), webhook idempotente, ledger, QR + e-mail
-- [ ] 1.8 Cancelamento com **direito de arrependimento (CDC)** + cancelamento de evento pelo organizador com reembolso integral
+- [x] 1.8 Cancelamento com **direito de arrependimento (CDC)** + cancelamento de evento pelo organizador com reembolso integral
 - [ ] 1.9 Meus ingressos, **Meus eventos** com selos, regras regionais (semear e bloquear publicação)
 - [ ] 1.10 Check-in PWA (QR, busca, contador) e papel `staff`
 - [ ] 1.11 Painel básico do organizador (vendas, participantes) e e-mails transacionais
@@ -439,6 +439,10 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - **Item 1.7 — cada unidade comprada é seu próprio item_pedido** (não agrega quantidade num só registro), e todos os itens de um pedido nascem com o nome/e-mail do comprador como titular — trocar o titular de itens além do primeiro é uma tela futura (não estava no escopo do 1.7).
 - **Item 1.7 — webhook sempre responde 200**, mesmo quando `ProcessarWebhook` retorna erro (loga e segue) — evita loop de reenvio do MP por erro nosso; se for transitório (banco fora do ar), o reenvio automático do MP ainda ajuda porque o pagamento não ficou registrado.
 - **Item 1.7 — `.env` local:** `EMAIL_REMETENTE` precisou virar `"Arcadia <no-reply@arcadia.local>"` (com aspas) porque um `source .env` direto no bash quebra sem isso (os `<>` viram redirecionamento) — corrigido no `.env` e no `.env.example`.
+- **Item 1.8 — bug real corrigido: janela das 48h era exclusiva, o plano pede inclusiva.** O texto da seção 7.4 é literal: "agora ≤ inicio_em − 48h". Minha primeira implementação usava `<` estrito (excluía o instante exato de 48h antes do evento); o teste unitário `TestDentroDoPrazoCDC` pegou a divergência e foi corrigido para `≤`.
+- **Item 1.8 — reembolso nunca muda o status do item antes de confirmar no Mercado Pago.** `executarReembolso` só marca `cancelado` e grava lançamentos (`reembolso_preco`/`reembolso_taxa`/`reembolso_garantia`) depois do MP confirmar o estorno; se o MP falhar, fica registrado em `reembolsos` com `status=falhou` e nada mais muda — verificado manualmente forçando uma falha real (pagamento inexistente): o item continuou "pago" e nenhum lançamento foi criado.
+- **Item 1.8 — cancelamento de evento não trava em falha individual.** Se o reembolso de um item falhar, o evento cancela mesmo assim e a falha entra na lista `falhas` da resposta — não existe ainda o "painel de falhas" citado no plano (fica pendente para quando houver painel admin, Fase 2/3), por ora as falhas só aparecem na resposta da chamada e ficam registradas em `reembolsos` para auditoria manual.
+- **Item 1.8 — "data da compra" usa `pagamentos.criado_em`** (quando o pagamento foi aprovado), não `itens_pedido.criado_em` (quando a reserva começou) — mais fiel ao "7 dias da compra" do CDC, já que a reserva pode ser feita minutos antes do pagamento cair.
 
 **Pendências para validar fora do código:**
 - Contador/advogado: custódia de recursos de terceiros, nome "Garantia de vaga" (vs. "seguro"), retenção ou não da taxa no arrependimento, regras regionais por UF (incluindo Sergipe), emissão de nota fiscal e tributação da taxa/garantia.

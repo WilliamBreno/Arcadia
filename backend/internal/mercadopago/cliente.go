@@ -151,3 +151,31 @@ func (c *Cliente) BuscarPagamento(id string) (*Pagamento, error) {
 	}
 	return &resp, nil
 }
+
+type reembolsoRequest struct {
+	Amount *float64 `json:"amount,omitempty"`
+}
+
+type Reembolso struct {
+	ID     int64   `json:"id"`
+	Status string  `json:"status"`
+	Amount float64 `json:"amount"`
+}
+
+// SolicitarReembolso estorna um pagamento — total se valorCentavos for
+// nil, parcial caso contrário (um pagamento pode cobrir vários itens do
+// pedido, seção 7.4). O MP garante que a soma dos parciais nunca excede
+// o valor pago; não precisamos reimplementar essa checagem aqui.
+func (c *Cliente) SolicitarReembolso(paymentID string, valorCentavos *int64) (*Reembolso, error) {
+	req := reembolsoRequest{}
+	if valorCentavos != nil {
+		valor := float64(*valorCentavos) / 100
+		req.Amount = &valor
+	}
+
+	var resp Reembolso
+	if err := c.requisitar(http.MethodPost, "/v1/payments/"+paymentID+"/refunds", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}

@@ -27,3 +27,12 @@ func (r *ConfigPlataformaRepository) BuscarInt64(chave string) (int64, error) {
 	}
 	return strconv.ParseInt(registro.Valor, 10, 64)
 }
+
+// BuscarBool lê uma chave de configuração como booleano ("true"/"false").
+func (r *ConfigPlataformaRepository) BuscarBool(chave string) (bool, error) {
+	var registro domain.ConfigPlataforma
+	if err := r.db.First(&registro, "chave = ?", chave).Error; err != nil {
+		return false, err
+	}
+	return strconv.ParseBool(registro.Valor)
+}

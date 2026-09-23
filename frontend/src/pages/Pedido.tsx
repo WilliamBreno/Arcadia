@@ -1,12 +1,14 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 
 import { api, ApiError } from '@/lib/api'
-import type { Pedido as PedidoTipo } from '@/lib/checkout'
+import type { ItemPedido, Pedido as PedidoTipo } from '@/lib/checkout'
 import { formatarCentavos } from '@/lib/evento'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+
+type DecisaoCancelamento = { pode: boolean; motivo: string; valor_reembolso_centavos: number }
 
 const rotuloStatus: Record<PedidoTipo['status'], string> = {
   aberto: 'Aberto',
@@ -74,15 +76,7 @@ export default function Pedido() {
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             {pedido.itens.map((item) => (
-              <div key={item.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
-                <div>
-                  <p className="text-foreground">{item.titular_nome}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatarCentavos(item.preco_centavos)} + {formatarCentavos(item.taxa_plataforma_centavos)} de taxa
-                  </p>
-                </div>
-                <span className="font-medium text-foreground">{formatarCentavos(item.total_centavos)}</span>
-              </div>
+              <ItemLinha key={item.id} item={item} pedidoId={pedido.id} />
             ))}
           </div>
 
@@ -116,5 +110,67 @@ export default function Pedido() {
         </CardContent>
       </Card>
     </main>
+  )
+}
+
+const rotuloStatusItem: Record<ItemPedido['status'], string> = {
+  reservado: 'Reservado',
+  pago: 'Pago',
+  utilizado: 'Utilizado',
+  cancelado: 'Cancelado',
+  reembolsado: 'Reembolsado',
+  expirado: 'Expirado',
+}
+
+function ItemLinha({ item, pedidoId }: { item: ItemPedido; pedidoId: number }) {
+  const queryClient = useQueryClient()
+  const [verificando, setVerificando] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+
+  const cancelar = async () => {
+    setErro(null)
+    setVerificando(true)
+    try {
+      const decisao = await api<DecisaoCancelamento>(`/itens/${item.id}/cancelamento`)
+      if (!decisao.pode) {
+        alert(decisao.motivo)
+        return
+      }
+      const confirmado = confirm(
+        `${decisao.motivo}\n\nVocê recebe de volta ${formatarCentavos(decisao.valor_reembolso_centavos)}. Confirmar cancelamento?`,
+      )
+      if (!confirmado) return
+
+      await api(`/itens/${item.id}/cancelar`, { method: 'POST' })
+      queryClient.invalidateQueries({ queryKey: ['pedido', String(pedidoId)] })
+    } catch (e) {
+      setErro(e instanceof ApiError ? e.message : 'Erro ao verificar cancelamento')
+    } finally {
+      setVerificando(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-1 rounded-lg border border-border px-3 py-2 text-sm">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-foreground">
+            {item.titular_nome} <span className="text-xs text-muted-foreground">({rotuloStatusItem[item.status]})</span>
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {formatarCentavos(item.preco_centavos)} + {formatarCentavos(item.taxa_plataforma_centavos)} de taxa
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-foreground">{formatarCentavos(item.total_centavos)}</span>
+          {item.status === 'pago' && (
+            <Button variant="destructive" size="sm" onClick={cancelar} disabled={verificando}>
+              Cancelar
+            </Button>
+          )}
+        </div>
+      </div>
+      {erro && <p className="text-xs text-destructive">{erro}</p>}
+    </div>
   )
 }

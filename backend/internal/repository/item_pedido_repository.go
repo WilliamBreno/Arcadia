@@ -69,3 +69,15 @@ func (r *ItemPedidoRepository) BuscarPorCodigo(codigo string) (*domain.ItemPedid
 	}
 	return &item, nil
 }
+
+// ListarPagosPorEvento é usado no cancelamento de evento pelo organizador
+// (seção 7.5) — todo item pago do evento precisa de reembolso integral.
+func (r *ItemPedidoRepository) ListarPagosPorEvento(eventoID int64) ([]domain.ItemPedido, error) {
+	var itens []domain.ItemPedido
+	err := r.db.
+		Select("itens_pedido.*").
+		Joins("JOIN tipos_ingresso ON tipos_ingresso.id = itens_pedido.tipo_ingresso_id").
+		Where("tipos_ingresso.evento_id = ? AND itens_pedido.status = ?", eventoID, domain.StatusItemPago).
+		Find(&itens).Error
+	return itens, err
+}

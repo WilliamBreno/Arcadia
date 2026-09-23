@@ -12,12 +12,13 @@ import (
 )
 
 type EventoHandler struct {
-	organizadorHandler *OrganizadorHandler
-	service            *service.EventoService
+	organizadorHandler  *OrganizadorHandler
+	service             *service.EventoService
+	cancelamentoService *service.CancelamentoService
 }
 
-func NovoEventoHandler(organizadorHandler *OrganizadorHandler, s *service.EventoService) *EventoHandler {
-	return &EventoHandler{organizadorHandler: organizadorHandler, service: s}
+func NovoEventoHandler(organizadorHandler *OrganizadorHandler, s *service.EventoService, cancelamentoService *service.CancelamentoService) *EventoHandler {
+	return &EventoHandler{organizadorHandler: organizadorHandler, service: s, cancelamentoService: cancelamentoService}
 }
 
 type eventoResposta struct {
