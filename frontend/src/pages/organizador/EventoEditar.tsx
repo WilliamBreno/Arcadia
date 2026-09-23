@@ -11,6 +11,7 @@ import { api, ApiError } from '@/lib/api'
 import { adicionarStaff, listarStaff, removerStaff, type Staff } from '@/lib/checkin'
 import { formatarCentavos, type Evento, type TipoIngresso } from '@/lib/evento'
 import type { Local } from '@/lib/organizador'
+import { obterVendas } from '@/lib/vendas'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -228,6 +229,8 @@ export default function EventoEditar() {
 
       <TiposIngressoCard eventoId={Number(id)} tipos={tiposIngresso ?? []} />
 
+      <VendasCard eventoId={Number(id)} />
+
       <ConvitesCard eventoId={Number(id)} />
 
       <ParticipantesCard eventoId={Number(id)} />
@@ -344,6 +347,66 @@ function TiposIngressoCard({ eventoId, tipos }: { eventoId: number; tipos: TipoI
           </Button>
         </div>
         {erro && <p className="text-sm text-destructive">{erro}</p>}
+      </CardContent>
+    </Card>
+  )
+}
+
+function VendasCard({ eventoId }: { eventoId: number }) {
+  const { data: vendas } = useQuery({
+    queryKey: ['org-evento-vendas', eventoId],
+    queryFn: () => obterVendas(eventoId),
+  })
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle>Vendas</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="rounded-lg border border-border px-3 py-2">
+            <p className="text-xs text-muted-foreground">Ingressos vendidos</p>
+            <p className="text-lg font-semibold text-foreground">{vendas?.total_vendido ?? '—'}</p>
+          </div>
+          <div className="rounded-lg border border-border px-3 py-2">
+            <p className="text-xs text-muted-foreground">Receita bruta</p>
+            <p className="text-lg font-semibold text-foreground">
+              {vendas ? formatarCentavos(vendas.receita_centavos) : '—'}
+            </p>
+          </div>
+        </div>
+
+        {vendas && vendas.por_tipo.length > 0 && (
+          <div className="flex flex-col gap-2">
+            {vendas.por_tipo.map((t) => (
+              <div key={t.tipo_ingresso_id} className="flex items-center justify-between text-sm">
+                <span className="text-foreground">{t.tipo_ingresso_nome}</span>
+                <span className="text-muted-foreground">
+                  {t.quantidade} · {formatarCentavos(t.receita_centavos)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex flex-col gap-2 border-t border-border pt-4">
+          {vendas?.itens.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma venda ainda.</p>}
+          {vendas?.itens.map((i) => (
+            <div key={i.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+              <div>
+                <p className="text-sm font-medium text-foreground">{i.titular_nome}</p>
+                <p className="text-xs text-muted-foreground">
+                  {i.tipo_ingresso_nome} · {i.codigo}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-foreground">{formatarCentavos(i.preco_centavos)}</p>
+                <p className="text-xs text-muted-foreground">{i.status === 'utilizado' ? 'já entrou' : 'pago'}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </CardContent>
     </Card>
   )

@@ -2,11 +2,13 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"gorm.io/datatypes"
 
 	"github.com/WilliamBreno/Arcadia/backend/internal/domain"
+	"github.com/WilliamBreno/Arcadia/backend/internal/mail"
 	"github.com/WilliamBreno/Arcadia/backend/internal/repository"
 )
 
@@ -65,13 +67,51 @@ func validarMenorDeIdade(f *domain.FichaParticipacao) error {
 }
 
 type FichaService struct {
-	fichas  *repository.FichaParticipacaoRepository
-	papeis  *repository.PapelEventoRepository
-	eventos *repository.EventoRepository
+	fichas      *repository.FichaParticipacaoRepository
+	papeis      *repository.PapelEventoRepository
+	eventos     *repository.EventoRepository
+	usuarios    *repository.UsuarioRepository
+	mailCliente *mail.Cliente
 }
 
-func NovoFichaService(fichas *repository.FichaParticipacaoRepository, papeis *repository.PapelEventoRepository, eventos *repository.EventoRepository) *FichaService {
-	return &FichaService{fichas: fichas, papeis: papeis, eventos: eventos}
+func NovoFichaService(
+	fichas *repository.FichaParticipacaoRepository,
+	papeis *repository.PapelEventoRepository,
+	eventos *repository.EventoRepository,
+	usuarios *repository.UsuarioRepository,
+	mailCliente *mail.Cliente,
+) *FichaService {
+	return &FichaService{fichas: fichas, papeis: papeis, eventos: eventos, usuarios: usuarios, mailCliente: mailCliente}
+}
+
+// enviarEmailStatusFicha é o e-mail "a cada mudança de status" da seção
+// 7.12 — best-effort (não falha a aprovação/rejeição se o e-mail não sair).
+func (s *FichaService) enviarEmailStatusFicha(ficha *domain.FichaParticipacao) {
+	usuario, err := s.usuarios.BuscarPorID(ficha.UsuarioID)
+	if err != nil || usuario.Email == "" {
+		return
+	}
+	evento, err := s.eventos.BuscarPorID(ficha.EventoID)
+	if err != nil {
+		return
+	}
+
+	var assunto, corpo string
+	switch ficha.Status {
+	case domain.StatusFichaAprovado:
+		assunto = "Inscrição aprovada — " + evento.Titulo
+		corpo = fmt.Sprintf(`<p>Olá, %s!</p><p>Sua inscrição como %s em <strong>%s</strong> foi aprovada.</p>`, ficha.Nome, ficha.Papel, evento.Titulo)
+	case domain.StatusFichaRejeitado:
+		assunto = "Inscrição não aprovada — " + evento.Titulo
+		motivo := ""
+		if ficha.MotivoRejeicao != "" {
+			motivo = fmt.Sprintf("<p>Motivo: %s</p>", ficha.MotivoRejeicao)
+		}
+		corpo = fmt.Sprintf(`<p>Olá, %s!</p><p>Sua inscrição como %s em <strong>%s</strong> não foi aprovada.</p>%s`, ficha.Nome, ficha.Papel, evento.Titulo, motivo)
+	default:
+		return
+	}
+	_ = s.mailCliente.Enviar(usuario.Email, assunto, corpo)
 }
 
 func (s *FichaService) ObterMinha(eventoID, usuarioID int64, papel domain.Papel) (*domain.FichaParticipacao, error) {
@@ -182,6 +222,7 @@ func (s *FichaService) Aprovar(organizadorID, eventoID, fichaID int64) (*domain.
 		}
 	}
 
+	s.enviarEmailStatusFicha(ficha)
 	return ficha, nil
 }
 
@@ -196,6 +237,7 @@ func (s *FichaService) Rejeitar(organizadorID, eventoID, fichaID int64, motivo s
 	if err := s.fichas.Salvar(ficha); err != nil {
 		return nil, err
 	}
+	s.enviarEmailStatusFicha(ficha)
 	return ficha, nil
 }
 

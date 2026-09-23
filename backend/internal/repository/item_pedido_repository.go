@@ -136,6 +136,29 @@ func (r *ItemPedidoRepository) ResumoCheckin(eventoID int64) (ResumoCheckin, err
 	return resumo, nil
 }
 
+// ItemVenda é uma linha do painel de vendas do organizador (seção 1.11):
+// item vendido (pago ou já utilizado) com o nome do tipo de ingresso.
+type ItemVenda struct {
+	domain.ItemPedido
+	TipoIngressoNome string
+}
+
+// ListarVendasPorEvento lista todos os ingressos vendidos (pago +
+// utilizado) de um evento, mais recentes primeiro — a base do "vendas
+// básico" do painel do organizador.
+func (r *ItemPedidoRepository) ListarVendasPorEvento(eventoID int64) ([]ItemVenda, error) {
+	var linhas []ItemVenda
+	err := r.db.Table("itens_pedido").
+		Select("itens_pedido.*, tipos_ingresso.nome as tipo_ingresso_nome").
+		Joins("JOIN tipos_ingresso ON tipos_ingresso.id = itens_pedido.tipo_ingresso_id").
+		Where("tipos_ingresso.evento_id = ? AND itens_pedido.status IN ?", eventoID, []domain.StatusItemPedido{
+			domain.StatusItemPago, domain.StatusItemUtilizado,
+		}).
+		Order("itens_pedido.criado_em DESC").
+		Scan(&linhas).Error
+	return linhas, err
+}
+
 // ListarPagosPorEvento é usado no cancelamento de evento pelo organizador
 // (seção 7.5) — todo item pago do evento precisa de reembolso integral.
 func (r *ItemPedidoRepository) ListarPagosPorEvento(eventoID int64) ([]domain.ItemPedido, error) {

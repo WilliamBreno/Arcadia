@@ -58,7 +58,7 @@ func main() {
 	eventoService := service.NovoEventoService(eventoRepo, tipoIngressoRepo, organizadorRepo, localRepo, regraRegionalRepo, configPlataformaRepo)
 	tipoIngressoService := service.NovoTipoIngressoService(eventoService, tipoIngressoRepo)
 	conviteService := service.NovoConviteService(conviteRepo, eventoService, papelEventoRepo, fichaRepo)
-	fichaService := service.NovoFichaService(fichaRepo, papelEventoRepo, eventoRepo)
+	fichaService := service.NovoFichaService(fichaRepo, papelEventoRepo, eventoRepo, usuarioRepo, mailCliente)
 	mpCliente := mercadopago.NovoCliente(cfg.MercadoPagoAccessToken)
 	checkoutService := service.NovoCheckoutService(
 		db, eventoRepo, itemPedidoRepo, pedidoRepo, pagamentoRepo, lancamentoRepo, configPlataformaRepo,
@@ -71,6 +71,7 @@ func main() {
 	contaService := service.NovoContaService(organizadorRepo, eventoRepo, papelEventoRepo, itemPedidoRepo, pedidoRepo)
 	checkinService := service.NovoCheckinService(itemPedidoRepo, tipoIngressoRepo, eventoRepo, organizadorRepo, papelEventoRepo)
 	staffService := service.NovoStaffService(eventoRepo, usuarioRepo, papelEventoRepo)
+	vendasService := service.NovoVendasService(eventoRepo, itemPedidoRepo)
 
 	armazenamento, err := storage.NovoDiscoLocal(cfg.UploadsDir, cfg.UploadsBaseURL)
 	if err != nil {
@@ -94,6 +95,7 @@ func main() {
 	contaHandler := handler.NovoContaHandler(contaService)
 	checkinHandler := handler.NovoCheckinHandler(checkinService)
 	staffHandler := handler.NovoStaffHandler(organizadorHandler, staffService)
+	vendasHandler := handler.NovoVendasHandler(organizadorHandler, vendasService)
 
 	router := gin.New()
 	router.Use(middleware.LogRequisicoes(), middleware.TratadorDeErros())
@@ -177,6 +179,8 @@ func main() {
 		org.GET("/eventos/:id/participantes", fichaHandler.ListarDoOrganizador)
 		org.POST("/eventos/:id/participantes/:fichaId/aprovar", fichaHandler.Aprovar)
 		org.POST("/eventos/:id/participantes/:fichaId/rejeitar", fichaHandler.Rejeitar)
+
+		org.GET("/eventos/:id/vendas", vendasHandler.Listar)
 
 		org.GET("/eventos/:id/staff", staffHandler.Listar)
 		org.POST("/eventos/:id/staff", staffHandler.Adicionar)

@@ -342,7 +342,7 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - [x] 1.8 Cancelamento com **direito de arrependimento (CDC)** + cancelamento de evento pelo organizador com reembolso integral
 - [x] 1.9 Meus ingressos, **Meus eventos** com selos, regras regionais (semear e bloquear publicação)
 - [x] 1.10 Check-in PWA (QR, busca, contador) e papel `staff`
-- [ ] 1.11 Painel básico do organizador (vendas, participantes) e e-mails transacionais
+- [x] 1.11 Painel básico do organizador (vendas, participantes) e e-mails transacionais
 - [ ] 1.12 **Fechar a fase:** commit, push e `git tag fase-1` + `git push --tags`
 
 ### Fase 2 — Diferencial e dinheiro
@@ -453,6 +453,9 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - **Item 1.10 — busca manual (`GET /checkin/eventos/:id/busca`) é só consulta, não faz check-in.** Ela devolve nome/e-mail/código/status pra portaria localizar alguém visualmente, mas nunca devolve `qr_token` (ficaria exposto pra qualquer staff) — então não dá pra "confirmar entrada" batendo só na busca; o check-in de verdade só acontece via `POST /checkin/validar` com o par `codigo`+`qr_token` que vem do QR. Isso bate com o texto da seção 7.10 ("busca manual… contador"), que não descreve a busca como um gatilho de entrada.
 - **Item 1.10 — acesso ao check-in é "dono do evento OU staff confirmado nesse evento"** (`CheckinService.TemAcesso`), checado em toda chamada (`validar`, `busca`, `resumo`) — jurado, participante ou qualquer outro papel sem ser `staff`/organizador toma 403.
 - **Item 1.10 — leitor de QR no frontend usa `html5-qrcode`** (câmera via `navigator.mediaDevices`, decodifica pra `codigo:qr_token` no formato que `qrcode.react` já gera desde o item 1.9). Rota `/checkin/:eventoId`, acessível a qualquer usuário autenticado — o backend é quem decide se a pessoa tem acesso (mesmo padrão já usado em `/e/:slug/jurado`). Testado o build e o fluxo via curl; a leitura de câmera de verdade (permissão do navegador, foco, iluminação) precisa ser validada num celular real pela portaria antes do evento.
+- **Item 1.11 — "vendas" é receita bruta simples (soma de `preco_centavos`), sem taxa do processador nem repasse.** O painel financeiro completo (bruto/taxa/líquido/repasses) é o item 2.2 da Fase 2 — aqui é só "quanto vendeu e pra quem", contagem e receita por tipo de ingresso + lista de compradores (pago/utilizado). Não expõe `qr_token` na lista (mesmo cuidado do item 1.10: só o dono/staff do evento vê, mas não precisa do token pra nada aqui).
+- **Item 1.11 — "participantes" do painel básico reaproveita o que já existia desde o item 1.6** (`ParticipantesCard`, aprovação/rejeição de fichas) — não foi preciso criar nada novo pra essa parte, só os e-mails transacionais que faltavam.
+- **Item 1.11 — e-mails transacionais que faltavam: aprovação/rejeição de ficha de participante/jurado** (seção 7.12 pede "e-mail ao participante em cada mudança de status", mas isso nunca tinha sido implementado desde o item 1.5). `FichaService` ganhou `usuarios *repository.UsuarioRepository` e `mailCliente *mail.Cliente`; `Aprovar`/`Rejeitar` disparam e-mail best-effort (erro de envio não desfaz a aprovação/rejeição, mesmo padrão dos outros e-mails do sistema). Os demais e-mails transacionais (verificação de cadastro, redefinição de senha, ingresso confirmado, cancelamento confirmado) já existiam desde os itens 1.1/1.7/1.8.
 
 **Pendências para validar fora do código:**
 - Contador/advogado: custódia de recursos de terceiros, nome "Garantia de vaga" (vs. "seguro"), retenção ou não da taxa no arrependimento, regras regionais por UF (incluindo Sergipe), emissão de nota fiscal e tributação da taxa/garantia.
