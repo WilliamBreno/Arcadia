@@ -50,7 +50,7 @@ func main() {
 	eventoService := service.NovoEventoService(eventoRepo, tipoIngressoRepo, organizadorRepo)
 	tipoIngressoService := service.NovoTipoIngressoService(eventoService, tipoIngressoRepo)
 	conviteService := service.NovoConviteService(conviteRepo, eventoService, papelEventoRepo, fichaRepo)
-	fichaService := service.NovoFichaService(fichaRepo)
+	fichaService := service.NovoFichaService(fichaRepo, papelEventoRepo, eventoRepo)
 
 	armazenamento, err := storage.NovoDiscoLocal(cfg.UploadsDir, cfg.UploadsBaseURL)
 	if err != nil {
@@ -65,7 +65,7 @@ func main() {
 	tipoIngressoHandler := handler.NovoTipoIngressoHandler(organizadorHandler, tipoIngressoService)
 	publicoHandler := handler.NovoPublicoHandler(eventoRepo, tipoIngressoRepo, localRepo, organizadorRepo)
 	conviteHandler := handler.NovoConviteHandler(organizadorHandler, eventoRepo, conviteService)
-	fichaHandler := handler.NovoFichaHandler(eventoRepo, fichaService)
+	fichaHandler := handler.NovoFichaHandler(eventoRepo, organizadorHandler, fichaService)
 	uploadHandler := handler.NovoUploadHandler(armazenamento)
 
 	router := gin.New()
@@ -106,6 +106,9 @@ func main() {
 		autenticado.POST("/convites/:token/aceitar", conviteHandler.Aceitar)
 		autenticado.GET("/eventos/:slug/minha-ficha", fichaHandler.ObterMinha)
 		autenticado.PUT("/eventos/:slug/minha-ficha", fichaHandler.AtualizarMinha)
+		autenticado.POST("/eventos/:slug/inscricao", fichaHandler.Inscrever)
+		autenticado.GET("/eventos/:slug/participantes", fichaHandler.ListarParaJurado)
+		autenticado.GET("/eventos/:slug/participantes/:fichaId", fichaHandler.ObterParaJurado)
 		autenticado.POST("/uploads", uploadHandler.Criar)
 
 		org := v1.Group("/org", middleware.ExigirAutenticacao(jwtService))
@@ -130,6 +133,10 @@ func main() {
 		org.GET("/eventos/:id/convites", conviteHandler.Listar)
 		org.POST("/eventos/:id/convites", conviteHandler.Gerar)
 		org.DELETE("/eventos/:id/convites/:conviteId", conviteHandler.Revogar)
+
+		org.GET("/eventos/:id/participantes", fichaHandler.ListarDoOrganizador)
+		org.POST("/eventos/:id/participantes/:fichaId/aprovar", fichaHandler.Aprovar)
+		org.POST("/eventos/:id/participantes/:fichaId/rejeitar", fichaHandler.Rejeitar)
 	}
 
 	endereco := ":" + cfg.Porta

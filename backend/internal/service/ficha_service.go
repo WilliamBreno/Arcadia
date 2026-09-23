@@ -11,8 +11,13 @@ import (
 )
 
 var (
-	ErrFichaNaoEncontrada  = errors.New("ficha não encontrada")
-	ErrMenorSemAutorizacao = errors.New("menor de 18 anos precisa de nome, contato e autorização do responsável")
+	ErrFichaNaoEncontrada     = errors.New("ficha não encontrada")
+	ErrMenorSemAutorizacao    = errors.New("menor de 18 anos precisa de nome, contato e autorização do responsável")
+	ErrInscricaoNaoPermitida  = errors.New("este evento não aceita inscrição aberta de participantes")
+	ErrInscricaoForaDoPrazo   = errors.New("fora do prazo de inscrição")
+	ErrJaInscrito             = errors.New("você já se inscreveu neste evento")
+	ErrNaoEhJuradoConfirmado  = errors.New("você não é jurado confirmado deste evento")
+	ErrFichaNaoPertenceEvento = errors.New("ficha não pertence a este evento")
 )
 
 type FichaDados struct {
@@ -60,11 +65,13 @@ func validarMenorDeIdade(f *domain.FichaParticipacao) error {
 }
 
 type FichaService struct {
-	fichas *repository.FichaParticipacaoRepository
+	fichas  *repository.FichaParticipacaoRepository
+	papeis  *repository.PapelEventoRepository
+	eventos *repository.EventoRepository
 }
 
-func NovoFichaService(fichas *repository.FichaParticipacaoRepository) *FichaService {
-	return &FichaService{fichas: fichas}
+func NovoFichaService(fichas *repository.FichaParticipacaoRepository, papeis *repository.PapelEventoRepository, eventos *repository.EventoRepository) *FichaService {
+	return &FichaService{fichas: fichas, papeis: papeis, eventos: eventos}
 }
 
 func (s *FichaService) ObterMinha(eventoID, usuarioID int64, papel domain.Papel) (*domain.FichaParticipacao, error) {
@@ -92,6 +99,158 @@ func (s *FichaService) AtualizarMinha(eventoID, usuarioID int64, papel domain.Pa
 
 	if err := s.fichas.Salvar(ficha); err != nil {
 		return nil, err
+	}
+	return ficha, nil
+}
+
+// Inscrever é o fluxo de inscrição aberta (seção 2.4/7.12): o usuário se
+// inscreve como participante, a ficha nasce "pendente" e só vira
+// "aprovado" quando o organizador aprovar. Vagas por tipo/categoria não
+// são checadas ainda (ver seção 14) — só prazo e modo_participantes.
+func (s *FichaService) Inscrever(eventoID, usuarioID int64, dados FichaDados) (*domain.FichaParticipacao, error) {
+	evento, err := s.eventos.BuscarPorID(eventoID)
+	if err != nil {
+		return nil, ErrFichaNaoEncontrada
+	}
+
+	if evento.ModoParticipantes != domain.ModoParticipantesInscricaoAberta && evento.ModoParticipantes != domain.ModoParticipantesAmbos {
+		return nil, ErrInscricaoNaoPermitida
+	}
+
+	agora := time.Now()
+	if evento.InscricaoTalentosInicio != nil && agora.Before(*evento.InscricaoTalentosInicio) {
+		return nil, ErrInscricaoForaDoPrazo
+	}
+	if evento.InscricaoTalentosFim != nil && agora.After(*evento.InscricaoTalentosFim) {
+		return nil, ErrInscricaoForaDoPrazo
+	}
+
+	if _, err := s.fichas.Buscar(eventoID, usuarioID, domain.PapelParticipante); err == nil {
+		return nil, ErrJaInscrito
+	}
+
+	ficha := &domain.FichaParticipacao{
+		EventoID:  eventoID,
+		UsuarioID: usuarioID,
+		Papel:     domain.PapelParticipante,
+		Origem:    domain.OrigemInscricao,
+		Status:    domain.StatusFichaPendente,
+		CriadoEm:  agora,
+	}
+	aplicarDadosFicha(ficha, dados)
+	if err := validarMenorDeIdade(ficha); err != nil {
+		return nil, err
+	}
+
+	if err := s.fichas.Criar(ficha); err != nil {
+		return nil, err
+	}
+	return ficha, nil
+}
+
+// Aprovar confirma a ficha e cria/confirma o papel_evento correspondente
+// — só a partir daqui a pessoa aparece pro jurado e em "meus eventos".
+func (s *FichaService) Aprovar(organizadorID, eventoID, fichaID int64) (*domain.FichaParticipacao, error) {
+	ficha, err := s.buscarDoOrganizador(organizadorID, eventoID, fichaID)
+	if err != nil {
+		return nil, err
+	}
+
+	ficha.Status = domain.StatusFichaAprovado
+	ficha.MotivoRejeicao = ""
+	if err := s.fichas.Salvar(ficha); err != nil {
+		return nil, err
+	}
+
+	papel, err := s.papeis.Buscar(eventoID, ficha.UsuarioID, ficha.Papel)
+	if err != nil {
+		papel = &domain.PapelEvento{
+			EventoID:  eventoID,
+			UsuarioID: ficha.UsuarioID,
+			Papel:     ficha.Papel,
+			Origem:    ficha.Origem,
+			Status:    domain.StatusPapelConfirmado,
+			CriadoEm:  time.Now(),
+		}
+		if err := s.papeis.Criar(papel); err != nil {
+			return nil, err
+		}
+	} else if papel.Status != domain.StatusPapelConfirmado {
+		papel.Status = domain.StatusPapelConfirmado
+		if err := s.papeis.Salvar(papel); err != nil {
+			return nil, err
+		}
+	}
+
+	return ficha, nil
+}
+
+func (s *FichaService) Rejeitar(organizadorID, eventoID, fichaID int64, motivo string) (*domain.FichaParticipacao, error) {
+	ficha, err := s.buscarDoOrganizador(organizadorID, eventoID, fichaID)
+	if err != nil {
+		return nil, err
+	}
+
+	ficha.Status = domain.StatusFichaRejeitado
+	ficha.MotivoRejeicao = motivo
+	if err := s.fichas.Salvar(ficha); err != nil {
+		return nil, err
+	}
+	return ficha, nil
+}
+
+// ListarDoOrganizador mostra todas as fichas (qualquer status) — usado
+// no painel de aprovação.
+func (s *FichaService) ListarDoOrganizador(organizadorID, eventoID int64) ([]domain.FichaParticipacao, error) {
+	evento, err := s.eventos.BuscarPorID(eventoID)
+	if err != nil {
+		return nil, ErrFichaNaoEncontrada
+	}
+	if evento.OrganizadorID != organizadorID {
+		return nil, ErrEventoNaoPertenceAoOrganizador
+	}
+	return s.fichas.ListarPorEvento(eventoID, nil)
+}
+
+// ListarParaJurado só mostra fichas aprovadas — e só se quem pede for
+// jurado confirmado deste evento (seção 3: privacidade). A filtragem de
+// campos privados (telefone, contato do responsável) acontece na
+// camada de resposta do handler, não aqui.
+func (s *FichaService) ListarParaJurado(usuarioID, eventoID int64) ([]domain.FichaParticipacao, error) {
+	papel, err := s.papeis.Buscar(eventoID, usuarioID, domain.PapelJurado)
+	if err != nil || papel.Status != domain.StatusPapelConfirmado {
+		return nil, ErrNaoEhJuradoConfirmado
+	}
+	aprovado := domain.StatusFichaAprovado
+	return s.fichas.ListarPorEventoEPapel(eventoID, domain.PapelParticipante, &aprovado)
+}
+
+func (s *FichaService) ObterParaJurado(usuarioID, eventoID, fichaID int64) (*domain.FichaParticipacao, error) {
+	papel, err := s.papeis.Buscar(eventoID, usuarioID, domain.PapelJurado)
+	if err != nil || papel.Status != domain.StatusPapelConfirmado {
+		return nil, ErrNaoEhJuradoConfirmado
+	}
+	ficha, err := s.fichas.BuscarPorID(fichaID)
+	if err != nil || ficha.EventoID != eventoID || ficha.Status != domain.StatusFichaAprovado || ficha.Papel != domain.PapelParticipante {
+		return nil, ErrFichaNaoEncontrada
+	}
+	return ficha, nil
+}
+
+func (s *FichaService) buscarDoOrganizador(organizadorID, eventoID, fichaID int64) (*domain.FichaParticipacao, error) {
+	evento, err := s.eventos.BuscarPorID(eventoID)
+	if err != nil {
+		return nil, ErrFichaNaoEncontrada
+	}
+	if evento.OrganizadorID != organizadorID {
+		return nil, ErrEventoNaoPertenceAoOrganizador
+	}
+	ficha, err := s.fichas.BuscarPorID(fichaID)
+	if err != nil {
+		return nil, ErrFichaNaoEncontrada
+	}
+	if ficha.EventoID != eventoID {
+		return nil, ErrFichaNaoPertenceEvento
 	}
 	return ficha, nil
 }

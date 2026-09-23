@@ -48,3 +48,16 @@ func (r *FichaParticipacaoRepository) ListarPorEvento(eventoID int64, statusFilt
 	err := query.Order("ordem_apresentacao, criado_em").Find(&fichas).Error
 	return fichas, err
 }
+
+// ListarPorEventoEPapel filtra também por papel — usado na área do
+// jurado, que só pode ver fichas de participantes, nunca de outros
+// jurados (seção 3 do plano).
+func (r *FichaParticipacaoRepository) ListarPorEventoEPapel(eventoID int64, papel domain.Papel, statusFiltro *domain.StatusFicha) ([]domain.FichaParticipacao, error) {
+	query := r.db.Where("evento_id = ? AND papel = ?", eventoID, papel)
+	if statusFiltro != nil {
+		query = query.Where("status = ?", *statusFiltro)
+	}
+	var fichas []domain.FichaParticipacao
+	err := query.Order("ordem_apresentacao, criado_em").Find(&fichas).Error
+	return fichas, err
+}

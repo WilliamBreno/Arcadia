@@ -29,6 +29,7 @@ export type EventoDetalhe = {
     classificacao_etaria: string
     garantia_habilitada: boolean
     politica_cancelamento_texto: string
+    modo_participantes: 'nenhum' | 'convite' | 'inscricao_aberta' | 'ambos'
   }
   local: {
     nome: string

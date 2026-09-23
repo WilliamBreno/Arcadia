@@ -337,7 +337,7 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - [x] 1.3 CRUD de eventos em etapas, `tipo_acesso`, `modo_participantes`, tipos de ingresso/cadastro, publicação com validações
 - [x] 1.4 Site público: home, busca com filtros, página do evento, página do organizador, meta tags OG
 - [x] 1.5 Convites (jurado e participante especial) + fichas + upload de mídia
-- [ ] 1.6 Inscrição aberta de participantes + aprovação/rejeição pelo organizador + área do jurado (leitura)
+- [x] 1.6 Inscrição aberta de participantes + aprovação/rejeição pelo organizador + área do jurado (leitura)
 - [ ] 1.7 Checkout completo: reserva de estoque, cálculo no servidor, Mercado Pago (custódia), webhook idempotente, ledger, QR + e-mail
 - [ ] 1.8 Cancelamento com **direito de arrependimento (CDC)** + cancelamento de evento pelo organizador com reembolso integral
 - [ ] 1.9 Meus ingressos, **Meus eventos** com selos, regras regionais (semear e bloquear publicação)
@@ -428,6 +428,9 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - **Item 1.5 — aceitar convite não usa transação de banco:** cria `papel_evento` e depois a `ficha_participacao` em passos separados. Se o segundo passo falhar, o primeiro fica persistido — mas o fluxo é auto-recuperável: uma nova tentativa encontra o papel já criado (não duplica, não reincrementa `usos` do convite) e só tenta de novo a parte que faltou. Encontrado e verificado via teste manual (bug real de `dados` JSONB nulo, corrigido).
 - **Item 1.5 — validação de "menor de 18" simplificada:** checa só se `responsavel_nome`, `responsavel_contato` e `autorizacao_responsavel_url` estão preenchidos, sem validar o conteúdo do arquivo de autorização.
 - **Item 1.5 — campos condicionais por `tipo_apresentacao`:** implementados só os principais de cada tipo (não os 100% do detalhamento da seção 5.1) para não alongar demais o formulário; o campo `dados` é um JSON livre, então dá pra completar depois sem migration.
+- **Item 1.6 — bug real corrigido: jurado via a própria ficha na lista de participantes.** `ListarParaJurado`/`ObterParaJurado` filtravam só por status, não por papel — um jurado aparecia na própria lista de "participantes" dele. Corrigido com `ListarPorEventoEPapel` (papel=participante sempre). Encontrado em teste manual ponta a ponta.
+- **Item 1.6 — "vagas por tipo/categoria" não é checada na inscrição.** A seção 2.4/7.12 menciona limite de vagas por tipo/categoria de participante, mas não há um campo de configuração pra isso ainda (só `capacidade_total`, que é do evento como um todo). `Inscrever()` só checa `modo_participantes` e o prazo (`inscricao_talentos_inicio/fim`). Se isso virar necessário, precisa de um novo campo (ex.: `vagas_por_tipo` no evento ou nos tipos de apresentação).
+- **Item 1.6 — organizador pode editar evento já publicado** (`EventoService.Atualizar` não bloqueia por status). Não é o foco do item, mas é um comportamento existente desde o 1.3 — sem trava alguma, incluindo `tipo_acesso`. Vale revisar quando o checkout (1.7) estiver valendo, pra não deixar mudar `tipo_acesso` de um evento com vendas em andamento.
 
 **Pendências para validar fora do código:**
 - Contador/advogado: custódia de recursos de terceiros, nome "Garantia de vaga" (vs. "seguro"), retenção ou não da taxa no arrependimento, regras regionais por UF (incluindo Sergipe), emissão de nota fiscal e tributação da taxa/garantia.

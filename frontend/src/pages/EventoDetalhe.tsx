@@ -86,6 +86,21 @@ export default function EventoDetalhe() {
           Este evento oferece <strong>garantia de vaga</strong>: cancele até o início do evento e receba tudo de volta.
         </p>
       )}
+
+      {(evento.modo_participantes === 'inscricao_aberta' || evento.modo_participantes === 'ambos') && (
+        <div className="mt-6 flex items-center justify-between rounded-lg border border-border p-4">
+          <p className="text-sm text-foreground">Quer participar do concurso deste evento?</p>
+          <Link to={`/e/${evento.slug}/inscricao`} className="text-sm font-medium text-primary underline-offset-4 hover:underline">
+            Inscrever-se
+          </Link>
+        </div>
+      )}
+
+      <p className="mt-4 text-center">
+        <Link to={`/e/${evento.slug}/jurado`} className="text-xs text-muted-foreground hover:text-foreground">
+          Área do jurado
+        </Link>
+      </p>
     </main>
   )
 }

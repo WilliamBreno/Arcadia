@@ -227,6 +227,8 @@ export default function EventoEditar() {
 
       <ConvitesCard eventoId={Number(id)} />
 
+      <ParticipantesCard eventoId={Number(id)} />
+
       <Card className="mt-6">
         <CardHeader>
           <CardTitle>Publicação</CardTitle>
@@ -431,6 +433,107 @@ function ConvitesCard({ eventoId }: { eventoId: number }) {
             </div>
           ))}
         </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+type Ficha = {
+  id: number
+  papel: 'jurado' | 'participante'
+  nome: string
+  nome_artistico: string
+  status: 'rascunho' | 'pendente' | 'aprovado' | 'rejeitado' | 'lista_espera' | 'desistiu'
+  motivo_rejeicao?: string
+  tipo_apresentacao: string | null
+}
+
+const rotuloStatusFicha: Record<Ficha['status'], string> = {
+  rascunho: 'Rascunho',
+  pendente: 'Pendente',
+  aprovado: 'Aprovado',
+  rejeitado: 'Rejeitado',
+  lista_espera: 'Lista de espera',
+  desistiu: 'Desistiu',
+}
+
+function ParticipantesCard({ eventoId }: { eventoId: number }) {
+  const queryClient = useQueryClient()
+
+  const { data: fichas } = useQuery({
+    queryKey: ['org-evento-participantes', eventoId],
+    queryFn: () => api<Ficha[]>(`/org/eventos/${eventoId}/participantes`),
+  })
+
+  const invalidar = () => queryClient.invalidateQueries({ queryKey: ['org-evento-participantes', eventoId] })
+
+  const aprovar = async (fichaId: number) => {
+    await api(`/org/eventos/${eventoId}/participantes/${fichaId}/aprovar`, { method: 'POST' })
+    invalidar()
+  }
+
+  const rejeitar = async (fichaId: number) => {
+    const motivo = window.prompt('Motivo da rejeição (opcional):') ?? ''
+    await api(`/org/eventos/${eventoId}/participantes/${fichaId}/rejeitar`, { method: 'POST', body: { motivo } })
+    invalidar()
+  }
+
+  const pendentes = fichas?.filter((f) => f.status === 'pendente') ?? []
+  const outras = fichas?.filter((f) => f.status !== 'pendente') ?? []
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle>Participantes e jurados</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        {fichas?.length === 0 && <p className="text-sm text-muted-foreground">Ninguém se inscreveu ou aceitou convite ainda.</p>}
+
+        {pendentes.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <p className="text-sm font-medium text-foreground">Aguardando aprovação</p>
+            {pendentes.map((f) => (
+              <div key={f.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    {f.nome} {f.nome_artistico && `(${f.nome_artistico})`}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{f.tipo_apresentacao ?? f.papel}</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={() => aprovar(f.id)}>
+                    Aprovar
+                  </Button>
+                  <Button variant="destructive" size="sm" onClick={() => rejeitar(f.id)}>
+                    Rejeitar
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {outras.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <p className="text-sm font-medium text-foreground">Demais</p>
+            {outras.map((f) => (
+              <div key={f.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    {f.nome} {f.nome_artistico && `(${f.nome_artistico})`}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {f.papel} · {f.tipo_apresentacao ?? ''}
+                    {f.status === 'rejeitado' && f.motivo_rejeicao ? ` · ${f.motivo_rejeicao}` : ''}
+                  </p>
+                </div>
+                <span className="rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground">
+                  {rotuloStatusFicha[f.status]}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   )
