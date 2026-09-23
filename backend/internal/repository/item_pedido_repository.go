@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"time"
+
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
@@ -80,4 +82,45 @@ func (r *ItemPedidoRepository) ListarPagosPorEvento(eventoID int64) ([]domain.It
 		Where("tipos_ingresso.evento_id = ? AND itens_pedido.status = ?", eventoID, domain.StatusItemPago).
 		Find(&itens).Error
 	return itens, err
+}
+
+// ItemComEvento é o item de "Meus ingressos" (seção 8) já com os dados
+// do evento pra não precisar de N+1 no handler.
+type ItemComEvento struct {
+	domain.ItemPedido
+	EventoTitulo   string
+	EventoSlug     string
+	EventoInicioEm *time.Time
+}
+
+// ListarPagosPorUsuario é "Meus ingressos" — pago ou já utilizado
+// (check-in feito), mais recentes primeiro.
+func (r *ItemPedidoRepository) ListarPagosPorUsuario(usuarioID int64) ([]ItemComEvento, error) {
+	var linhas []ItemComEvento
+	err := r.db.Table("itens_pedido").
+		Select("itens_pedido.*, eventos.titulo as evento_titulo, eventos.slug as evento_slug, eventos.inicio_em as evento_inicio_em").
+		Joins("JOIN pedidos ON pedidos.id = itens_pedido.pedido_id").
+		Joins("JOIN tipos_ingresso ON tipos_ingresso.id = itens_pedido.tipo_ingresso_id").
+		Joins("JOIN eventos ON eventos.id = tipos_ingresso.evento_id").
+		Where("pedidos.usuario_id = ? AND itens_pedido.status IN ?", usuarioID, []domain.StatusItemPedido{
+			domain.StatusItemPago, domain.StatusItemUtilizado,
+		}).
+		Order("eventos.inicio_em").
+		Scan(&linhas).Error
+	return linhas, err
+}
+
+// EventosComIngressoPago é usado em "Meus eventos" (seção 3) pro selo
+// "Ingresso" — eventos onde o usuário tem pelo menos um item pago.
+func (r *ItemPedidoRepository) EventosComIngressoPago(usuarioID int64) ([]int64, error) {
+	var eventoIDs []int64
+	err := r.db.Table("itens_pedido").
+		Select("DISTINCT tipos_ingresso.evento_id").
+		Joins("JOIN pedidos ON pedidos.id = itens_pedido.pedido_id").
+		Joins("JOIN tipos_ingresso ON tipos_ingresso.id = itens_pedido.tipo_ingresso_id").
+		Where("pedidos.usuario_id = ? AND itens_pedido.status IN ?", usuarioID, []domain.StatusItemPedido{
+			domain.StatusItemPago, domain.StatusItemUtilizado,
+		}).
+		Scan(&eventoIDs).Error
+	return eventoIDs, err
 }

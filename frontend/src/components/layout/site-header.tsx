@@ -17,9 +17,17 @@ export function SiteHeader() {
         </Link>
         <nav className="flex items-center gap-2">
           {!carregando && usuario && (
-            <Link to="/organizador/eventos" className="px-2 text-sm text-muted-foreground hover:text-foreground">
-              Painel do organizador
-            </Link>
+            <>
+              <Link to="/meus-ingressos" className="px-2 text-sm text-muted-foreground hover:text-foreground">
+                Meus ingressos
+              </Link>
+              <Link to="/meus-eventos" className="px-2 text-sm text-muted-foreground hover:text-foreground">
+                Meus eventos
+              </Link>
+              <Link to="/organizador/eventos" className="px-2 text-sm text-muted-foreground hover:text-foreground">
+                Painel do organizador
+              </Link>
+            </>
           )}
           {!carregando && usuario ? (
             <Button variant="ghost" size="sm" onClick={() => logout()}>

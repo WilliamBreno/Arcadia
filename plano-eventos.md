@@ -340,7 +340,7 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - [x] 1.6 Inscrição aberta de participantes + aprovação/rejeição pelo organizador + área do jurado (leitura)
 - [x] 1.7 Checkout completo: reserva de estoque, cálculo no servidor, Mercado Pago (custódia), webhook idempotente, ledger, QR + e-mail
 - [x] 1.8 Cancelamento com **direito de arrependimento (CDC)** + cancelamento de evento pelo organizador com reembolso integral
-- [ ] 1.9 Meus ingressos, **Meus eventos** com selos, regras regionais (semear e bloquear publicação)
+- [x] 1.9 Meus ingressos, **Meus eventos** com selos, regras regionais (semear e bloquear publicação)
 - [ ] 1.10 Check-in PWA (QR, busca, contador) e papel `staff`
 - [ ] 1.11 Painel básico do organizador (vendas, participantes) e e-mails transacionais
 - [ ] 1.12 **Fechar a fase:** commit, push e `git tag fase-1` + `git push --tags`
@@ -443,6 +443,11 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - **Item 1.8 — reembolso nunca muda o status do item antes de confirmar no Mercado Pago.** `executarReembolso` só marca `cancelado` e grava lançamentos (`reembolso_preco`/`reembolso_taxa`/`reembolso_garantia`) depois do MP confirmar o estorno; se o MP falhar, fica registrado em `reembolsos` com `status=falhou` e nada mais muda — verificado manualmente forçando uma falha real (pagamento inexistente): o item continuou "pago" e nenhum lançamento foi criado.
 - **Item 1.8 — cancelamento de evento não trava em falha individual.** Se o reembolso de um item falhar, o evento cancela mesmo assim e a falha entra na lista `falhas` da resposta — não existe ainda o "painel de falhas" citado no plano (fica pendente para quando houver painel admin, Fase 2/3), por ora as falhas só aparecem na resposta da chamada e ficam registradas em `reembolsos` para auditoria manual.
 - **Item 1.8 — "data da compra" usa `pagamentos.criado_em`** (quando o pagamento foi aprovado), não `itens_pedido.criado_em` (quando a reserva começou) — mais fiel ao "7 dias da compra" do CDC, já que a reserva pode ser feita minutos antes do pagamento cair.
+- **Item 1.9 — selo "organizador" vem de `organizadores.usuario_id`, não de `papeis_evento`.** O modelo da seção 5 sugere `papeis_evento.papel` incluir `'organizador'`, mas a coluna `origem` da tabela só aceita `'convite'` ou `'inscricao'` (nenhum dos dois descreve como alguém vira organizador) — mais simples derivar o selo "Organizador" direto de `organizadores.usuario_id = eventos.organizador_id` (que já é a fonte de verdade usada em todo o resto do código pra dono de evento) do que forçar isso dentro de `papeis_evento`.
+- **Item 1.9 — regras regionais tratadas como bloqueio sempre** (não só nas UFs com `permite_taxa=false`, também nas com `exige_canal_sem_taxa=true` e no limite percentual excedido). O texto do plano usa "bloquear" pro caso geral e "alertar" pro limite percentual — simplifiquei pra um único comportamento (bloqueio com mensagem clara) em vez de dois níveis de severidade, e porque ainda não existe painel admin pra liberar manualmente (também pendente, mencionado na seção 7.8).
+- **Item 1.9 — checagem regional só considera a UF/cidade do local do evento**, não verifica de fato se o organizador tem um "canal de venda sem taxa" alternativo (`exige_canal_sem_taxa`) — isso não é algo que dê pra confirmar programaticamente; o bloqueio só avisa que a UF exige isso, cabe ao organizador confirmar por fora.
+- **Item 1.9 — "Meus ingressos" mostra pago + utilizado**, não itens reservados (ainda não pagos, aparecem só na página do pedido) nem cancelados/expirados (sem função pro comprador depois de resolvidos).
+- **Item 1.9 — QR renderizado no cliente** (`qrcode.react`) a partir de `codigo:qr_token` — o backend nunca gera imagem, só os dois valores que a leitora do check-in (item 1.10) vai validar.
 
 **Pendências para validar fora do código:**
 - Contador/advogado: custódia de recursos de terceiros, nome "Garantia de vaga" (vs. "seguro"), retenção ou não da taxa no arrependimento, regras regionais por UF (incluindo Sergipe), emissão de nota fiscal e tributação da taxa/garantia.

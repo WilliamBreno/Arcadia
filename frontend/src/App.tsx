@@ -9,6 +9,8 @@ import EventoDetalhe from '@/pages/EventoDetalhe'
 import Home from '@/pages/Home'
 import Inscricao from '@/pages/Inscricao'
 import Login from '@/pages/Login'
+import MeusEventos from '@/pages/MeusEventos'
+import MeusIngressos from '@/pages/MeusIngressos'
 import OrganizadorPublico from '@/pages/OrganizadorPublico'
 import Pedido from '@/pages/Pedido'
 import EventoEditar from '@/pages/organizador/EventoEditar'
@@ -33,6 +35,8 @@ function App() {
           <Route path="/e/:slug/inscricao" element={<Inscricao />} />
           <Route path="/e/:slug/jurado" element={<AreaJurado />} />
           <Route path="/pedidos/:id" element={<Pedido />} />
+          <Route path="/meus-ingressos" element={<MeusIngressos />} />
+          <Route path="/meus-eventos" element={<MeusEventos />} />
           <Route path="/organizador/perfil" element={<Perfil />} />
           <Route path="/organizador/locais" element={<Locais />} />
           <Route path="/organizador/locais/novo" element={<LocalForm />} />

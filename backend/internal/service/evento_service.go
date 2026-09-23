@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -16,13 +17,26 @@ var (
 )
 
 type EventoService struct {
-	eventos       *repository.EventoRepository
-	tiposIngresso *repository.TipoIngressoRepository
-	organizadores *repository.OrganizadorRepository
+	eventos         *repository.EventoRepository
+	tiposIngresso   *repository.TipoIngressoRepository
+	organizadores   *repository.OrganizadorRepository
+	locais          *repository.LocalRepository
+	regrasRegionais *repository.RegraRegionalRepository
+	config          *repository.ConfigPlataformaRepository
 }
 
-func NovoEventoService(eventos *repository.EventoRepository, tiposIngresso *repository.TipoIngressoRepository, organizadores *repository.OrganizadorRepository) *EventoService {
-	return &EventoService{eventos: eventos, tiposIngresso: tiposIngresso, organizadores: organizadores}
+func NovoEventoService(
+	eventos *repository.EventoRepository,
+	tiposIngresso *repository.TipoIngressoRepository,
+	organizadores *repository.OrganizadorRepository,
+	locais *repository.LocalRepository,
+	regrasRegionais *repository.RegraRegionalRepository,
+	config *repository.ConfigPlataformaRepository,
+) *EventoService {
+	return &EventoService{
+		eventos: eventos, tiposIngresso: tiposIngresso, organizadores: organizadores,
+		locais: locais, regrasRegionais: regrasRegionais, config: config,
+	}
 }
 
 type EventoDados struct {
@@ -162,6 +176,12 @@ func (s *EventoService) Publicar(organizadorID, eventoID int64) (*domain.Evento,
 		if organizador.ChavePix == "" {
 			problemas = append(problemas, "cadastre uma chave Pix no perfil do organizador antes de vender ingressos pagos")
 		}
+
+		problemasRegionais, err := s.checarRegraRegional(evento)
+		if err != nil {
+			return nil, nil, err
+		}
+		problemas = append(problemas, problemasRegionais...)
 	}
 
 	if len(problemas) > 0 {
@@ -175,6 +195,69 @@ func (s *EventoService) Publicar(organizadorID, eventoID int64) (*domain.Evento,
 		return nil, nil, err
 	}
 	return evento, nil, nil
+}
+
+// checarRegraRegional aplica o levantamento da seção 7.8 (a validar com
+// advogado): bloqueia a publicação de evento pago numa UF/cidade com
+// restrição a taxa de conveniência, exceto quando a exceção de público
+// (ex.: ES até 200 pessoas) se aplica. Eventos online (sem local) não
+// têm UF determinável e ficam de fora dessa checagem.
+func (s *EventoService) checarRegraRegional(evento *domain.Evento) ([]string, error) {
+	if evento.LocalID == nil {
+		return nil, nil
+	}
+	local, err := s.locais.BuscarPorID(*evento.LocalID)
+	if err != nil {
+		return nil, nil
+	}
+
+	regra, err := s.regrasRegionais.Buscar(local.UF, local.Cidade)
+	if err != nil {
+		return nil, nil // sem regra cadastrada pra essa UF/cidade — nada a bloquear
+	}
+
+	if regra.ExcecaoPublicoAte != nil && evento.CapacidadeTotal != nil && *evento.CapacidadeTotal <= *regra.ExcecaoPublicoAte {
+		return nil, nil
+	}
+
+	var problemas []string
+
+	if !regra.PermiteTaxa || regra.ExigeCanalSemTaxa {
+		problemas = append(problemas, fmt.Sprintf(
+			"publicação bloqueada: %s/%s tem restrição à taxa de conveniência (%s). Peça liberação ao admin da plataforma se tiver um canal de venda sem taxa.",
+			local.Cidade, local.UF, regra.Observacao,
+		))
+	}
+
+	if regra.TaxaMaximaPercentual != nil {
+		chaveTaxa := domain.ChaveTaxaIngressoCentavos
+		if evento.TipoAcesso == domain.TipoAcessoCadastro {
+			chaveTaxa = domain.ChaveTaxaCadastroCentavos
+		}
+		taxaPlataforma, err := s.config.BuscarInt64(chaveTaxa)
+		if err != nil {
+			return problemas, nil
+		}
+
+		tipos, err := s.tiposIngresso.ListarAtivosPublicoPorEvento(evento.ID)
+		if err != nil {
+			return problemas, err
+		}
+		for _, tipo := range tipos {
+			if tipo.PrecoCentavos == 0 {
+				continue
+			}
+			limite := *regra.TaxaMaximaPercentual / 100 * float64(tipo.PrecoCentavos)
+			if float64(taxaPlataforma) > limite {
+				problemas = append(problemas, fmt.Sprintf(
+					"a taxa da plataforma excede o limite de %.0f%% permitido em %s/%s para o ingresso \"%s\"",
+					*regra.TaxaMaximaPercentual, local.Cidade, local.UF, tipo.Nome,
+				))
+			}
+		}
+	}
+
+	return problemas, nil
 }
 
 func (s *EventoService) buscarDoOrganizador(organizadorID, eventoID int64) (*domain.Evento, error) {

@@ -47,6 +47,7 @@ func main() {
 	pagamentoRepo := repository.NovoPagamentoRepository(db)
 	lancamentoRepo := repository.NovoLancamentoRepository(db)
 	reembolsoRepo := repository.NovoReembolsoRepository(db)
+	regraRegionalRepo := repository.NovoRegraRegionalRepository(db)
 
 	jwtService := service.NovoJWTService(cfg.JWTSecret, cfg.AccessTokenTTLMin)
 	authService := service.NovoAuthService(usuarioRepo, refreshTokenRepo, jwtService, cfg.RefreshTokenTTLDias)
@@ -54,7 +55,7 @@ func main() {
 	mailCliente := mail.NovoCliente(cfg.ResendAPIKey, cfg.EmailRemetente)
 	organizadorService := service.NovoOrganizadorService(organizadorRepo)
 	localService := service.NovoLocalService(localRepo)
-	eventoService := service.NovoEventoService(eventoRepo, tipoIngressoRepo, organizadorRepo)
+	eventoService := service.NovoEventoService(eventoRepo, tipoIngressoRepo, organizadorRepo, localRepo, regraRegionalRepo, configPlataformaRepo)
 	tipoIngressoService := service.NovoTipoIngressoService(eventoService, tipoIngressoRepo)
 	conviteService := service.NovoConviteService(conviteRepo, eventoService, papelEventoRepo, fichaRepo)
 	fichaService := service.NovoFichaService(fichaRepo, papelEventoRepo, eventoRepo)
@@ -67,6 +68,7 @@ func main() {
 		itemPedidoRepo, pedidoRepo, pagamentoRepo, reembolsoRepo, lancamentoRepo, eventoRepo, configPlataformaRepo,
 		mpCliente, mailCliente, cfg.NomePlataforma,
 	)
+	contaService := service.NovoContaService(organizadorRepo, eventoRepo, papelEventoRepo, itemPedidoRepo, pedidoRepo)
 
 	armazenamento, err := storage.NovoDiscoLocal(cfg.UploadsDir, cfg.UploadsBaseURL)
 	if err != nil {
@@ -87,6 +89,7 @@ func main() {
 	webhookHandler := handler.NovoWebhookHandler(checkoutService, cfg.MercadoPagoWebhookSecret)
 	jobHandler := handler.NovoJobHandler(checkoutService)
 	cancelamentoHandler := handler.NovoCancelamentoHandler(cancelamentoService)
+	contaHandler := handler.NovoContaHandler(contaService)
 
 	router := gin.New()
 	router.Use(middleware.LogRequisicoes(), middleware.TratadorDeErros())
@@ -124,6 +127,9 @@ func main() {
 
 		autenticado := v1.Group("", middleware.ExigirAutenticacao(jwtService))
 		autenticado.GET("/me", authHandler.Me)
+		autenticado.GET("/me/eventos", contaHandler.MeusEventos)
+		autenticado.GET("/me/ingressos", contaHandler.MeusIngressos)
+		autenticado.GET("/me/ingressos/:id", contaHandler.MeuIngresso)
 		autenticado.POST("/convites/:token/aceitar", conviteHandler.Aceitar)
 		autenticado.GET("/eventos/:slug/minha-ficha", fichaHandler.ObterMinha)
 		autenticado.PUT("/eventos/:slug/minha-ficha", fichaHandler.AtualizarMinha)
