@@ -25,6 +25,13 @@ type Config struct {
 
 	UploadsDir     string
 	UploadsBaseURL string
+
+	BackendURL string
+
+	MercadoPagoAccessToken   string
+	MercadoPagoWebhookSecret string
+
+	CronSecret string
 }
 
 func getEnv(chave, padrao string) string {
@@ -64,5 +71,12 @@ func Carregar() Config {
 
 		UploadsDir:     getEnv("UPLOADS_DIR", "./uploads"),
 		UploadsBaseURL: getEnv("UPLOADS_BASE_URL", "http://localhost:8080/uploads"),
+
+		BackendURL: getEnv("BACKEND_URL", "http://localhost:8080"),
+
+		MercadoPagoAccessToken:   getEnv("MERCADOPAGO_ACCESS_TOKEN", ""),
+		MercadoPagoWebhookSecret: getEnv("MERCADOPAGO_WEBHOOK_SECRET", ""),
+
+		CronSecret: getEnv("CRON_SECRET", ""),
 	}
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/WilliamBreno/Arcadia/backend/internal/config"
 	"github.com/WilliamBreno/Arcadia/backend/internal/handler"
 	"github.com/WilliamBreno/Arcadia/backend/internal/mail"
+	"github.com/WilliamBreno/Arcadia/backend/internal/mercadopago"
 	"github.com/WilliamBreno/Arcadia/backend/internal/middleware"
 	"github.com/WilliamBreno/Arcadia/backend/internal/repository"
 	"github.com/WilliamBreno/Arcadia/backend/internal/service"
@@ -40,6 +41,11 @@ func main() {
 	conviteRepo := repository.NovoConviteRepository(db)
 	papelEventoRepo := repository.NovoPapelEventoRepository(db)
 	fichaRepo := repository.NovoFichaParticipacaoRepository(db)
+	configPlataformaRepo := repository.NovoConfigPlataformaRepository(db)
+	pedidoRepo := repository.NovoPedidoRepository(db)
+	itemPedidoRepo := repository.NovoItemPedidoRepository(db)
+	pagamentoRepo := repository.NovoPagamentoRepository(db)
+	lancamentoRepo := repository.NovoLancamentoRepository(db)
 
 	jwtService := service.NovoJWTService(cfg.JWTSecret, cfg.AccessTokenTTLMin)
 	authService := service.NovoAuthService(usuarioRepo, refreshTokenRepo, jwtService, cfg.RefreshTokenTTLDias)
@@ -51,6 +57,11 @@ func main() {
 	tipoIngressoService := service.NovoTipoIngressoService(eventoService, tipoIngressoRepo)
 	conviteService := service.NovoConviteService(conviteRepo, eventoService, papelEventoRepo, fichaRepo)
 	fichaService := service.NovoFichaService(fichaRepo, papelEventoRepo, eventoRepo)
+	mpCliente := mercadopago.NovoCliente(cfg.MercadoPagoAccessToken)
+	checkoutService := service.NovoCheckoutService(
+		db, eventoRepo, itemPedidoRepo, pedidoRepo, pagamentoRepo, lancamentoRepo, configPlataformaRepo,
+		mpCliente, mailCliente, cfg.JWTSecret, cfg.FrontendURL, cfg.BackendURL, cfg.NomePlataforma,
+	)
 
 	armazenamento, err := storage.NovoDiscoLocal(cfg.UploadsDir, cfg.UploadsBaseURL)
 	if err != nil {
@@ -67,6 +78,9 @@ func main() {
 	conviteHandler := handler.NovoConviteHandler(organizadorHandler, eventoRepo, conviteService)
 	fichaHandler := handler.NovoFichaHandler(eventoRepo, organizadorHandler, fichaService)
 	uploadHandler := handler.NovoUploadHandler(armazenamento)
+	pedidoHandler := handler.NovoPedidoHandler(eventoRepo, usuarioRepo, checkoutService)
+	webhookHandler := handler.NovoWebhookHandler(checkoutService, cfg.MercadoPagoWebhookSecret)
+	jobHandler := handler.NovoJobHandler(checkoutService)
 
 	router := gin.New()
 	router.Use(middleware.LogRequisicoes(), middleware.TratadorDeErros())
@@ -90,6 +104,7 @@ func main() {
 		v1.GET("/organizadores/:slug", publicoHandler.ObterOrganizador)
 		v1.GET("/categorias", publicoHandler.Categorias)
 		v1.GET("/convites/:token", conviteHandler.Consultar)
+		v1.POST("/webhooks/mercadopago", webhookHandler.MercadoPago)
 
 		auth := v1.Group("/auth")
 		auth.POST("/cadastro", limiteAuth, authHandler.Cadastro)
@@ -110,6 +125,9 @@ func main() {
 		autenticado.GET("/eventos/:slug/participantes", fichaHandler.ListarParaJurado)
 		autenticado.GET("/eventos/:slug/participantes/:fichaId", fichaHandler.ObterParaJurado)
 		autenticado.POST("/uploads", uploadHandler.Criar)
+		autenticado.POST("/eventos/:slug/pedidos", pedidoHandler.Criar)
+		autenticado.GET("/pedidos/:id", pedidoHandler.Obter)
+		autenticado.POST("/pedidos/:id/pagar", pedidoHandler.Pagar)
 
 		org := v1.Group("/org", middleware.ExigirAutenticacao(jwtService))
 		org.POST("/perfil", organizadorHandler.CriarPerfil)
@@ -137,6 +155,9 @@ func main() {
 		org.GET("/eventos/:id/participantes", fichaHandler.ListarDoOrganizador)
 		org.POST("/eventos/:id/participantes/:fichaId/aprovar", fichaHandler.Aprovar)
 		org.POST("/eventos/:id/participantes/:fichaId/rejeitar", fichaHandler.Rejeitar)
+
+		jobs := v1.Group("/jobs", middleware.ExigirCronSecret(cfg.CronSecret))
+		jobs.POST("/expirar-reservas", jobHandler.ExpirarReservas)
 	}
 
 	endereco := ":" + cfg.Porta

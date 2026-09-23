@@ -1,14 +1,24 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link, useParams } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import { api, ApiError } from '@/lib/api'
+import type { Pedido } from '@/lib/checkout'
 import { formatarCentavos } from '@/lib/evento'
 import type { EventoDetalhe as EventoDetalheTipo } from '@/lib/publico'
+import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 
 export default function EventoDetalhe() {
   const { slug } = useParams()
+  const { usuario } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [quantidades, setQuantidades] = useState<Record<number, number>>({})
+  const [erro, setErro] = useState<string | null>(null)
+  const [comprando, setComprando] = useState(false)
+
   const { data, isLoading, error } = useQuery({
     queryKey: ['evento-publico', slug],
     queryFn: () => api<EventoDetalheTipo>(`/eventos/${slug}`),
@@ -21,6 +31,30 @@ export default function EventoDetalhe() {
   if (!data) return null
 
   const { evento, local, organizador, ingressos } = data
+
+  const totalSelecionado = ingressos.reduce((soma, i) => soma + (quantidades[i.id] ?? 0) * i.preco_centavos, 0)
+  const totalUnidades = Object.values(quantidades).reduce((a, b) => a + b, 0)
+
+  const comprar = async () => {
+    if (!usuario) {
+      navigate('/login', { state: { de: location.pathname } })
+      return
+    }
+    setErro(null)
+    setComprando(true)
+    try {
+      const itens = Object.entries(quantidades)
+        .filter(([, qtd]) => qtd > 0)
+        .map(([tipoIngressoId, quantidade]) => ({ tipo_ingresso_id: Number(tipoIngressoId), quantidade }))
+
+      const pedido = await api<Pedido>(`/eventos/${slug}/pedidos`, { method: 'POST', body: { itens } })
+      navigate(`/pedidos/${pedido.id}`)
+    } catch (e) {
+      setErro(e instanceof ApiError ? e.message : 'Erro ao criar pedido')
+    } finally {
+      setComprando(false)
+    }
+  }
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
@@ -63,22 +97,47 @@ export default function EventoDetalhe() {
                 <div>
                   <p className="font-medium text-foreground">{i.nome}</p>
                   {i.descricao && <p className="text-sm text-muted-foreground">{i.descricao}</p>}
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="font-medium text-foreground">
+                  <p className="text-sm font-medium text-foreground">
                     {i.preco_centavos === 0 ? 'Gratuito' : formatarCentavos(i.preco_centavos)}
-                  </span>
-                  <Button size="sm" disabled>
-                    Em breve
+                    <span className="text-xs font-normal text-muted-foreground"> + taxa</span>
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon-sm"
+                    type="button"
+                    onClick={() => setQuantidades((q) => ({ ...q, [i.id]: Math.max(0, (q[i.id] ?? 0) - 1) }))}
+                  >
+                    −
+                  </Button>
+                  <span className="w-6 text-center text-sm text-foreground">{quantidades[i.id] ?? 0}</span>
+                  <Button
+                    variant="outline"
+                    size="icon-sm"
+                    type="button"
+                    onClick={() => setQuantidades((q) => ({ ...q, [i.id]: (q[i.id] ?? 0) + 1 }))}
+                  >
+                    +
                   </Button>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Checkout ainda não está disponível — chega no item 1.7 do plano.
-        </p>
+
+        {totalUnidades > 0 && (
+          <div className="mt-4 flex items-center justify-between rounded-lg border border-border p-4">
+            <div>
+              <p className="text-sm text-muted-foreground">{totalUnidades} item(ns) — preço final calculado no próximo passo</p>
+              <p className="font-medium text-foreground">A partir de {formatarCentavos(totalSelecionado)}</p>
+            </div>
+            <Button onClick={comprar} disabled={comprando}>
+              {comprando ? 'Processando…' : 'Continuar'}
+            </Button>
+          </div>
+        )}
+        {erro && <p className="mt-2 text-sm text-destructive">{erro}</p>}
       </section>
 
       {evento.garantia_habilitada && (
