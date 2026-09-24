@@ -48,6 +48,7 @@ func main() {
 	lancamentoRepo := repository.NovoLancamentoRepository(db)
 	reembolsoRepo := repository.NovoReembolsoRepository(db)
 	regraRegionalRepo := repository.NovoRegraRegionalRepository(db)
+	repasseRepo := repository.NovoRepasseRepository(db)
 
 	jwtService := service.NovoJWTService(cfg.JWTSecret, cfg.AccessTokenTTLMin)
 	authService := service.NovoAuthService(usuarioRepo, refreshTokenRepo, jwtService, cfg.RefreshTokenTTLDias)
@@ -72,6 +73,7 @@ func main() {
 	checkinService := service.NovoCheckinService(itemPedidoRepo, tipoIngressoRepo, eventoRepo, organizadorRepo, papelEventoRepo)
 	staffService := service.NovoStaffService(eventoRepo, usuarioRepo, papelEventoRepo)
 	vendasService := service.NovoVendasService(eventoRepo, itemPedidoRepo)
+	repasseService := service.NovoRepasseService(db, eventoRepo, itemPedidoRepo, repasseRepo, configPlataformaRepo)
 
 	armazenamento, err := storage.NovoDiscoLocal(cfg.UploadsDir, cfg.UploadsBaseURL)
 	if err != nil {
@@ -96,6 +98,7 @@ func main() {
 	checkinHandler := handler.NovoCheckinHandler(checkinService)
 	staffHandler := handler.NovoStaffHandler(organizadorHandler, staffService)
 	vendasHandler := handler.NovoVendasHandler(organizadorHandler, vendasService)
+	repasseHandler := handler.NovoRepasseHandler(organizadorHandler, repasseService)
 
 	router := gin.New()
 	router.Use(middleware.LogRequisicoes(), middleware.TratadorDeErros())
@@ -181,6 +184,8 @@ func main() {
 		org.POST("/eventos/:id/participantes/:fichaId/rejeitar", fichaHandler.Rejeitar)
 
 		org.GET("/eventos/:id/vendas", vendasHandler.Listar)
+		org.GET("/eventos/:id/financeiro", repasseHandler.FinanceiroEvento)
+		org.GET("/repasses", repasseHandler.Extrato)
 
 		org.GET("/eventos/:id/staff", staffHandler.Listar)
 		org.POST("/eventos/:id/staff", staffHandler.Adicionar)
@@ -188,6 +193,11 @@ func main() {
 
 		jobs := v1.Group("/jobs", middleware.ExigirCronSecret(cfg.CronSecret))
 		jobs.POST("/expirar-reservas", jobHandler.ExpirarReservas)
+		jobs.POST("/gerar-repasses", repasseHandler.GerarRepasses)
+
+		admin := v1.Group("/admin", middleware.ExigirAutenticacao(jwtService), middleware.ExigirAdminPlataforma())
+		admin.GET("/repasses", repasseHandler.ListarAdmin)
+		admin.POST("/repasses/:id/pagar", repasseHandler.Pagar)
 	}
 
 	endereco := ":" + cfg.Porta

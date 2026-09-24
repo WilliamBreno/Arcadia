@@ -11,6 +11,7 @@ import { api, ApiError } from '@/lib/api'
 import { adicionarStaff, listarStaff, removerStaff, type Staff } from '@/lib/checkin'
 import { formatarCentavos, type Evento, type TipoIngresso } from '@/lib/evento'
 import type { Local } from '@/lib/organizador'
+import { obterFinanceiroEvento } from '@/lib/financeiro'
 import { obterVendas } from '@/lib/vendas'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -231,6 +232,8 @@ export default function EventoEditar() {
 
       <VendasCard eventoId={Number(id)} />
 
+      <FinanceiroCard eventoId={Number(id)} />
+
       <ConvitesCard eventoId={Number(id)} />
 
       <ParticipantesCard eventoId={Number(id)} />
@@ -347,6 +350,46 @@ function TiposIngressoCard({ eventoId, tipos }: { eventoId: number; tipos: TipoI
           </Button>
         </div>
         {erro && <p className="text-sm text-destructive">{erro}</p>}
+      </CardContent>
+    </Card>
+  )
+}
+
+function FinanceiroCard({ eventoId }: { eventoId: number }) {
+  const { data } = useQuery({
+    queryKey: ['org-evento-financeiro', eventoId],
+    queryFn: () => obterFinanceiroEvento(eventoId),
+  })
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle>Financeiro</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2 text-sm">
+        {data && (
+          <>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Receita bruta (preço dos ingressos)</span>
+              <span className="text-foreground">{formatarCentavos(data.bruto_centavos)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Taxa do processador de pagamento</span>
+              <span className="text-foreground">− {formatarCentavos(data.taxa_processador_centavos)}</span>
+            </div>
+            <div className="flex justify-between border-t border-border pt-2 font-medium">
+              <span className="text-foreground">Líquido a receber</span>
+              <span className="text-foreground">{formatarCentavos(data.liquido_centavos)}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {data.repasse_status
+                ? `Repasse: ${data.repasse_status}`
+                : data.liberar_em
+                  ? `Repasse previsto a partir de ${new Date(data.liberar_em).toLocaleDateString('pt-BR')} (valores parciais até lá).`
+                  : 'Defina a data do evento para prever o repasse.'}
+            </p>
+          </>
+        )}
       </CardContent>
     </Card>
   )

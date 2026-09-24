@@ -347,7 +347,7 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 
 ### Fase 2 — Diferencial e dinheiro
 - [x] 2.1 **Garantia de vaga** (opt-in, cancelamento até o início do evento, estoque devolvido)
-- [ ] 2.2 Painel financeiro do organizador (bruto, taxa do processador, líquido) + **repasses** (job, painel admin, marcar como pago, extrato)
+- [x] 2.2 Painel financeiro do organizador (bruto, taxa do processador, líquido) + **repasses** (job, painel admin, marcar como pago, extrato)
 - [ ] 2.3 Relatórios admin (receita da plataforma, reembolsos, falhas) e reprocessamento de reembolsos
 - [ ] 2.4 Cupons de desconto e lotes com virada automática por data ou quantidade
 - [ ] 2.5 Cortesias (sem taxa) e exportação CSV de participantes/compradores
@@ -459,6 +459,11 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - **Item 2.1 — garantia é escolhida por requisição de tipo de ingresso (checkbox único na tela do evento aplica a todos os itens do pedido).** O plano diz "por item", e o backend guarda `garantia_contratada` por item, mas a UI não permite misturar garantia/sem garantia dentro do mesmo pedido; quem quiser isso faz dois pedidos. `ItemRequisitado.GarantiaContratada` já aceita valores distintos por tipo de ingresso na API.
 - **Item 2.1 — valor da garantia e da taxa vêm de `config_plataforma` e são expostos em `GET /eventos/:slug`** (`garantia_centavos`, `taxa_plataforma_centavos`) só para exibição; o total cobrado é sempre recalculado no servidor. Pedir garantia em evento com `garantia_habilitada=false` retorna 422.
 - **Item 2.1 — a parte de cancelamento/estoque já estava pronta desde o 1.8** (`avaliar()` trata garantia, reembolso total e ledger; item `cancelado` sai da contagem de estoque). Verificado: R$ 30,00 + 0,99 + 1,99 = R$ 32,98, lançamentos `venda_preco`/`taxa_plataforma`/`garantia` gravados na aprovação e simulação de cancelamento devolvendo R$ 32,98. O estorno real no Mercado Pago não foi executado (sem pagamento real).
+
+- **Item 2.2 — repasse gerado pelo job `POST /jobs/gerar-repasses` já nasce `pendente`** (o job só cria quando `liberar_em` já passou; o status `calculado` existe no schema mas não é usado). Um repasse por evento (índice único parcial); evento com bruto zero ou cancelado não gera repasse. Ao gerar: lançamento `taxa_processador` (−); ao marcar pago: lançamento `repasse` (−) na mesma transação, e a segunda chamada devolve 409.
+- **Item 2.2 — "dias úteis" = segunda a sexta, sem feriados**; "fim do último dia" = 23:59:59 do dia de `fim_em` (ou `inicio_em` se não houver fim), no fuso do servidor.
+- **Item 2.2 — taxa do processador alocada por divisão inteira** (`taxa × total_item ÷ valor_pago`); sobra de centavos fica com o organizador. Só itens `pago|utilizado` entram; itens cancelados não geram lançamento `custo_processador_perdido` ainda — depende de confirmar se o MP devolve a taxa em estornos (tarefa de verificação da seção 7.7).
+- **Item 2.2 — painel admin mínimo:** `/admin/repasses` (lista + marcar pago) protegido por `papel_plataforma=admin_plataforma`; não existe tela/fluxo para promover um usuário a admin (feito por SQL). O organizador vê `GET /org/eventos/:id/financeiro` (ao vivo até o repasse existir) e o extrato em `/organizador/repasses`. Chargeback pós-repasse continua tratamento manual (sem código).
 
 **Pendências para validar fora do código:**
 - Contador/advogado: custódia de recursos de terceiros, nome "Garantia de vaga" (vs. "seguro"), retenção ou não da taxa no arrependimento, regras regionais por UF (incluindo Sergipe), emissão de nota fiscal e tributação da taxa/garantia.

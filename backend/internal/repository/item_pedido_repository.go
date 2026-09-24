@@ -211,3 +211,26 @@ func (r *ItemPedidoRepository) EventosComIngressoPago(usuarioID int64) ([]int64,
 		Scan(&eventoIDs).Error
 	return eventoIDs, err
 }
+
+// ItemFinanceiro é um item ativo (pago/utilizado) junto do pagamento
+// aprovado do pedido — base do cálculo do repasse (seções 7.6/7.7).
+type ItemFinanceiro struct {
+	ItemID                    int64
+	PrecoCentavos             int64
+	TotalCentavos             int64
+	PagamentoValorCentavos    int64
+	PagamentoTaxaProcCentavos int64
+}
+
+func (r *ItemPedidoRepository) ListarAtivosComPagamento(eventoID int64) ([]ItemFinanceiro, error) {
+	var linhas []ItemFinanceiro
+	err := r.db.Table("itens_pedido").
+		Select("itens_pedido.id as item_id, itens_pedido.preco_centavos, itens_pedido.total_centavos, pagamentos.valor_centavos as pagamento_valor_centavos, pagamentos.taxa_processador_centavos as pagamento_taxa_proc_centavos").
+		Joins("JOIN tipos_ingresso ON tipos_ingresso.id = itens_pedido.tipo_ingresso_id").
+		Joins("JOIN pagamentos ON pagamentos.pedido_id = itens_pedido.pedido_id AND pagamentos.status = 'approved'").
+		Where("tipos_ingresso.evento_id = ? AND itens_pedido.status IN ?", eventoID, []domain.StatusItemPedido{
+			domain.StatusItemPago, domain.StatusItemUtilizado,
+		}).
+		Scan(&linhas).Error
+	return linhas, err
+}

@@ -53,3 +53,12 @@ func (r *EventoRepository) ListarPorOrganizador(organizadorID int64) ([]domain.E
 	}
 	return eventos, nil
 }
+
+// ListarSemRepasse são os eventos candidatos ao job de repasse (seção
+// 7.6): publicados/encerrados que ainda não têm repasse ativo.
+func (r *EventoRepository) ListarSemRepasse() ([]domain.Evento, error) {
+	var eventos []domain.Evento
+	err := r.db.Where("status IN ? AND NOT EXISTS (SELECT 1 FROM repasses WHERE repasses.evento_id = eventos.id AND repasses.status <> 'cancelado')",
+		[]domain.StatusEvento{domain.StatusEventoPublicado, domain.StatusEventoEncerrado}).Find(&eventos).Error
+	return eventos, err
+}

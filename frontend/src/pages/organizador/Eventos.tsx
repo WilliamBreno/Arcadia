@@ -23,9 +23,14 @@ export default function Eventos() {
     <main className="mx-auto max-w-2xl px-4 py-12">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-foreground">Meus eventos</h1>
-        <Link to="/organizador/eventos/novo" className={buttonVariants()}>
-          Novo evento
-        </Link>
+        <div className="flex gap-2">
+          <Link to="/organizador/repasses" className={buttonVariants({ variant: 'outline' })}>
+            Repasses
+          </Link>
+          <Link to="/organizador/eventos/novo" className={buttonVariants()}>
+            Novo evento
+          </Link>
+        </div>
       </div>
 
       {isLoading && <p className="text-muted-foreground">Carregando…</p>}
