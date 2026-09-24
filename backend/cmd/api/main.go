@@ -199,6 +199,9 @@ func main() {
 		autenticado.POST("/itens/:id/cancelar", cancelamentoHandler.Cancelar)
 		autenticado.POST("/itens/:id/transferir", transferenciaHandler.Transferir)
 		autenticado.POST("/checkin/validar", checkinHandler.Validar)
+		autenticado.POST("/checkin/sincronizar", checkinHandler.Sincronizar)
+		autenticado.GET("/checkin/eventos/:id/pacote", checkinHandler.Pacote)
+		autenticado.GET("/checkin/eventos/:id/conflitos", checkinHandler.Conflitos)
 		autenticado.GET("/checkin/eventos/:id/resumo", checkinHandler.Resumo)
 		autenticado.GET("/checkin/eventos/:id/busca", checkinHandler.Buscar)
 

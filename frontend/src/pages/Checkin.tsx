@@ -4,6 +4,17 @@ import { useParams } from 'react-router-dom'
 
 import { ApiError } from '@/lib/api'
 import { buscarCheckin, resumoCheckin, validarCheckin, type ItemBusca, type ResumoCheckin, type ValidarCheckinResposta } from '@/lib/checkin'
+import {
+  baixarPacote,
+  enfileirar,
+  lerPacote,
+  listarFila,
+  salvarPacote,
+  sincronizarFila,
+  validarOffline,
+  type Pacote,
+  type ResultadoSync,
+} from '@/lib/offline'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
@@ -17,6 +28,7 @@ const corPorResultado: Record<ValidarCheckinResposta['resultado'], string> = {
   nao_encontrado: 'bg-red-600 border-red-700',
   qr_expirado: 'bg-orange-500 border-orange-600',
   fora_da_sessao: 'bg-orange-500 border-orange-600',
+  requer_internet: 'bg-orange-500 border-orange-600',
 }
 
 const tituloPorResultado: Record<ValidarCheckinResposta['resultado'], string> = {
@@ -27,6 +39,7 @@ const tituloPorResultado: Record<ValidarCheckinResposta['resultado'], string> = 
   nao_encontrado: '❌ Código não encontrado',
   qr_expirado: '⏱️ QR desatualizado — peça para abrir o ingresso de novo',
   fora_da_sessao: '⛔ Ingresso não vale para esta sessão/horário',
+  requer_internet: '📶 QR dinâmico: precisa de internet para validar',
 }
 
 export default function Checkin() {
@@ -42,8 +55,66 @@ export default function Checkin() {
   const [itensBusca, setItensBusca] = useState<ItemBusca[]>([])
   const [processando, setProcessando] = useState(false)
 
+  const [online, setOnline] = useState(navigator.onLine)
+  const [pacoteInfo, setPacoteInfo] = useState<{ geradoEm: string; total: number } | null>(null)
+  const [pendentes, setPendentes] = useState(0)
+  const [msgOffline, setMsgOffline] = useState<string | null>(null)
+  const [conflitos, setConflitos] = useState<{ nome: string; codigo: string }[]>([])
+  const [modoOffline, setModoOffline] = useState(false)
+
   const leitorRef = useRef<Html5Qrcode | null>(null)
   const processandoRef = useRef(false)
+  const pacoteRef = useRef<Pacote | null>(null)
+
+  const carregarLocal = async () => {
+    const p = await lerPacote(id)
+    pacoteRef.current = p ?? null
+    setPacoteInfo(p ? { geradoEm: p.gerado_em, total: p.ingressos.length } : null)
+    setPendentes((await listarFila(id)).length)
+  }
+
+  const baixar = async () => {
+    setMsgOffline(null)
+    try {
+      const p = await baixarPacote(id)
+      await salvarPacote(p)
+      await carregarLocal()
+      setMsgOffline(`Pacote salvo: ${p.ingressos.length} ingresso(s). Já pode ficar sem internet.`)
+    } catch (e) {
+      setMsgOffline(e instanceof ApiError ? e.message : 'Sem conexão para baixar o pacote.')
+    }
+  }
+
+  const sincronizar = async () => {
+    setMsgOffline('Sincronizando…')
+    try {
+      const r = await sincronizarFila(id)
+      const ruins = r.resultados.filter((x: ResultadoSync) => x.resultado !== 'aceito')
+      setConflitos(ruins.map((x) => ({ nome: r.nomes[x.entrada_id] ?? '', codigo: `${x.codigo} (${x.resultado})` })))
+      setMsgOffline(r.enviados === 0 ? 'Nada pendente.' : `${r.enviados - ruins.length} entrada(s) confirmada(s), ${ruins.length} com problema.`)
+      await carregarLocal()
+      atualizarResumo()
+    } catch {
+      setMsgOffline('Sem conexão — as entradas continuam guardadas no aparelho.')
+    }
+  }
+
+  useEffect(() => {
+    carregarLocal()
+    const ligou = () => {
+      setOnline(true)
+      sincronizar()
+    }
+    const caiu = () => setOnline(false)
+    window.addEventListener('online', ligou)
+    window.addEventListener('offline', caiu)
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {})
+    return () => {
+      window.removeEventListener('online', ligou)
+      window.removeEventListener('offline', caiu)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id])
 
   const atualizarResumo = async () => {
     try {
@@ -60,9 +131,15 @@ export default function Checkin() {
         setResumo(r)
         setAcessoLiberado(true)
       })
-      .catch((e) => {
+      .catch(async (e) => {
+        // sem rede + pacote salvo no aparelho: abre em modo offline
+        if (!(e instanceof ApiError) && (await lerPacote(id))) {
+          setModoOffline(true)
+          setAcessoLiberado(true)
+          return
+        }
         setAcessoLiberado(false)
-        setErroAcesso(e instanceof ApiError ? e.message : 'Erro ao verificar acesso')
+        setErroAcesso(e instanceof ApiError ? e.message : 'Sem conexão e sem pacote offline baixado neste aparelho.')
       })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
@@ -107,8 +184,20 @@ export default function Checkin() {
       const resp = await validarCheckin(id, codigo, qrToken)
       setResultado(resp)
       if (resp.resultado === 'valido') atualizarResumo()
-    } catch {
-      setResultado({ resultado: 'nao_encontrado' })
+    } catch (e) {
+      if (e instanceof ApiError) {
+        setResultado({ resultado: 'nao_encontrado' })
+      } else if (pacoteRef.current) {
+        // sem rede: valida no aparelho com o pacote e guarda na fila
+        const d = await validarOffline(pacoteRef.current, await listarFila(id), codigo, qrToken)
+        if (d.entrada) {
+          await enfileirar(d.entrada)
+          setPendentes((n) => n + 1)
+        }
+        setResultado({ ...d.resposta, tipo_ingresso_nome: `${d.resposta.tipo_ingresso_nome ?? ''} · OFFLINE`.replace(/^ · /, '') })
+      } else {
+        setResultado({ resultado: 'requer_internet' })
+      }
     }
 
     setTimeout(() => {
@@ -203,7 +292,41 @@ export default function Checkin() {
         )}
       </div>
 
-      <Button variant="outline" className="mt-6 w-full" onClick={atualizarResumo}>
+      <div className="mt-6 flex flex-col gap-2 rounded-lg border border-border p-3 text-sm">
+        <div className="flex items-center justify-between">
+          <span className="font-medium text-foreground">Modo offline</span>
+          <span className={online && !modoOffline ? 'text-green-600' : 'text-orange-600'}>{online && !modoOffline ? 'online' : 'sem internet'}</span>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {pacoteInfo
+            ? `Pacote salvo neste aparelho: ${pacoteInfo.total} ingresso(s), baixado em ${new Date(pacoteInfo.geradoEm).toLocaleString('pt-BR')}.`
+            : 'Baixe o pacote ANTES do evento, com internet, para poder validar sem sinal. Não vale para evento com QR rotativo.'}
+        </p>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={baixar} disabled={!online}>
+            {pacoteInfo ? 'Atualizar pacote' : 'Baixar pacote offline'}
+          </Button>
+          <Button variant="outline" size="sm" onClick={sincronizar} disabled={!online || pendentes === 0}>
+            Sincronizar ({pendentes})
+          </Button>
+        </div>
+        {msgOffline && <p className="text-xs text-foreground">{msgOffline}</p>}
+        {conflitos.length > 0 && (
+          <div className="rounded border border-destructive p-2 text-xs text-destructive">
+            <p className="font-medium">Entradas com problema (já tinham entrado antes ou inválidas):</p>
+            {conflitos.map((c, i) => (
+              <p key={i}>
+                {c.nome} — {c.codigo}
+              </p>
+            ))}
+          </div>
+        )}
+        <p className="text-xs text-muted-foreground">
+          Atenção: dois aparelhos offline podem aceitar o mesmo ingresso; o conflito só aparece ao sincronizar.
+        </p>
+      </div>
+
+      <Button variant="outline" className="mt-4 w-full" onClick={atualizarResumo}>
         Atualizar contador
       </Button>
     </main>
