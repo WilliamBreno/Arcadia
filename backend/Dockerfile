@@ -12,7 +12,7 @@ WORKDIR /app
 COPY --from=build /out/api /out/migrate ./
 COPY migrations ./migrations
 COPY entrypoint.sh ./
-RUN tr -d '' < entrypoint.sh > entrypoint.tmp && mv entrypoint.tmp entrypoint.sh && chmod +x entrypoint.sh
+RUN tr -d '\015' < entrypoint.sh > entrypoint.tmp && mv entrypoint.tmp entrypoint.sh && chmod +x entrypoint.sh
 USER app
 ENV TZ=America/Sao_Paulo
 EXPOSE 8080
