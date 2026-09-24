@@ -128,6 +128,11 @@ export default function EventoDetalhe() {
               <CardContent className="flex items-center justify-between py-4">
                 <div>
                   <p className="font-medium text-foreground">{i.nome}</p>
+                  {i.meia_entrada && (
+                    <p className="text-xs text-muted-foreground">
+                      Meia-entrada (estudante, PcD, jovem de baixa renda): apresente o documento na entrada.
+                    </p>
+                  )}
                   {i.descricao && <p className="text-sm text-muted-foreground">{i.descricao}</p>}
                   <p className="text-sm font-medium text-foreground">
                     {i.preco_centavos === 0 ? 'Gratuito' : formatarCentavos(i.preco_centavos)}

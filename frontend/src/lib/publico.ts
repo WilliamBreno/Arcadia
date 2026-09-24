@@ -56,6 +56,7 @@ export type EventoDetalhe = {
     preco_centavos: number
     quantidade: number
     ativo: boolean
+    meia_entrada: boolean
   }[]
   taxa_plataforma_centavos: number
   garantia_centavos: number

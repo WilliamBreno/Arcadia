@@ -17,6 +17,7 @@ type TipoIngresso struct {
 	MaxPorPedido  int
 	Ordem         int
 	LoteGrupo     string
+	MeiaEntrada   bool
 	Ativo         bool
 	CriadoEm      time.Time
 }

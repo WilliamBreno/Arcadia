@@ -164,6 +164,14 @@ func (s *EventoService) Publicar(organizadorID, eventoID int64) (*domain.Evento,
 		problemas = append(problemas, "é preciso ao menos um tipo de ingresso/cadastro ativo")
 	}
 
+	tiposDoEvento, err := s.tiposIngresso.ListarPorEvento(eventoID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := validarCotaMeia(tiposDoEvento); err != nil {
+		problemas = append(problemas, err.Error())
+	}
+
 	temValorPositivo, err := s.tiposIngresso.ExisteComPrecoMaiorQueZero(eventoID)
 	if err != nil {
 		return nil, nil, err

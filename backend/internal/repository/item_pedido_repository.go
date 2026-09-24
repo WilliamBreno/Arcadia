@@ -93,6 +93,7 @@ func (r *ItemPedidoRepository) MarcarUtilizadoAtomico(itemID int64) (bool, error
 type ItemComTipo struct {
 	domain.ItemPedido
 	TipoIngressoNome string
+	MeiaEntrada      bool
 }
 
 // BuscarPorEventoEBusca é GET /checkin/eventos/:id/busca — por nome,
@@ -101,7 +102,7 @@ func (r *ItemPedidoRepository) BuscarPorEventoEBusca(eventoID int64, busca strin
 	var linhas []ItemComTipo
 	like := "%" + busca + "%"
 	err := r.db.Table("itens_pedido").
-		Select("itens_pedido.*, tipos_ingresso.nome as tipo_ingresso_nome").
+		Select("itens_pedido.*, tipos_ingresso.nome as tipo_ingresso_nome, tipos_ingresso.meia_entrada as meia_entrada").
 		Joins("JOIN tipos_ingresso ON tipos_ingresso.id = itens_pedido.tipo_ingresso_id").
 		Where("tipos_ingresso.evento_id = ? AND itens_pedido.status IN ?", eventoID, []domain.StatusItemPedido{
 			domain.StatusItemPago, domain.StatusItemUtilizado,

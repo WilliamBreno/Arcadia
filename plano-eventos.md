@@ -355,7 +355,7 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - [x] 2.7 **Fechar a fase:** commit, push e `git tag fase-2` + `git push --tags`
 
 ### Fase 3 — Concurso completo e escala
-- [ ] 3.1 Meia-entrada (cota de 40%, alerta na portaria)
+- [x] 3.1 Meia-entrada (cota de 40%, alerta na portaria)
 - [ ] 3.2 Aprovação manual para plateia + lista de espera
 - [ ] 3.3 **Notas dos jurados**: critérios com pesos, escala configurável, média, ranking, desempate, resultado oculto até o organizador liberar
 - [ ] 3.4 Cronograma e ordem de apresentações, upload de áudio
@@ -478,6 +478,8 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - **Item 2.5 — CSV** (`GET /org/eventos/:id/exportar.csv?tipo=compradores|participantes`, separador `;`, UTF-8 com BOM, células que começam com `= + - @` ganham apóstrofo contra formula injection). O CSV de participantes **não inclui telefone, data de nascimento nem dados do responsável de menores** (dados pessoais; o organizador continua vendo na tela de aprovação) — se o organizador precisar deles no arquivo, decidir com o dono antes.
 
 - **Item 2.6 — transferir troca o titular nominal, não o dono do pedido.** Quem comprou continua com o ingresso em "Meus ingressos", o direito de cancelar/reembolso e o pedido; muda só quem entra no evento. A transferência **regenera `codigo` e `qr_token`** (o QR antigo vira `nao_encontrado` no check-in — verificado), envia e-mail com o link do novo QR (`/ingresso/:codigo/:token`) ao novo titular e avisa o titular anterior. `UPDATE` condicional (`status='pago'` e código antigo) evita corrida com check-in/cancelamento. Só item `pago`, de pedido próprio (cortesia não transfere), evento não cancelado e ainda não iniciado. Sem limite de transferências e sem taxa (não definidos no plano — decidir se aparecer revenda abusiva). Cada troca grava em `transferencias_ingresso` (auditoria: quem fez, de/para, código anterior). Dados do novo titular (nome, e-mail) são informados por quem transfere — sem confirmação de aceite pelo destinatário.
+
+- **Item 3.1 — meia-entrada = flag `meia_entrada` num tipo de ingresso.** Cota: soma das quantidades dos tipos **ativos** marcados como meia ≤ 40% da soma de todos os tipos ativos do evento (validado ao criar/editar tipo — 422 — e como problema na publicação). Base é a lotação declarada nos tipos, não `capacidade_total`. Excluir/desativar outros tipos depois de publicado pode reabrir o estouro (só a publicação revalida). Idosos (sem cota) não têm marca própria: o organizador cria um tipo comum. Alerta na portaria: check-in válido de tipo meia mostra "MEIA-ENTRADA — conferir documento" e a busca manual marca o item. A taxa fixa não muda; nenhuma comprovação é armazenada (conferência é presencial).
 
 **Pendências para validar fora do código:**
 - Contador/advogado: custódia de recursos de terceiros, nome "Garantia de vaga" (vs. "seguro"), retenção ou não da taxa no arrependimento, regras regionais por UF (incluindo Sergipe), emissão de nota fiscal e tributação da taxa/garantia.

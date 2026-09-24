@@ -33,6 +33,7 @@ export type TipoIngresso = {
   max_por_pedido: number
   ordem: number
   lote_grupo: string
+  meia_entrada: boolean
   ativo: boolean
 }
 

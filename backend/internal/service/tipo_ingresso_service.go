@@ -28,6 +28,7 @@ type TipoIngressoDados struct {
 	MaxPorPedido  int
 	Ordem         int
 	LoteGrupo     string
+	MeiaEntrada   bool
 	Ativo         bool
 }
 
@@ -55,8 +56,12 @@ func (s *TipoIngressoService) Criar(organizadorID, eventoID int64, dados TipoIng
 		MaxPorPedido:  valorIntOuPadrao(dados.MaxPorPedido, 10),
 		Ordem:         dados.Ordem,
 		LoteGrupo:     strings.TrimSpace(dados.LoteGrupo),
+		MeiaEntrada:   dados.MeiaEntrada,
 		Ativo:         dados.Ativo,
 		CriadoEm:      time.Now(),
+	}
+	if err := s.checarCotaMeia(eventoID, tipo); err != nil {
+		return nil, err
 	}
 	if err := s.tipos.Criar(tipo); err != nil {
 		return nil, err
@@ -84,8 +89,12 @@ func (s *TipoIngressoService) Atualizar(organizadorID, eventoID, tipoID int64, d
 	tipo.MaxPorPedido = valorIntOuPadrao(dados.MaxPorPedido, 10)
 	tipo.Ordem = dados.Ordem
 	tipo.LoteGrupo = strings.TrimSpace(dados.LoteGrupo)
+	tipo.MeiaEntrada = dados.MeiaEntrada
 	tipo.Ativo = dados.Ativo
 
+	if err := s.checarCotaMeia(eventoID, tipo); err != nil {
+		return nil, err
+	}
 	if err := s.tipos.Salvar(tipo); err != nil {
 		return nil, err
 	}

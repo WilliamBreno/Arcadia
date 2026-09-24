@@ -29,6 +29,7 @@ type validarCheckinResposta struct {
 	Resultado        string `json:"resultado"`
 	TitularNome      string `json:"titular_nome,omitempty"`
 	TipoIngressoNome string `json:"tipo_ingresso_nome,omitempty"`
+	MeiaEntrada      bool   `json:"meia_entrada,omitempty"`
 	Codigo           string `json:"codigo,omitempty"`
 	UtilizadoEm      string `json:"utilizado_em,omitempty"`
 }
@@ -53,7 +54,7 @@ func (h *CheckinHandler) Validar(c *gin.Context) {
 		return
 	}
 
-	resp := validarCheckinResposta{Resultado: string(resultado.Resultado), TipoIngressoNome: resultado.TipoIngressoNome}
+	resp := validarCheckinResposta{Resultado: string(resultado.Resultado), TipoIngressoNome: resultado.TipoIngressoNome, MeiaEntrada: resultado.MeiaEntrada}
 	if resultado.Item != nil {
 		resp.TitularNome = resultado.Item.TitularNome
 		resp.Codigo = resultado.Item.Codigo
@@ -71,6 +72,7 @@ type buscaCheckinItem struct {
 	Codigo           string `json:"codigo"`
 	Status           string `json:"status"`
 	TipoIngressoNome string `json:"tipo_ingresso_nome"`
+	MeiaEntrada      bool   `json:"meia_entrada"`
 }
 
 // Buscar é GET /checkin/eventos/:id/busca — busca manual por nome,
@@ -97,7 +99,7 @@ func (h *CheckinHandler) Buscar(c *gin.Context) {
 	for _, i := range itens {
 		resposta = append(resposta, buscaCheckinItem{
 			ID: i.ID, TitularNome: i.TitularNome, TitularEmail: i.TitularEmail,
-			Codigo: i.Codigo, Status: string(i.Status), TipoIngressoNome: i.TipoIngressoNome,
+			Codigo: i.Codigo, Status: string(i.Status), TipoIngressoNome: i.TipoIngressoNome, MeiaEntrada: i.MeiaEntrada,
 		})
 	}
 	c.JSON(http.StatusOK, resposta)

@@ -163,6 +163,9 @@ export default function Checkin() {
             <p className="text-lg font-bold">{tituloPorResultado[resultado.resultado]}</p>
             {resultado.titular_nome && <p className="text-base">{resultado.titular_nome}</p>}
             {resultado.tipo_ingresso_nome && <p className="text-sm opacity-90">{resultado.tipo_ingresso_nome}</p>}
+            {resultado.meia_entrada && resultado.resultado === 'valido' && (
+              <p className="rounded bg-white px-3 py-1 text-base font-bold text-red-700">MEIA-ENTRADA — conferir documento</p>
+            )}
             {resultado.utilizado_em && <p className="text-sm opacity-90">às {resultado.utilizado_em}</p>}
           </div>
         )}
@@ -179,7 +182,8 @@ export default function Checkin() {
                 <div>
                   <p className="text-sm font-medium text-foreground">{i.titular_nome}</p>
                   <p className="text-xs text-muted-foreground">
-                    {i.tipo_ingresso_nome} · {i.codigo}
+                    {i.tipo_ingresso_nome}
+                    {i.meia_entrada ? ' (meia — conferir documento)' : ''} · {i.codigo}
                   </p>
                 </div>
                 <span

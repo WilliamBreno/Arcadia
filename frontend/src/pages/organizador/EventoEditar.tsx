@@ -275,7 +275,7 @@ export default function EventoEditar() {
 
 function TiposIngressoCard({ eventoId, tipos }: { eventoId: number; tipos: TipoIngresso[] }) {
   const queryClient = useQueryClient()
-  const [novo, setNovo] = useState({ nome: '', preco: '0', quantidade: '10', lote: '' })
+  const [novo, setNovo] = useState({ nome: '', preco: '0', quantidade: '10', lote: '', meia: false })
   const [erro, setErro] = useState<string | null>(null)
 
   const invalidar = () => queryClient.invalidateQueries({ queryKey: ['org-evento-ingressos', String(eventoId)] })
@@ -290,11 +290,12 @@ function TiposIngressoCard({ eventoId, tipos }: { eventoId: number; tipos: TipoI
           preco_centavos: Math.round(Number(novo.preco) * 100),
           quantidade: Number(novo.quantidade),
           lote_grupo: novo.lote,
+          meia_entrada: novo.meia,
           ordem: tipos.length + 1,
           ativo: true,
         },
       })
-      setNovo({ nome: '', preco: '0', quantidade: '10', lote: '' })
+      setNovo({ nome: '', preco: '0', quantidade: '10', lote: '', meia: false })
       invalidar()
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : 'Erro ao adicionar tipo de ingresso')
@@ -320,6 +321,7 @@ function TiposIngressoCard({ eventoId, tipos }: { eventoId: number; tipos: TipoI
               <p className="text-xs text-muted-foreground">
                 {formatarCentavos(t.preco_centavos)} · {t.quantidade} unidades
                 {t.lote_grupo ? ` · lote "${t.lote_grupo}" (ordem ${t.ordem})` : ''}
+                {t.meia_entrada ? ' · meia-entrada' : ''}
               </p>
             </div>
             <Button variant="destructive" size="sm" onClick={() => excluir(t.id)}>
@@ -328,7 +330,11 @@ function TiposIngressoCard({ eventoId, tipos }: { eventoId: number; tipos: TipoI
           </div>
         ))}
 
-        <div className="flex flex-col gap-1.5 border-t border-border pt-4">
+        <label className="flex items-center gap-2 border-t border-border pt-4 text-sm text-foreground">
+          <input type="checkbox" checked={novo.meia} onChange={(e) => setNovo({ ...novo, meia: e.target.checked })} />
+          Este é um ingresso de meia-entrada (máx. 40% do total; a portaria confere o documento)
+        </label>
+        <div className="flex flex-col gap-1.5">
           <Label htmlFor="novo-lote">Grupo de lotes (opcional)</Label>
           <Input
             id="novo-lote"

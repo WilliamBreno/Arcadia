@@ -24,6 +24,7 @@ type ResultadoCheckin struct {
 	Resultado        ResultadoValidacao
 	Item             *domain.ItemPedido
 	TipoIngressoNome string
+	MeiaEntrada      bool
 }
 
 type CheckinService struct {
@@ -82,14 +83,14 @@ func (s *CheckinService) Validar(usuarioID, eventoID int64, codigo, qrToken stri
 		return &ResultadoCheckin{Resultado: ResultadoNaoEncontrado}, nil
 	}
 	if tipo.EventoID != eventoID {
-		return &ResultadoCheckin{Resultado: ResultadoOutroEvento, Item: item, TipoIngressoNome: tipo.Nome}, nil
+		return &ResultadoCheckin{Resultado: ResultadoOutroEvento, Item: item, TipoIngressoNome: tipo.Nome, MeiaEntrada: tipo.MeiaEntrada}, nil
 	}
 
 	switch item.Status {
 	case domain.StatusItemUtilizado:
-		return &ResultadoCheckin{Resultado: ResultadoJaUtilizado, Item: item, TipoIngressoNome: tipo.Nome}, nil
+		return &ResultadoCheckin{Resultado: ResultadoJaUtilizado, Item: item, TipoIngressoNome: tipo.Nome, MeiaEntrada: tipo.MeiaEntrada}, nil
 	case domain.StatusItemCancelado, domain.StatusItemReembolsado, domain.StatusItemExpirado, domain.StatusItemReservado:
-		return &ResultadoCheckin{Resultado: ResultadoCancelado, Item: item, TipoIngressoNome: tipo.Nome}, nil
+		return &ResultadoCheckin{Resultado: ResultadoCancelado, Item: item, TipoIngressoNome: tipo.Nome, MeiaEntrada: tipo.MeiaEntrada}, nil
 	}
 
 	marcou, err := s.itensPedido.MarcarUtilizadoAtomico(item.ID)
@@ -102,14 +103,14 @@ func (s *CheckinService) Validar(usuarioID, eventoID int64, codigo, qrToken stri
 		if err != nil {
 			return nil, err
 		}
-		return &ResultadoCheckin{Resultado: ResultadoJaUtilizado, Item: atualizado, TipoIngressoNome: tipo.Nome}, nil
+		return &ResultadoCheckin{Resultado: ResultadoJaUtilizado, Item: atualizado, TipoIngressoNome: tipo.Nome, MeiaEntrada: tipo.MeiaEntrada}, nil
 	}
 
 	atualizado, err := s.itensPedido.BuscarPorID(item.ID)
 	if err != nil {
 		return nil, err
 	}
-	return &ResultadoCheckin{Resultado: ResultadoValido, Item: atualizado, TipoIngressoNome: tipo.Nome}, nil
+	return &ResultadoCheckin{Resultado: ResultadoValido, Item: atualizado, TipoIngressoNome: tipo.Nome, MeiaEntrada: tipo.MeiaEntrada}, nil
 }
 
 func (s *CheckinService) Buscar(usuarioID, eventoID int64, texto string) ([]repository.ItemComTipo, error) {

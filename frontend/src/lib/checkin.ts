@@ -6,6 +6,7 @@ export type ValidarCheckinResposta = {
   resultado: ResultadoCheckin
   titular_nome?: string
   tipo_ingresso_nome?: string
+  meia_entrada?: boolean
   codigo?: string
   utilizado_em?: string
 }
@@ -17,6 +18,7 @@ export type ItemBusca = {
   codigo: string
   status: string
   tipo_ingresso_nome: string
+  meia_entrada: boolean
 }
 
 export type ResumoCheckin = {
