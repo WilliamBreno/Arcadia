@@ -89,6 +89,8 @@ func main() {
 	tipoIngressoHandler := handler.NovoTipoIngressoHandler(organizadorHandler, tipoIngressoService)
 	publicoHandler := handler.NovoPublicoHandler(eventoRepo, tipoIngressoRepo, localRepo, organizadorRepo, configPlataformaRepo, itemPedidoRepo)
 	cupomService := service.NovoCupomService(eventoService, cupomRepo)
+	cortesiaService := service.NovoCortesiaService(db, eventoService, itemPedidoRepo, pedidoRepo, mailCliente, cfg.JWTSecret, cfg.FrontendURL, cfg.NomePlataforma)
+	cortesiaHandler := handler.NovoCortesiaHandler(organizadorHandler, cortesiaService, fichaService, itemPedidoRepo, tipoIngressoRepo, eventoRepo)
 	cupomHandler := handler.NovoCupomHandler(organizadorHandler, eventoRepo, cupomService)
 	conviteHandler := handler.NovoConviteHandler(organizadorHandler, eventoRepo, conviteService)
 	fichaHandler := handler.NovoFichaHandler(eventoRepo, organizadorHandler, fichaService)
@@ -125,6 +127,7 @@ func main() {
 		v1.GET("/eventos/:slug", publicoHandler.ObterEvento)
 		v1.GET("/organizadores/:slug", publicoHandler.ObterOrganizador)
 		v1.GET("/categorias", publicoHandler.Categorias)
+		v1.GET("/ingressos/:codigo/:token", cortesiaHandler.IngressoPublico)
 		v1.GET("/convites/:token", conviteHandler.Consultar)
 		v1.POST("/webhooks/mercadopago", webhookHandler.MercadoPago)
 
@@ -180,6 +183,10 @@ func main() {
 		org.PUT("/eventos/:id/ingressos/:ingressoId", tipoIngressoHandler.Atualizar)
 		org.DELETE("/eventos/:id/ingressos/:ingressoId", tipoIngressoHandler.Excluir)
 
+		org.GET("/eventos/:id/cortesias", cortesiaHandler.Listar)
+		org.POST("/eventos/:id/cortesias", cortesiaHandler.Emitir)
+		org.DELETE("/eventos/:id/cortesias/:itemId", cortesiaHandler.Revogar)
+		org.GET("/eventos/:id/exportar.csv", cortesiaHandler.ExportarCSV)
 		org.GET("/eventos/:id/cupons", cupomHandler.Listar)
 		org.POST("/eventos/:id/cupons", cupomHandler.Criar)
 		org.DELETE("/eventos/:id/cupons/:cupomId", cupomHandler.Desativar)

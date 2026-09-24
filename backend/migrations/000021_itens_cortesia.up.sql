@@ -1,0 +1,1 @@
+ALTER TABLE itens_pedido ADD COLUMN cortesia BOOLEAN NOT NULL DEFAULT false;

@@ -8,6 +8,7 @@ import Checkin from '@/pages/Checkin'
 import Convite from '@/pages/Convite'
 import EventoDetalhe from '@/pages/EventoDetalhe'
 import Home from '@/pages/Home'
+import IngressoPublico from '@/pages/IngressoPublico'
 import Inscricao from '@/pages/Inscricao'
 import Login from '@/pages/Login'
 import MeusEventos from '@/pages/MeusEventos'
@@ -32,6 +33,7 @@ function App() {
         <Route path="/e/:slug" element={<EventoDetalhe />} />
         <Route path="/o/:slug" element={<OrganizadorPublico />} />
         <Route path="/convite/:token" element={<Convite />} />
+        <Route path="/ingresso/:codigo/:token" element={<IngressoPublico />} />
         <Route path="/login" element={<Login />} />
         <Route path="/cadastro" element={<Cadastro />} />
 

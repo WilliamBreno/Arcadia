@@ -350,7 +350,7 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - [x] 2.2 Painel financeiro do organizador (bruto, taxa do processador, líquido) + **repasses** (job, painel admin, marcar como pago, extrato)
 - [x] 2.3 Relatórios admin (receita da plataforma, reembolsos, falhas) e reprocessamento de reembolsos
 - [x] 2.4 Cupons de desconto e lotes com virada automática por data ou quantidade
-- [ ] 2.5 Cortesias (sem taxa) e exportação CSV de participantes/compradores
+- [x] 2.5 Cortesias (sem taxa) e exportação CSV de participantes/compradores
 - [ ] 2.6 Transferência de titularidade do ingresso
 - [ ] 2.7 **Fechar a fase:** commit, push e `git tag fase-2` + `git push --tags`
 
@@ -472,6 +472,10 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - **Item 2.4 — lotes = tipos de ingresso com o mesmo `lote_grupo`** (coluna adiantada da Fase 3), em sequência por `ordem`, `id`. Só o primeiro lote disponível (ativo + dentro de `vendas_inicio/fim` + com estoque) aparece na página pública e pode ser comprado; virada por data e por quantidade saem da mesma regra (`LoteAtual`, testada). Comprar um lote que não é o atual retorna 422. Virada é calculada na hora, sem job.
 - **Item 2.4 — cupom:** um código por pedido, vale para todos os itens, desconta só do **preço** (taxa e garantia intactas), `percentual` (1–100) ou `valor` (centavos, limitado ao preço). O desconto é custo do organizador: `itens_pedido.preco_centavos` já guarda o preço com desconto (então ledger, repasse e reembolso usam o valor efetivamente pago) e `desconto_centavos` guarda o quanto foi abatido. `max_usos` conta itens, com a linha do cupom travada (`FOR UPDATE`) na reserva; reserva expirada devolve os usos; item cancelado depois de pago **não** devolve uso (decisão simples, revisar se o organizador pedir).
 - **Item 2.4 — sem cupom por tipo de ingresso** (vale para o pedido inteiro) e sem edição de cupom (só criar/desativar).
+
+- **Item 2.5 — cortesia = item `pago` com `cortesia=true`, total 0, sem taxa e sem pagamento**, dentro de um pedido `pago` que pertence ao usuário do organizador (por causa do `usuario_id` obrigatório). Ocupa estoque do tipo (checado com lock), exige evento publicado, 1–50 por emissão. Fica fora de "Meus ingressos"/selo "Ingresso" do organizador e não entra no repasse (não tem pagamento); continua aparecendo no check-in e no CSV. Revogar (`DELETE`) só se ainda `pago` e sem reembolso (não há dinheiro), devolvendo a vaga. Em "Vendas" (item 1.11) a cortesia entra na contagem de vendidos com preço 0 — ajuste se incomodar.
+- **Item 2.5 — quem recebe cortesia pode não ter conta:** o e-mail leva a `/ingresso/:codigo/:token`, página pública que mostra o QR e exige o `qr_token` na URL (comparado em tempo constante). Quem tiver o link tem o ingresso, como no ingresso por e-mail de qualquer plataforma.
+- **Item 2.5 — CSV** (`GET /org/eventos/:id/exportar.csv?tipo=compradores|participantes`, separador `;`, UTF-8 com BOM, células que começam com `= + - @` ganham apóstrofo contra formula injection). O CSV de participantes **não inclui telefone, data de nascimento nem dados do responsável de menores** (dados pessoais; o organizador continua vendo na tela de aprovação) — se o organizador precisar deles no arquivo, decidir com o dono antes.
 
 **Pendências para validar fora do código:**
 - Contador/advogado: custódia de recursos de terceiros, nome "Garantia de vaga" (vs. "seguro"), retenção ou não da taxa no arrependimento, regras regionais por UF (incluindo Sergipe), emissão de nota fiscal e tributação da taxa/garantia.

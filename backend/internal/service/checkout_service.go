@@ -100,7 +100,11 @@ func gerarCodigoItem() (string, error) {
 // gerarQRToken assina o código do item (seção 7.10) — o leitor de check-in
 // (item 1.10) confere essa assinatura antes de aceitar o QR como válido.
 func (s *CheckoutService) gerarQRToken(codigo string) string {
-	h := hmac.New(sha256.New, []byte(s.qrSecret))
+	return assinarQR(s.qrSecret, codigo)
+}
+
+func assinarQR(segredo, codigo string) string {
+	h := hmac.New(sha256.New, []byte(segredo))
 	h.Write([]byte(codigo))
 	return hex.EncodeToString(h.Sum(nil))
 }

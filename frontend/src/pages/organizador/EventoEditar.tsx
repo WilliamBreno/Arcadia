@@ -11,6 +11,7 @@ import { api, ApiError } from '@/lib/api'
 import { adicionarStaff, listarStaff, removerStaff, type Staff } from '@/lib/checkin'
 import { formatarCentavos, type Evento, type TipoIngresso } from '@/lib/evento'
 import type { Local } from '@/lib/organizador'
+import { CortesiasCard } from '@/components/cortesias-card'
 import { CuponsCard } from '@/components/cupons-card'
 import { obterFinanceiroEvento } from '@/lib/financeiro'
 import { obterVendas } from '@/lib/vendas'
@@ -236,6 +237,8 @@ export default function EventoEditar() {
       <FinanceiroCard eventoId={Number(id)} />
 
       <CuponsCard eventoId={Number(id)} />
+
+      <CortesiasCard eventoId={Number(id)} tipos={tiposIngresso ?? []} />
 
       <ConvitesCard eventoId={Number(id)} />
 

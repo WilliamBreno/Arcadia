@@ -189,7 +189,7 @@ func (r *ItemPedidoRepository) ListarPagosPorUsuario(usuarioID int64) ([]ItemCom
 		Joins("JOIN pedidos ON pedidos.id = itens_pedido.pedido_id").
 		Joins("JOIN tipos_ingresso ON tipos_ingresso.id = itens_pedido.tipo_ingresso_id").
 		Joins("JOIN eventos ON eventos.id = tipos_ingresso.evento_id").
-		Where("pedidos.usuario_id = ? AND itens_pedido.status IN ?", usuarioID, []domain.StatusItemPedido{
+		Where("pedidos.usuario_id = ? AND itens_pedido.cortesia = false AND itens_pedido.status IN ?", usuarioID, []domain.StatusItemPedido{
 			domain.StatusItemPago, domain.StatusItemUtilizado,
 		}).
 		Order("eventos.inicio_em").
@@ -205,7 +205,7 @@ func (r *ItemPedidoRepository) EventosComIngressoPago(usuarioID int64) ([]int64,
 		Select("DISTINCT tipos_ingresso.evento_id").
 		Joins("JOIN pedidos ON pedidos.id = itens_pedido.pedido_id").
 		Joins("JOIN tipos_ingresso ON tipos_ingresso.id = itens_pedido.tipo_ingresso_id").
-		Where("pedidos.usuario_id = ? AND itens_pedido.status IN ?", usuarioID, []domain.StatusItemPedido{
+		Where("pedidos.usuario_id = ? AND itens_pedido.cortesia = false AND itens_pedido.status IN ?", usuarioID, []domain.StatusItemPedido{
 			domain.StatusItemPago, domain.StatusItemUtilizado,
 		}).
 		Scan(&eventoIDs).Error

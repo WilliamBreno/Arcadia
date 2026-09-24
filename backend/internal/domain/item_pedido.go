@@ -28,6 +28,7 @@ type ItemPedido struct {
 	GarantiaCentavos       int64
 	CupomID                *int64
 	DescontoCentavos       int64
+	Cortesia               bool
 	TotalCentavos          int64
 	Status                 StatusItemPedido
 	Codigo                 string
