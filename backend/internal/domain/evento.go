@@ -62,6 +62,7 @@ type Evento struct {
 	GarantiaHabilitada        bool
 	AprovacaoManual           bool
 	QRRotativo                bool
+	CorTema                   string
 	ResultadoLiberadoEm       *time.Time
 	PoliticaCancelamentoTexto string
 	MaxItensPorPedido         int

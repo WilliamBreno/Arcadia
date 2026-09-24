@@ -58,6 +58,7 @@ type EventoDados struct {
 	GarantiaHabilitada        *bool // nil = padrão (true) ao criar, manter ao atualizar
 	AprovacaoManual           *bool // nil = padrão (false) ao criar, manter ao atualizar
 	QRRotativo                *bool // idem
+	CorTema                   *string
 	PoliticaCancelamentoTexto string
 	MaxItensPorPedido         int
 }
@@ -90,6 +91,7 @@ func (s *EventoService) Criar(organizadorID int64, dados EventoDados) (*domain.E
 		GarantiaHabilitada:        boolOuPadrao(dados.GarantiaHabilitada, true),
 		AprovacaoManual:           boolOuPadrao(dados.AprovacaoManual, false),
 		QRRotativo:                boolOuPadrao(dados.QRRotativo, false),
+		CorTema:                   corTemaOuPadrao(dados.CorTema, ""),
 		PoliticaCancelamentoTexto: dados.PoliticaCancelamentoTexto,
 		MaxItensPorPedido:         valorIntOuPadrao(dados.MaxItensPorPedido, 10),
 		CriadoEm:                  time.Now(),
@@ -124,6 +126,7 @@ func (s *EventoService) Atualizar(organizadorID, eventoID int64, dados EventoDad
 	evento.GarantiaHabilitada = boolOuPadrao(dados.GarantiaHabilitada, evento.GarantiaHabilitada)
 	evento.AprovacaoManual = boolOuPadrao(dados.AprovacaoManual, evento.AprovacaoManual)
 	evento.QRRotativo = boolOuPadrao(dados.QRRotativo, evento.QRRotativo)
+	evento.CorTema = corTemaOuPadrao(dados.CorTema, evento.CorTema)
 	evento.PoliticaCancelamentoTexto = dados.PoliticaCancelamentoTexto
 	evento.MaxItensPorPedido = valorIntOuPadrao(dados.MaxItensPorPedido, 10)
 

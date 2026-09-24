@@ -78,6 +78,7 @@ type itemRequest struct {
 type criarPedidoRequest struct {
 	Itens []itemRequest `json:"itens" binding:"required,min=1,dive"`
 	Cupom string        `json:"cupom"`
+	Ref   string        `json:"ref"`
 }
 
 // Criar é POST /eventos/:slug/pedidos — reserva + cálculo (seção 8).
@@ -108,7 +109,7 @@ func (h *PedidoHandler) Criar(c *gin.Context) {
 		}
 	}
 
-	pedido, itens, err := h.service.Reservar(usuarioID, evento.ID, itensReq, comprador.Nome, comprador.Email, req.Cupom)
+	pedido, itens, err := h.service.Reservar(usuarioID, evento.ID, itensReq, comprador.Nome, comprador.Email, req.Cupom, req.Ref)
 	if err != nil {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"erro": err.Error()})
 		return

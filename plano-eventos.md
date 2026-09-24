@@ -364,7 +364,9 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 
 ### Fase 4 — Extras
 - [x] 4.1 QR rotativo anti-print
-- [ ] WhatsApp (API oficial), links de divulgadores/afiliados, temas por evento, eventos recorrentes/multi-sessão, assento ou mesa marcada, check-in offline, API pública/integrações
+- [x] 4.2 Temas por evento
+- [x] 4.3 Links de divulgadores/afiliados (atribuição e estatística)
+- [ ] WhatsApp (API oficial), eventos recorrentes/multi-sessão, assento ou mesa marcada, check-in offline, API pública/integrações
 
 ---
 
@@ -497,6 +499,9 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - **Item 3.5 — relatórios avançados do organizador** (`GET /org/relatorios?de&ate`, tela `/organizador/relatorios`, só dono): totais, por evento (vendidos sem cortesia, cortesias, receita bruta = preço, check-ins e % de comparecimento, cancelados) e vendas por dia (por data de criação do item, sem cortesias). Receita é o preço do ingresso, sem taxas/repasse (isso segue no painel financeiro do 2.2).
 
 - **Item 4.1 — QR rotativo (`eventos.qr_rotativo`, opt-in do organizador).** O QR passa a ser `codigo:R<janela>.<HMAC>` com janela de 30s (`unix/30`), assinado com o mesmo segredo do QR estático; o servidor aceita a janela atual e as vizinhas (±30s de relógio) e devolve `qr_expirado` (laranja no leitor: "QR desatualizado") se vier token antigo **ou o estático** — em evento rotativo, print/foto do ingresso não entra (verificado, incl. reuso: `ja_utilizado`). O portador obtém o payload em `GET /me/ingressos/:id/qr` (só o dono do pedido) ou `GET /ingressos/:codigo/:token/qr` (link do e-mail), com `Cache-Control: no-store`, e o frontend renova sozinho (`useQR`). Consequência: com o flag ligado o participante **precisa de internet no celular** para abrir o ingresso na portaria. Eventos sem o flag continuam com o QR estático (o leitor aceita os dois formatos). O check-in offline (também da Fase 4) é incompatível por construção com este modo e **não foi feito**: exigiria service worker e distribuir o segredo de verificação aos leitores.
+
+- **Item 4.2 — tema por evento = uma cor (`eventos.cor_tema`, `#RRGGBB`).** Vira as variáveis `--primary`/`--ring` do shadcn só dentro da página do evento (texto do botão escolhido pela luminância, preto ou branco). O backend só aceita o formato hexadecimal — valor com CSS embutido é ignorado e mantém o anterior (verificado); vazio volta ao padrão. Sem logo/fonte/banner próprios além do que já existia (capa).
+- **Item 4.3 — afiliados (`afiliados`, `pedidos.afiliado_id`).** O organizador cria um divulgador e recebe o link `/e/:slug?ref=<código>`; o front guarda o `ref` na sessão e o manda na criação do pedido; o servidor atribui se o código existir e estiver ativo naquele evento (senão ignora, sem bloquear a compra). O painel mostra pedidos pagos, ingressos e receita (preço, sem cortesias) por divulgador. **Sem comissão:** calcular/pagar comissão mexe em dinheiro (quem paga, sobre preço ou taxa, o que fazer em reembolso) e depende de decisão do dono — por isso é só atribuição. Atribuição é por último clique na sessão do navegador; sem contagem de cliques.
 
 **Pendências para validar fora do código:**
 - Contador/advogado: custódia de recursos de terceiros, nome "Garantia de vaga" (vs. "seguro"), retenção ou não da taxa no arrependimento, regras regionais por UF (incluindo Sergipe), emissão de nota fiscal e tributação da taxa/garantia.

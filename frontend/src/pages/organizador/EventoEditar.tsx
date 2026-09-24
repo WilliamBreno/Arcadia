@@ -11,6 +11,7 @@ import { api, ApiError } from '@/lib/api'
 import { adicionarStaff, listarStaff, removerStaff, type Staff } from '@/lib/checkin'
 import { formatarCentavos, type Evento, type TipoIngresso } from '@/lib/evento'
 import type { Local } from '@/lib/organizador'
+import { AfiliadosCard } from '@/components/afiliados-card'
 import { CortesiasCard } from '@/components/cortesias-card'
 import { CronogramaCard, OrdemApresentacaoCard } from '@/components/cronograma-cards'
 import { CriteriosCard, RankingCard } from '@/components/resultado-cards'
@@ -49,6 +50,7 @@ const schemaBasico = z.object({
   fim_em: z.string(),
   aprovacao_manual: z.boolean(),
   qr_rotativo: z.boolean(),
+  cor_tema: z.string(),
 })
 
 type FormBasico = z.infer<typeof schemaBasico>
@@ -213,6 +215,11 @@ export default function EventoEditar() {
               </div>
             </div>
 
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="cor_tema">Cor do tema da página do evento (formato #RRGGBB, vazio = padrão)</Label>
+              <Input id="cor_tema" placeholder="#7c3aed" maxLength={7} {...register('cor_tema')} />
+            </div>
+
             <label className="flex items-center gap-2 text-sm text-foreground">
               <input type="checkbox" {...register('qr_rotativo')} />
               QR rotativo anti-print (o QR muda a cada 30s; print/foto do ingresso não entra — o participante precisa abrir o ingresso online na portaria)
@@ -252,6 +259,8 @@ export default function EventoEditar() {
       <FinanceiroCard eventoId={Number(id)} />
 
       <CuponsCard eventoId={Number(id)} />
+
+      <AfiliadosCard eventoId={Number(id)} slug={evento.slug} />
 
       <CortesiasCard eventoId={Number(id)} tipos={tiposIngresso ?? []} />
 

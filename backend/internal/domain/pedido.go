@@ -24,6 +24,7 @@ type Pedido struct {
 	TotalCentavos  int64
 	ExpiraEm       *time.Time
 	MPPreferenceID *string
+	AfiliadoID     *int64
 	CriadoEm       time.Time
 }
 

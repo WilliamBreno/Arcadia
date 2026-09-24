@@ -55,6 +55,7 @@ type CheckoutService struct {
 	cupons         *repository.CupomRepository
 	tipos          *repository.TipoIngressoRepository
 	plateia        *PlateiaService
+	afiliados      *repository.AfiliadoRepository
 	mp             *mercadopago.Cliente
 	mailCliente    *mail.Cliente
 	qrSecret       string
@@ -126,7 +127,7 @@ func calcularTotalItem(precoCentavos, taxaPlataformaCentavos, garantiaCentavos i
 // tipo_ingresso (SELECT ... FOR UPDATE) dentro de uma transação para
 // impedir overselling sob concorrência (seção 7.2) — preço, taxa e
 // garantia são sempre recalculados aqui, nunca aceitos do cliente.
-func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemRequisitado, compradorNome, compradorEmail, cupomCodigo string) (*domain.Pedido, []domain.ItemPedido, error) {
+func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemRequisitado, compradorNome, compradorEmail, cupomCodigo, afiliadoCodigo string) (*domain.Pedido, []domain.ItemPedido, error) {
 	evento, err := s.eventos.BuscarPorID(eventoID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("evento não encontrado: %w", err)
@@ -183,6 +184,12 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 			Status:    domain.StatusPedidoAguardandoPagamento,
 			ExpiraEm:  &expiraEm,
 			CriadoEm:  agora,
+		}
+		// ref inválido ou inativo é ignorado (não bloqueia a compra).
+		if afiliadoCodigo != "" && s.afiliados != nil {
+			if af, errAf := s.afiliados.BuscarAtivoPorCodigo(tx, eventoID, afiliadoCodigo); errAf == nil {
+				pedido.AfiliadoID = &af.ID
+			}
 		}
 		if err := s.pedidos.Criar(tx, pedido); err != nil {
 			return err
@@ -561,3 +568,6 @@ func (s *CheckoutService) ExpirarReservas() (int, error) {
 
 // DefinirPlateia liga a exigência de aprovação e a promoção da lista de espera (item 3.2).
 func (s *CheckoutService) DefinirPlateia(p *PlateiaService) { s.plateia = p }
+
+// DefinirAfiliados liga a atribuição por link de divulgador.
+func (s *CheckoutService) DefinirAfiliados(a *repository.AfiliadoRepository) { s.afiliados = a }

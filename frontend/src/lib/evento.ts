@@ -18,6 +18,7 @@ export type Evento = {
   garantia_habilitada: boolean
   aprovacao_manual: boolean
   qr_rotativo: boolean
+  cor_tema: string
   politica_cancelamento_texto: string
   max_itens_por_pedido: number
   publicado_em: string | null

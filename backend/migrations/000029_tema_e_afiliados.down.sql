@@ -1,0 +1,3 @@
+ALTER TABLE pedidos DROP COLUMN IF EXISTS afiliado_id;
+DROP TABLE IF EXISTS afiliados;
+ALTER TABLE eventos DROP COLUMN IF EXISTS cor_tema;

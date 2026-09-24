@@ -1,10 +1,11 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { api, ApiError } from '@/lib/api'
 import type { Pedido } from '@/lib/checkout'
 import { formatarCentavos } from '@/lib/evento'
+import { estiloTema } from '@/lib/tema'
 import type { EventoDetalhe as EventoDetalheTipo } from '@/lib/publico'
 import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
@@ -26,6 +27,18 @@ export default function EventoDetalhe() {
   const [comprando, setComprando] = useState(false)
 
   const queryClient = useQueryClient()
+  const [searchParams] = useSearchParams()
+  const chaveRef = `ref:${slug}`
+  useEffect(() => {
+    const ref = searchParams.get('ref')
+    if (ref) {
+      try {
+        sessionStorage.setItem(chaveRef, ref)
+      } catch {
+        // sem sessionStorage: a atribuição só vale se comprar na mesma carga
+      }
+    }
+  }, [searchParams, chaveRef])
   const { data, isLoading, error } = useQuery({
     queryKey: ['evento-publico', slug],
     queryFn: () => api<EventoDetalheTipo>(`/eventos/${slug}`),
@@ -103,6 +116,14 @@ export default function EventoDetalhe() {
     }
   }
 
+  const refAtual = () => {
+    try {
+      return searchParams.get('ref') ?? sessionStorage.getItem(chaveRef) ?? ''
+    } catch {
+      return searchParams.get('ref') ?? ''
+    }
+  }
+
   const comprar = async () => {
     if (!usuario) {
       navigate('/login', { state: { de: location.pathname } })
@@ -121,7 +142,7 @@ export default function EventoDetalhe() {
 
       const pedido = await api<Pedido>(`/eventos/${slug}/pedidos`, {
         method: 'POST',
-        body: { itens, cupom: cupom?.codigo ?? '' },
+        body: { itens, cupom: cupom?.codigo ?? '', ref: refAtual() },
       })
       navigate(`/pedidos/${pedido.id}`)
     } catch (e) {
@@ -132,7 +153,7 @@ export default function EventoDetalhe() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-12">
+    <main className="mx-auto max-w-3xl px-4 py-12" style={estiloTema(evento.cor_tema)}>
       {evento.capa_url && (
         <img src={evento.capa_url} alt="" className="mb-6 aspect-video w-full rounded-xl object-cover" />
       )}
