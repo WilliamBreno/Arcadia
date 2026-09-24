@@ -366,7 +366,8 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - [x] 4.1 QR rotativo anti-print
 - [x] 4.2 Temas por evento
 - [x] 4.3 Links de divulgadores/afiliados (atribuição e estatística)
-- [ ] WhatsApp (API oficial), eventos recorrentes/multi-sessão, assento ou mesa marcada, check-in offline, API pública/integrações
+- [x] 4.4 API pública/integrações (somente leitura)
+- [ ] WhatsApp (API oficial), eventos recorrentes/multi-sessão, assento ou mesa marcada, check-in offline
 
 ---
 
@@ -502,6 +503,8 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 
 - **Item 4.2 — tema por evento = uma cor (`eventos.cor_tema`, `#RRGGBB`).** Vira as variáveis `--primary`/`--ring` do shadcn só dentro da página do evento (texto do botão escolhido pela luminância, preto ou branco). O backend só aceita o formato hexadecimal — valor com CSS embutido é ignorado e mantém o anterior (verificado); vazio volta ao padrão. Sem logo/fonte/banner próprios além do que já existia (capa).
 - **Item 4.3 — afiliados (`afiliados`, `pedidos.afiliado_id`).** O organizador cria um divulgador e recebe o link `/e/:slug?ref=<código>`; o front guarda o `ref` na sessão e o manda na criação do pedido; o servidor atribui se o código existir e estiver ativo naquele evento (senão ignora, sem bloquear a compra). O painel mostra pedidos pagos, ingressos e receita (preço, sem cortesias) por divulgador. **Sem comissão:** calcular/pagar comissão mexe em dinheiro (quem paga, sobre preço ou taxa, o que fazer em reembolso) e depende de decisão do dono — por isso é só atribuição. Atribuição é por último clique na sessão do navegador; sem contagem de cliques.
+
+- **Item 4.4 — API pública somente leitura** (`/api/public/v1/*`, sem JWT). Chaves (`api_keys`) criadas só pelo **dono** (`/org/api-keys`; membro da equipe recebe 403): formato `arc_<48 hex>`, exibida **uma vez**, guardada apenas como SHA-256, com prefixo para identificação e `ultimo_uso_em`; revogação imediata (401 depois — verificado). Escopo = eventos do dono da chave (evento alheio → 404). Endpoints: eventos, evento, ingressos (tipos + ocupados/disponíveis), participantes (portadores pagos/utilizados: nome, e-mail, código, status — **dados pessoais**, entregues ao próprio organizador; nunca inclui `qr_token`) e resumo de check-in. Rate limit por IP (5 req/s, burst 20, em memória). Sem escrita, sem webhooks de saída, sem escopos por chave e sem paginação (adicionar se algum evento tiver milhares de ingressos). A chave é para servidores; o CORS do backend só libera o frontend.
 
 **Pendências para validar fora do código:**
 - Contador/advogado: custódia de recursos de terceiros, nome "Garantia de vaga" (vs. "seguro"), retenção ou não da taxa no arrependimento, regras regionais por UF (incluindo Sergipe), emissão de nota fiscal e tributação da taxa/garantia.
