@@ -53,6 +53,7 @@ func main() {
 	solicitacaoRepo := repository.NovoSolicitacaoPlateiaRepository(db)
 	avaliacaoRepo := repository.NovoAvaliacaoRepository(db)
 	cronogramaRepo := repository.NovoCronogramaRepository(db)
+	membroRepo := repository.NovoOrganizadorMembroRepository(db)
 
 	jwtService := service.NovoJWTService(cfg.JWTSecret, cfg.AccessTokenTTLMin)
 	authService := service.NovoAuthService(usuarioRepo, refreshTokenRepo, jwtService, cfg.RefreshTokenTTLDias)
@@ -86,7 +87,7 @@ func main() {
 	}
 
 	authHandler := handler.NovoAuthHandler(usuarioRepo, authService, googleAuthService, mailCliente, cfg)
-	organizadorHandler := handler.NovoOrganizadorHandler(organizadorRepo, organizadorService)
+	organizadorHandler := handler.NovoOrganizadorHandler(organizadorRepo, organizadorService, membroRepo)
 	localHandler := handler.NovoLocalHandler(organizadorHandler, localService)
 	eventoHandler := handler.NovoEventoHandler(organizadorHandler, eventoService, cancelamentoService)
 	tipoIngressoHandler := handler.NovoTipoIngressoHandler(organizadorHandler, tipoIngressoService)
@@ -95,6 +96,7 @@ func main() {
 	plateiaService := service.NovoPlateiaService(eventoRepo, eventoService, solicitacaoRepo, usuarioRepo, mailCliente, cfg.FrontendURL, cfg.NomePlataforma)
 	checkoutService.DefinirPlateia(plateiaService)
 	cancelamentoService.DefinirPromotor(plateiaService)
+	equipeHandler := handler.NovoEquipeHandler(organizadorHandler, membroRepo, usuarioRepo, itemPedidoRepo, mailCliente, cfg.NomePlataforma, cfg.FrontendURL)
 	cronogramaService := service.NovoCronogramaService(eventoService, cronogramaRepo)
 	cronogramaHandler := handler.NovoCronogramaHandler(organizadorHandler, cronogramaService, fichaService)
 	avaliacaoService := service.NovoAvaliacaoService(eventoService, eventoRepo, fichaRepo, papelEventoRepo, avaliacaoRepo)
@@ -207,6 +209,10 @@ func main() {
 		org.POST("/eventos/:id/cortesias", cortesiaHandler.Emitir)
 		org.DELETE("/eventos/:id/cortesias/:itemId", cortesiaHandler.Revogar)
 		org.GET("/eventos/:id/exportar.csv", cortesiaHandler.ExportarCSV)
+		org.GET("/equipe", equipeHandler.Listar)
+		org.POST("/equipe", equipeHandler.Adicionar)
+		org.DELETE("/equipe/:usuarioId", equipeHandler.Remover)
+		org.GET("/relatorios", equipeHandler.Relatorios)
 		org.GET("/eventos/:id/cronograma", cronogramaHandler.Listar)
 		org.POST("/eventos/:id/cronograma", cronogramaHandler.Criar)
 		org.PUT("/eventos/:id/cronograma/:itemId", cronogramaHandler.Atualizar)

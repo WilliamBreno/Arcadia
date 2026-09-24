@@ -359,8 +359,8 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - [x] 3.2 Aprovação manual para plateia + lista de espera
 - [x] 3.3 **Notas dos jurados**: critérios com pesos, escala configurável, média, ranking, desempate, resultado oculto até o organizador liberar
 - [x] 3.4 Cronograma e ordem de apresentações, upload de áudio
-- [ ] 3.5 Equipe do organizador (múltiplos membros) e relatórios avançados
-- [ ] 3.6 **Fechar a fase:** commit, push e `git tag fase-3` + `git push --tags`
+- [x] 3.5 Equipe do organizador (múltiplos membros) e relatórios avançados
+- [x] 3.6 **Fechar a fase:** commit, push e `git tag fase-3` + `git push --tags`
 
 ### Fase 4 — Extras
 - [ ] WhatsApp (API oficial), links de divulgadores/afiliados, temas por evento, eventos recorrentes/multi-sessão, assento ou mesa marcada, QR rotativo anti-print, check-in offline, API pública/integrações
@@ -491,6 +491,9 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 
 - **Item 3.4 — cronograma** (`cronograma_itens`: título, descrição, local/palco, início, fim opcional) é a programação **pública** do evento (aparece na página do evento; CRUD do organizador). **Ordem de apresentação** é uma lista única 1..n dos participantes aprovados (`PUT /org/eventos/:id/ordem-apresentacao`, transação; quem fica fora da lista perde a ordem); é visível para jurados (que já recebiam a lista por `ordem_apresentacao`) e organizador — **não é publicada** (nomes de participantes/menores) e não gera horário por apresentação (só ordem).
 - **Item 3.4 — áudio:** o upload de áudio (MP3/WAV/M4A, 10 MB) já existia desde o 1.5; agora o formulário do participante (convite e inscrição aberta) tem o campo, o arquivo fica em `fichas.dados.audio` (não usei a tabela `midias_ficha` do modelo) e o jurado ouve no player. **Correção de segurança:** o backend confiava no `Content-Type` declarado pelo cliente; agora confere a assinatura do arquivo (ID3/frame MPEG, RIFF…WAVE, ftyp) antes de gravar. Os arquivos são servidos publicamente em `/uploads/<nome aleatório>` (URL não listável, mas sem autenticação — mesma decisão dos demais uploads).
+
+- **Item 3.5 — equipe (`organizador_membros`, papel único `gestor`).** O dono adiciona por e-mail alguém que já tem conta. `ObterOrganizadorAtual` agora resolve: header `X-Organizador-ID` (dono ou membro, senão 403) → perfil próprio → primeira equipe da qual participa. Assim **todas** as rotas `/org/*` já valem para membros (eventos, ingressos, cupons, cortesias, participantes, convites, staff, check-in, cronograma, critérios...). **Só o dono** (`ObterOrganizadorDono`) acessa: perfil/Pix, financeiro do evento, repasses, relatórios (têm receita), cancelar evento (dispara reembolso em massa) e a própria equipe — verificado (403). Limitações: um papel só (sem "somente leitura"/"financeiro"), sem seletor de organizador na interface (o frontend não envia o header; quem é dono e membro ao mesmo tempo age como dono), e o membro ainda vê o card de Vendas com receita do evento (item 1.11) — restringir se o dono quiser.
+- **Item 3.5 — relatórios avançados do organizador** (`GET /org/relatorios?de&ate`, tela `/organizador/relatorios`, só dono): totais, por evento (vendidos sem cortesia, cortesias, receita bruta = preço, check-ins e % de comparecimento, cancelados) e vendas por dia (por data de criação do item, sem cortesias). Receita é o preço do ingresso, sem taxas/repasse (isso segue no painel financeiro do 2.2).
 
 **Pendências para validar fora do código:**
 - Contador/advogado: custódia de recursos de terceiros, nome "Garantia de vaga" (vs. "seguro"), retenção ou não da taxa no arrependimento, regras regionais por UF (incluindo Sergipe), emissão de nota fiscal e tributação da taxa/garantia.

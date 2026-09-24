@@ -24,6 +24,12 @@ export default function Eventos() {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-foreground">Meus eventos</h1>
         <div className="flex gap-2">
+          <Link to="/organizador/relatorios" className={buttonVariants({ variant: 'outline' })}>
+            Relatórios
+          </Link>
+          <Link to="/organizador/equipe" className={buttonVariants({ variant: 'outline' })}>
+            Equipe
+          </Link>
           <Link to="/organizador/repasses" className={buttonVariants({ variant: 'outline' })}>
             Repasses
           </Link>

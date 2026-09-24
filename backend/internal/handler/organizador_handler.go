@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 
@@ -15,10 +16,11 @@ import (
 type OrganizadorHandler struct {
 	organizadores *repository.OrganizadorRepository
 	service       *service.OrganizadorService
+	membros       *repository.OrganizadorMembroRepository
 }
 
-func NovoOrganizadorHandler(organizadores *repository.OrganizadorRepository, s *service.OrganizadorService) *OrganizadorHandler {
-	return &OrganizadorHandler{organizadores: organizadores, service: s}
+func NovoOrganizadorHandler(organizadores *repository.OrganizadorRepository, s *service.OrganizadorService, membros *repository.OrganizadorMembroRepository) *OrganizadorHandler {
+	return &OrganizadorHandler{organizadores: organizadores, service: s, membros: membros}
 }
 
 type organizadorResposta struct {
@@ -58,9 +60,40 @@ func paraOrganizadorResposta(o *domain.Organizador) organizadorResposta {
 // garantir escopo por dono antes de qualquer operação.
 func (h *OrganizadorHandler) ObterOrganizadorAtual(c *gin.Context) (*domain.Organizador, bool) {
 	usuarioID := c.GetInt64(middleware.ChaveContextoUsuarioID)
+
+	// Header X-Organizador-ID escolhe em nome de qual organizador agir (dono
+	// ou membro da equipe). Sem header: o próprio perfil e, na falta dele, a
+	// equipe da qual o usuário faz parte.
+	if bruto := c.GetHeader("X-Organizador-ID"); bruto != "" {
+		id, err := strconv.ParseInt(bruto, 10, 64)
+		if err == nil {
+			if org, err := h.organizadores.BuscarPorID(id); err == nil && (org.UsuarioID == usuarioID || h.membros.Existe(id, usuarioID)) {
+				return org, true
+			}
+		}
+		c.JSON(http.StatusForbidden, gin.H{"erro": "você não faz parte deste organizador"})
+		return nil, false
+	}
+
+	if organizador, err := h.organizadores.BuscarPorUsuarioID(usuarioID); err == nil {
+		return organizador, true
+	}
+	if orgID, ok := h.membros.PrimeiroOrganizadorDoMembro(usuarioID); ok {
+		if org, err := h.organizadores.BuscarPorID(orgID); err == nil {
+			return org, true
+		}
+	}
+	c.JSON(http.StatusNotFound, gin.H{"erro": "crie seu perfil de organizador primeiro"})
+	return nil, false
+}
+
+// ObterOrganizadorDono é para operações sensíveis (perfil/Pix, financeiro,
+// repasses, cancelar evento, equipe): só o dono, nunca membro da equipe.
+func (h *OrganizadorHandler) ObterOrganizadorDono(c *gin.Context) (*domain.Organizador, bool) {
+	usuarioID := c.GetInt64(middleware.ChaveContextoUsuarioID)
 	organizador, err := h.organizadores.BuscarPorUsuarioID(usuarioID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"erro": "crie seu perfil de organizador primeiro"})
+		c.JSON(http.StatusForbidden, gin.H{"erro": "apenas o dono do perfil de organizador pode fazer isso"})
 		return nil, false
 	}
 	return organizador, true
@@ -97,8 +130,10 @@ func (h *OrganizadorHandler) CriarPerfil(c *gin.Context) {
 }
 
 func (h *OrganizadorHandler) MeuPerfil(c *gin.Context) {
-	organizador, ok := h.ObterOrganizadorAtual(c)
-	if !ok {
+	// perfil (documento, Pix) é só do dono; sem perfil próprio, 404 para o front oferecer a criação
+	organizador, err := h.organizadores.BuscarPorUsuarioID(c.GetInt64(middleware.ChaveContextoUsuarioID))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"erro": "crie seu perfil de organizador primeiro"})
 		return
 	}
 	c.JSON(http.StatusOK, paraOrganizadorResposta(organizador))

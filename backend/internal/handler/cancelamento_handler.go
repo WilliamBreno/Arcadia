@@ -89,7 +89,7 @@ type cancelarEventoResposta struct {
 }
 
 func (h *EventoHandler) Cancelar(c *gin.Context) {
-	organizador, ok := h.organizadorHandler.ObterOrganizadorAtual(c)
+	organizador, ok := h.organizadorHandler.ObterOrganizadorDono(c)
 	if !ok {
 		return
 	}

@@ -19,7 +19,9 @@ import EventoEditar from '@/pages/organizador/EventoEditar'
 import EventoNovo from '@/pages/organizador/EventoNovo'
 import AdminRelatorios from '@/pages/admin/AdminRelatorios'
 import AdminRepasses from '@/pages/admin/AdminRepasses'
+import Equipe from '@/pages/organizador/Equipe'
 import Eventos from '@/pages/organizador/Eventos'
+import Relatorios from '@/pages/organizador/Relatorios'
 import Repasses from '@/pages/organizador/Repasses'
 import Locais from '@/pages/organizador/Locais'
 import LocalForm from '@/pages/organizador/LocalForm'
@@ -50,6 +52,8 @@ function App() {
           <Route path="/organizador/locais/:id" element={<LocalForm />} />
           <Route path="/organizador/eventos" element={<Eventos />} />
           <Route path="/organizador/repasses" element={<Repasses />} />
+          <Route path="/organizador/equipe" element={<Equipe />} />
+          <Route path="/organizador/relatorios" element={<Relatorios />} />
           <Route path="/admin/repasses" element={<AdminRepasses />} />
           <Route path="/admin/relatorios" element={<AdminRelatorios />} />
           <Route path="/organizador/eventos/novo" element={<EventoNovo />} />
