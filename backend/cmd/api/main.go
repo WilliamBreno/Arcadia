@@ -84,7 +84,7 @@ func main() {
 	localHandler := handler.NovoLocalHandler(organizadorHandler, localService)
 	eventoHandler := handler.NovoEventoHandler(organizadorHandler, eventoService, cancelamentoService)
 	tipoIngressoHandler := handler.NovoTipoIngressoHandler(organizadorHandler, tipoIngressoService)
-	publicoHandler := handler.NovoPublicoHandler(eventoRepo, tipoIngressoRepo, localRepo, organizadorRepo)
+	publicoHandler := handler.NovoPublicoHandler(eventoRepo, tipoIngressoRepo, localRepo, organizadorRepo, configPlataformaRepo)
 	conviteHandler := handler.NovoConviteHandler(organizadorHandler, eventoRepo, conviteService)
 	fichaHandler := handler.NovoFichaHandler(eventoRepo, organizadorHandler, fichaService)
 	uploadHandler := handler.NovoUploadHandler(armazenamento)

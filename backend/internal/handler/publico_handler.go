@@ -16,10 +16,17 @@ type PublicoHandler struct {
 	tiposIngresso *repository.TipoIngressoRepository
 	locais        *repository.LocalRepository
 	organizadores *repository.OrganizadorRepository
+	config        *repository.ConfigPlataformaRepository
 }
 
-func NovoPublicoHandler(eventos *repository.EventoRepository, tiposIngresso *repository.TipoIngressoRepository, locais *repository.LocalRepository, organizadores *repository.OrganizadorRepository) *PublicoHandler {
-	return &PublicoHandler{eventos: eventos, tiposIngresso: tiposIngresso, locais: locais, organizadores: organizadores}
+func NovoPublicoHandler(
+	eventos *repository.EventoRepository,
+	tiposIngresso *repository.TipoIngressoRepository,
+	locais *repository.LocalRepository,
+	organizadores *repository.OrganizadorRepository,
+	config *repository.ConfigPlataformaRepository,
+) *PublicoHandler {
+	return &PublicoHandler{eventos: eventos, tiposIngresso: tiposIngresso, locais: locais, organizadores: organizadores, config: config}
 }
 
 type eventoPublicoItem struct {
@@ -209,11 +216,20 @@ func (h *PublicoHandler) ObterEvento(c *gin.Context) {
 		}
 	}
 
+	chaveTaxa := domain.ChaveTaxaIngressoCentavos
+	if evento.TipoAcesso == domain.TipoAcessoCadastro {
+		chaveTaxa = domain.ChaveTaxaCadastroCentavos
+	}
+	taxaPlataforma, _ := h.config.BuscarInt64(chaveTaxa)
+	garantiaCentavos, _ := h.config.BuscarInt64(domain.ChaveGarantiaCentavos)
+
 	c.JSON(http.StatusOK, gin.H{
-		"evento":      paraEventoResposta(evento),
-		"local":       localResposta,
-		"organizador": organizadorResposta,
-		"ingressos":   tiposResposta,
+		"evento":                   paraEventoResposta(evento),
+		"local":                    localResposta,
+		"organizador":              organizadorResposta,
+		"ingressos":                tiposResposta,
+		"taxa_plataforma_centavos": taxaPlataforma,
+		"garantia_centavos":        garantiaCentavos,
 	})
 }
 

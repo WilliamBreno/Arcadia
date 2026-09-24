@@ -57,6 +57,8 @@ export type EventoDetalhe = {
     quantidade: number
     ativo: boolean
   }[]
+  taxa_plataforma_centavos: number
+  garantia_centavos: number
 }
 
 export type OrganizadorDetalhe = {

@@ -34,11 +34,13 @@ var (
 	ErrPedidoNaoDisponivelParaPagamento = errors.New("pedido não está aguardando pagamento")
 	ErrReservaExpirada                  = errors.New("reserva expirada")
 	ErrMercadoPagoNaoConfigurado        = errors.New("Mercado Pago não configurado")
+	ErrGarantiaNaoDisponivel            = errors.New("este evento não oferece garantia de vaga")
 )
 
 type ItemRequisitado struct {
-	TipoIngressoID int64
-	Quantidade     int
+	TipoIngressoID     int64
+	Quantidade         int
+	GarantiaContratada bool
 }
 
 type CheckoutService struct {
@@ -101,8 +103,7 @@ func (s *CheckoutService) gerarQRToken(codigo string) string {
 // calcularTotalItem é a fórmula da seção 7.1:
 // total_item = preco_organizador + taxa_plataforma + garantia (se contratada).
 // Função pura (sem I/O) para poder testar o cálculo isolado do resto do
-// fluxo de reserva — garantia ainda não é oferecida no checkout (item
-// 2.1), mas a fórmula já contempla o termo para quando entrar.
+// fluxo de reserva.
 func calcularTotalItem(precoCentavos, taxaPlataformaCentavos, garantiaCentavos int64, garantiaContratada bool) int64 {
 	total := precoCentavos + taxaPlataformaCentavos
 	if garantiaContratada {
@@ -146,6 +147,15 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 	reservaMinutos, err := s.config.BuscarInt64(domain.ChaveReservaMinutos)
 	if err != nil {
 		return nil, nil, fmt.Errorf("config de reserva ausente: %w", err)
+	}
+	garantiaCentavos, err := s.config.BuscarInt64(domain.ChaveGarantiaCentavos)
+	if err != nil {
+		return nil, nil, fmt.Errorf("config de garantia ausente: %w", err)
+	}
+	for _, ir := range itensReq {
+		if ir.GarantiaContratada && !evento.GarantiaHabilitada {
+			return nil, nil, ErrGarantiaNaoDisponivel
+		}
 	}
 
 	var pedido *domain.Pedido
@@ -194,6 +204,11 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 				return fmt.Errorf("%w: %s (restam %d)", ErrEstoqueInsuficiente, tipo.Nome, disponivel)
 			}
 
+			itemGarantiaCentavos := int64(0)
+			if ir.GarantiaContratada {
+				itemGarantiaCentavos = garantiaCentavos
+			}
+
 			for i := 0; i < ir.Quantidade; i++ {
 				codigo, err := gerarCodigoItem()
 				if err != nil {
@@ -206,7 +221,9 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 					TitularEmail:           compradorEmail,
 					PrecoCentavos:          tipo.PrecoCentavos,
 					TaxaPlataformaCentavos: taxaPlataforma,
-					TotalCentavos:          calcularTotalItem(tipo.PrecoCentavos, taxaPlataforma, 0, false),
+					GarantiaContratada:     ir.GarantiaContratada,
+					GarantiaCentavos:       itemGarantiaCentavos,
+					TotalCentavos:          calcularTotalItem(tipo.PrecoCentavos, taxaPlataforma, itemGarantiaCentavos, ir.GarantiaContratada),
 					Status:                 domain.StatusItemReservado,
 					Codigo:                 codigo,
 					QRToken:                s.gerarQRToken(codigo),
@@ -399,6 +416,12 @@ func (s *CheckoutService) aprovarPedido(pedido *domain.Pedido) error {
 				EventoID: &evento.ID, OrganizadorID: &evento.OrganizadorID, PedidoID: &pedido.ID, ItemID: &item.ID, CriadoEm: agora,
 			},
 		)
+		if item.GarantiaContratada && item.GarantiaCentavos > 0 {
+			lancamentos = append(lancamentos, domain.Lancamento{
+				Tipo: domain.LancamentoGarantia, ValorCentavos: item.GarantiaCentavos, Sinal: "+",
+				EventoID: &evento.ID, OrganizadorID: &evento.OrganizadorID, PedidoID: &pedido.ID, ItemID: &item.ID, CriadoEm: agora,
+			})
+		}
 	}
 	if err := s.lancamentos.CriarEmLote(lancamentos); err != nil {
 		return err

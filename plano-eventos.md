@@ -346,7 +346,7 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - [x] 1.12 **Fechar a fase:** commit, push e `git tag fase-1` + `git push --tags`
 
 ### Fase 2 — Diferencial e dinheiro
-- [ ] 2.1 **Garantia de vaga** (opt-in, cancelamento até o início do evento, estoque devolvido)
+- [x] 2.1 **Garantia de vaga** (opt-in, cancelamento até o início do evento, estoque devolvido)
 - [ ] 2.2 Painel financeiro do organizador (bruto, taxa do processador, líquido) + **repasses** (job, painel admin, marcar como pago, extrato)
 - [ ] 2.3 Relatórios admin (receita da plataforma, reembolsos, falhas) e reprocessamento de reembolsos
 - [ ] 2.4 Cupons de desconto e lotes com virada automática por data ou quantidade
@@ -456,6 +456,9 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - **Item 1.11 — "vendas" é receita bruta simples (soma de `preco_centavos`), sem taxa do processador nem repasse.** O painel financeiro completo (bruto/taxa/líquido/repasses) é o item 2.2 da Fase 2 — aqui é só "quanto vendeu e pra quem", contagem e receita por tipo de ingresso + lista de compradores (pago/utilizado). Não expõe `qr_token` na lista (mesmo cuidado do item 1.10: só o dono/staff do evento vê, mas não precisa do token pra nada aqui).
 - **Item 1.11 — "participantes" do painel básico reaproveita o que já existia desde o item 1.6** (`ParticipantesCard`, aprovação/rejeição de fichas) — não foi preciso criar nada novo pra essa parte, só os e-mails transacionais que faltavam.
 - **Item 1.11 — e-mails transacionais que faltavam: aprovação/rejeição de ficha de participante/jurado** (seção 7.12 pede "e-mail ao participante em cada mudança de status", mas isso nunca tinha sido implementado desde o item 1.5). `FichaService` ganhou `usuarios *repository.UsuarioRepository` e `mailCliente *mail.Cliente`; `Aprovar`/`Rejeitar` disparam e-mail best-effort (erro de envio não desfaz a aprovação/rejeição, mesmo padrão dos outros e-mails do sistema). Os demais e-mails transacionais (verificação de cadastro, redefinição de senha, ingresso confirmado, cancelamento confirmado) já existiam desde os itens 1.1/1.7/1.8.
+- **Item 2.1 — garantia é escolhida por requisição de tipo de ingresso (checkbox único na tela do evento aplica a todos os itens do pedido).** O plano diz "por item", e o backend guarda `garantia_contratada` por item, mas a UI não permite misturar garantia/sem garantia dentro do mesmo pedido; quem quiser isso faz dois pedidos. `ItemRequisitado.GarantiaContratada` já aceita valores distintos por tipo de ingresso na API.
+- **Item 2.1 — valor da garantia e da taxa vêm de `config_plataforma` e são expostos em `GET /eventos/:slug`** (`garantia_centavos`, `taxa_plataforma_centavos`) só para exibição; o total cobrado é sempre recalculado no servidor. Pedir garantia em evento com `garantia_habilitada=false` retorna 422.
+- **Item 2.1 — a parte de cancelamento/estoque já estava pronta desde o 1.8** (`avaliar()` trata garantia, reembolso total e ledger; item `cancelado` sai da contagem de estoque). Verificado: R$ 30,00 + 0,99 + 1,99 = R$ 32,98, lançamentos `venda_preco`/`taxa_plataforma`/`garantia` gravados na aprovação e simulação de cancelamento devolvendo R$ 32,98. O estorno real no Mercado Pago não foi executado (sem pagamento real).
 
 **Pendências para validar fora do código:**
 - Contador/advogado: custódia de recursos de terceiros, nome "Garantia de vaga" (vs. "seguro"), retenção ou não da taxa no arrependimento, regras regionais por UF (incluindo Sergipe), emissão de nota fiscal e tributação da taxa/garantia.

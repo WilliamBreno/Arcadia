@@ -16,6 +16,7 @@ export default function EventoDetalhe() {
   const location = useLocation()
   const navigate = useNavigate()
   const [quantidades, setQuantidades] = useState<Record<number, number>>({})
+  const [garantia, setGarantia] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [comprando, setComprando] = useState(false)
 
@@ -32,8 +33,12 @@ export default function EventoDetalhe() {
 
   const { evento, local, organizador, ingressos } = data
 
-  const totalSelecionado = ingressos.reduce((soma, i) => soma + (quantidades[i.id] ?? 0) * i.preco_centavos, 0)
   const totalUnidades = Object.values(quantidades).reduce((a, b) => a + b, 0)
+  const totalSelecionado = ingressos.reduce((soma, i) => {
+    const qtd = quantidades[i.id] ?? 0
+    const porUnidade = i.preco_centavos + data.taxa_plataforma_centavos + (garantia ? data.garantia_centavos : 0)
+    return soma + qtd * porUnidade
+  }, 0)
 
   const comprar = async () => {
     if (!usuario) {
@@ -45,7 +50,11 @@ export default function EventoDetalhe() {
     try {
       const itens = Object.entries(quantidades)
         .filter(([, qtd]) => qtd > 0)
-        .map(([tipoIngressoId, quantidade]) => ({ tipo_ingresso_id: Number(tipoIngressoId), quantidade }))
+        .map(([tipoIngressoId, quantidade]) => ({
+          tipo_ingresso_id: Number(tipoIngressoId),
+          quantidade,
+          garantia_contratada: garantia,
+        }))
 
       const pedido = await api<Pedido>(`/eventos/${slug}/pedidos`, { method: 'POST', body: { itens } })
       navigate(`/pedidos/${pedido.id}`)
@@ -127,14 +136,33 @@ export default function EventoDetalhe() {
         </div>
 
         {totalUnidades > 0 && (
-          <div className="mt-4 flex items-center justify-between rounded-lg border border-border p-4">
-            <div>
-              <p className="text-sm text-muted-foreground">{totalUnidades} item(ns) — preço final calculado no próximo passo</p>
-              <p className="font-medium text-foreground">A partir de {formatarCentavos(totalSelecionado)}</p>
+          <div className="mt-4 flex flex-col gap-3 rounded-lg border border-border p-4">
+            {evento.garantia_habilitada && (
+              <label className="flex items-start gap-2 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={garantia}
+                  onChange={(e) => setGarantia(e.target.checked)}
+                />
+                <span>
+                  Quero <strong>garantia de vaga</strong> (+{formatarCentavos(data.garantia_centavos)} por item) — cancele a
+                  qualquer momento até o início do evento e receba tudo de volta.
+                </span>
+              </label>
+            )}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  {totalUnidades} item(ns) · preço + {formatarCentavos(data.taxa_plataforma_centavos)} de taxa
+                  {garantia && ` + ${formatarCentavos(data.garantia_centavos)} de garantia`}
+                </p>
+                <p className="font-medium text-foreground">Total: {formatarCentavos(totalSelecionado)}</p>
+              </div>
+              <Button onClick={comprar} disabled={comprando}>
+                {comprando ? 'Processando…' : 'Continuar'}
+              </Button>
             </div>
-            <Button onClick={comprar} disabled={comprando}>
-              {comprando ? 'Processando…' : 'Continuar'}
-            </Button>
           </div>
         )}
         {erro && <p className="mt-2 text-sm text-destructive">{erro}</p>}

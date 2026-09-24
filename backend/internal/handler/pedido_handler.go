@@ -24,23 +24,26 @@ func NovoPedidoHandler(eventos *repository.EventoRepository, usuarios *repositor
 }
 
 type itemPedidoResposta struct {
-	ID             int64      `json:"id"`
-	TipoIngressoID int64      `json:"tipo_ingresso_id"`
-	TitularNome    string     `json:"titular_nome"`
-	TitularEmail   string     `json:"titular_email"`
-	PrecoCentavos  int64      `json:"preco_centavos"`
-	TaxaCentavos   int64      `json:"taxa_plataforma_centavos"`
-	TotalCentavos  int64      `json:"total_centavos"`
-	Status         string     `json:"status"`
-	Codigo         string     `json:"codigo"`
-	QRToken        string     `json:"qr_token,omitempty"`
-	UtilizadoEm    *time.Time `json:"utilizado_em"`
+	ID                 int64      `json:"id"`
+	TipoIngressoID     int64      `json:"tipo_ingresso_id"`
+	TitularNome        string     `json:"titular_nome"`
+	TitularEmail       string     `json:"titular_email"`
+	PrecoCentavos      int64      `json:"preco_centavos"`
+	TaxaCentavos       int64      `json:"taxa_plataforma_centavos"`
+	GarantiaContratada bool       `json:"garantia_contratada"`
+	GarantiaCentavos   int64      `json:"garantia_centavos"`
+	TotalCentavos      int64      `json:"total_centavos"`
+	Status             string     `json:"status"`
+	Codigo             string     `json:"codigo"`
+	QRToken            string     `json:"qr_token,omitempty"`
+	UtilizadoEm        *time.Time `json:"utilizado_em"`
 }
 
 func paraItemPedidoResposta(i *domain.ItemPedido) itemPedidoResposta {
 	return itemPedidoResposta{
 		ID: i.ID, TipoIngressoID: i.TipoIngressoID, TitularNome: i.TitularNome, TitularEmail: i.TitularEmail,
-		PrecoCentavos: i.PrecoCentavos, TaxaCentavos: i.TaxaPlataformaCentavos, TotalCentavos: i.TotalCentavos,
+		PrecoCentavos: i.PrecoCentavos, TaxaCentavos: i.TaxaPlataformaCentavos,
+		GarantiaContratada: i.GarantiaContratada, GarantiaCentavos: i.GarantiaCentavos, TotalCentavos: i.TotalCentavos,
 		Status: string(i.Status), Codigo: i.Codigo, QRToken: i.QRToken, UtilizadoEm: i.UtilizadoEm,
 	}
 }
@@ -66,8 +69,9 @@ func paraPedidoResposta(p *domain.Pedido, itens []domain.ItemPedido) pedidoRespo
 }
 
 type itemRequest struct {
-	TipoIngressoID int64 `json:"tipo_ingresso_id" binding:"required"`
-	Quantidade     int   `json:"quantidade" binding:"required,gt=0"`
+	TipoIngressoID     int64 `json:"tipo_ingresso_id" binding:"required"`
+	Quantidade         int   `json:"quantidade" binding:"required,gt=0"`
+	GarantiaContratada bool  `json:"garantia_contratada"`
 }
 
 type criarPedidoRequest struct {
@@ -97,7 +101,9 @@ func (h *PedidoHandler) Criar(c *gin.Context) {
 
 	itensReq := make([]service.ItemRequisitado, len(req.Itens))
 	for i, ir := range req.Itens {
-		itensReq[i] = service.ItemRequisitado{TipoIngressoID: ir.TipoIngressoID, Quantidade: ir.Quantidade}
+		itensReq[i] = service.ItemRequisitado{
+			TipoIngressoID: ir.TipoIngressoID, Quantidade: ir.Quantidade, GarantiaContratada: ir.GarantiaContratada,
+		}
 	}
 
 	pedido, itens, err := h.service.Reservar(usuarioID, evento.ID, itensReq, comprador.Nome, comprador.Email)

@@ -5,6 +5,8 @@ export type ItemPedido = {
   titular_email: string
   preco_centavos: number
   taxa_plataforma_centavos: number
+  garantia_contratada: boolean
+  garantia_centavos: number
   total_centavos: number
   status: 'reservado' | 'pago' | 'utilizado' | 'cancelado' | 'reembolsado' | 'expirado'
   codigo: string
