@@ -37,6 +37,9 @@ func (s *CancelamentoService) ReprocessarReembolso(reembolsoID, adminID int64) e
 	ctx := &contextoCancelamento{item: item, pedido: pedido, evento: evento, pagamento: pagamento}
 	decisao := DecisaoCancelamento{Pode: true, Motivo: reembolso.Motivo, Tipo: reembolso.Tipo, ValorReembolsoCentavos: reembolso.ValorCentavos}
 	_, err = s.executarReembolso(ctx, decisao, adminID, reembolso)
+	if err == nil && s.promotor != nil {
+		s.promotor.PromoverListaEspera(evento.ID)
+	}
 	return err
 }
 

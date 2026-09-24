@@ -39,6 +39,7 @@ type CancelamentoService struct {
 	mp             *mercadopago.Cliente
 	mailCliente    *mail.Cliente
 	nomePlataforma string
+	promotor       PromotorListaEspera
 }
 
 func NovoCancelamentoService(
@@ -192,8 +193,15 @@ func (s *CancelamentoService) Cancelar(itemID, usuarioID int64) (*domain.ItemPed
 		return nil, fmt.Errorf("%w: %s", ErrCancelamentoNaoPermitido, decisao.Motivo)
 	}
 
-	return s.executarReembolso(ctx, decisao, usuarioID, nil)
+	itemCancelado, err := s.executarReembolso(ctx, decisao, usuarioID, nil)
+	if err == nil && s.promotor != nil {
+		s.promotor.PromoverListaEspera(ctx.evento.ID)
+	}
+	return itemCancelado, err
 }
+
+// DefinirPromotor liga a promoção da lista de espera (item 3.2).
+func (s *CancelamentoService) DefinirPromotor(p PromotorListaEspera) { s.promotor = p }
 
 // executarReembolso é compartilhado entre o cancelamento pelo comprador
 // (Cancelar) e pelo organizador (CancelarEvento) — sempre solicita o

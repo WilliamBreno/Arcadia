@@ -16,6 +16,7 @@ export type Evento = {
   modo_participantes: 'nenhum' | 'convite' | 'inscricao_aberta' | 'ambos'
   capacidade_total: number | null
   garantia_habilitada: boolean
+  aprovacao_manual: boolean
   politica_cancelamento_texto: string
   max_itens_por_pedido: number
   publicado_em: string | null

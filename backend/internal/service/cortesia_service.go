@@ -31,6 +31,7 @@ type CortesiaService struct {
 	qrSecret    string
 	frontendURL string
 	plataforma  string
+	promotor    PromotorListaEspera
 }
 
 func NovoCortesiaService(
@@ -132,5 +133,11 @@ func (s *CortesiaService) Revogar(organizadorID, eventoID, itemID int64) error {
 	if !ok {
 		return ErrCortesiaNaoRevogavel
 	}
+	if s.promotor != nil {
+		s.promotor.PromoverListaEspera(eventoID)
+	}
 	return nil
 }
+
+// DefinirPromotor liga a promoção da lista de espera (item 3.2).
+func (s *CortesiaService) DefinirPromotor(p PromotorListaEspera) { s.promotor = p }

@@ -12,6 +12,7 @@ import { adicionarStaff, listarStaff, removerStaff, type Staff } from '@/lib/che
 import { formatarCentavos, type Evento, type TipoIngresso } from '@/lib/evento'
 import type { Local } from '@/lib/organizador'
 import { CortesiasCard } from '@/components/cortesias-card'
+import { SolicitacoesCard } from '@/components/solicitacoes-card'
 import { CuponsCard } from '@/components/cupons-card'
 import { obterFinanceiroEvento } from '@/lib/financeiro'
 import { obterVendas } from '@/lib/vendas'
@@ -44,6 +45,7 @@ const schemaBasico = z.object({
   local_id: z.string(),
   inicio_em: z.string(),
   fim_em: z.string(),
+  aprovacao_manual: z.boolean(),
 })
 
 type FormBasico = z.infer<typeof schemaBasico>
@@ -208,6 +210,11 @@ export default function EventoEditar() {
               </div>
             </div>
 
+            <label className="flex items-center gap-2 text-sm text-foreground">
+              <input type="checkbox" {...register('aprovacao_manual')} />
+              Aprovação manual da plateia (o público solicita e você aprova antes de poder comprar; sem vaga vira lista de espera)
+            </label>
+
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="modo_participantes">Participantes (concurso)</Label>
               <select
@@ -241,6 +248,8 @@ export default function EventoEditar() {
       <CortesiasCard eventoId={Number(id)} tipos={tiposIngresso ?? []} />
 
       <ConvitesCard eventoId={Number(id)} />
+
+      {evento.aprovacao_manual && <SolicitacoesCard eventoId={Number(id)} />}
 
       <ParticipantesCard eventoId={Number(id)} />
 

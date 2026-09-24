@@ -55,7 +55,8 @@ type EventoDados struct {
 	InscricaoTalentosInicio   *time.Time
 	InscricaoTalentosFim      *time.Time
 	CapacidadeTotal           *int
-	GarantiaHabilitada        bool
+	GarantiaHabilitada        *bool // nil = padrão (true) ao criar, manter ao atualizar
+	AprovacaoManual           *bool // nil = padrão (false) ao criar, manter ao atualizar
 	PoliticaCancelamentoTexto string
 	MaxItensPorPedido         int
 }
@@ -85,7 +86,8 @@ func (s *EventoService) Criar(organizadorID int64, dados EventoDados) (*domain.E
 		InscricaoTalentosInicio:   dados.InscricaoTalentosInicio,
 		InscricaoTalentosFim:      dados.InscricaoTalentosFim,
 		CapacidadeTotal:           dados.CapacidadeTotal,
-		GarantiaHabilitada:        dados.GarantiaHabilitada,
+		GarantiaHabilitada:        boolOuPadrao(dados.GarantiaHabilitada, true),
+		AprovacaoManual:           boolOuPadrao(dados.AprovacaoManual, false),
 		PoliticaCancelamentoTexto: dados.PoliticaCancelamentoTexto,
 		MaxItensPorPedido:         valorIntOuPadrao(dados.MaxItensPorPedido, 10),
 		CriadoEm:                  time.Now(),
@@ -117,7 +119,8 @@ func (s *EventoService) Atualizar(organizadorID, eventoID int64, dados EventoDad
 	evento.InscricaoTalentosInicio = dados.InscricaoTalentosInicio
 	evento.InscricaoTalentosFim = dados.InscricaoTalentosFim
 	evento.CapacidadeTotal = dados.CapacidadeTotal
-	evento.GarantiaHabilitada = dados.GarantiaHabilitada
+	evento.GarantiaHabilitada = boolOuPadrao(dados.GarantiaHabilitada, evento.GarantiaHabilitada)
+	evento.AprovacaoManual = boolOuPadrao(dados.AprovacaoManual, evento.AprovacaoManual)
 	evento.PoliticaCancelamentoTexto = dados.PoliticaCancelamentoTexto
 	evento.MaxItensPorPedido = valorIntOuPadrao(dados.MaxItensPorPedido, 10)
 
@@ -327,4 +330,11 @@ func valorOuPadraoModoParticipantes(v domain.ModoParticipantes) domain.ModoParti
 		return domain.ModoParticipantesNenhum
 	}
 	return v
+}
+
+func boolOuPadrao(v *bool, padrao bool) bool {
+	if v == nil {
+		return padrao
+	}
+	return *v
 }

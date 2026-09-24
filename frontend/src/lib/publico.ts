@@ -28,6 +28,7 @@ export type EventoDetalhe = {
     fim_em: string | null
     classificacao_etaria: string
     garantia_habilitada: boolean
+    aprovacao_manual: boolean
     politica_cancelamento_texto: string
     modo_participantes: 'nenhum' | 'convite' | 'inscricao_aberta' | 'ambos'
   }

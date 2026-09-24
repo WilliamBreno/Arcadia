@@ -60,6 +60,7 @@ type Evento struct {
 	InscricaoTalentosFim      *time.Time
 	CapacidadeTotal           *int
 	GarantiaHabilitada        bool
+	AprovacaoManual           bool
 	PoliticaCancelamentoTexto string
 	MaxItensPorPedido         int
 	PublicadoEm               *time.Time

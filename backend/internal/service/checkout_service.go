@@ -54,6 +54,7 @@ type CheckoutService struct {
 	config         *repository.ConfigPlataformaRepository
 	cupons         *repository.CupomRepository
 	tipos          *repository.TipoIngressoRepository
+	plateia        *PlateiaService
 	mp             *mercadopago.Cliente
 	mailCliente    *mail.Cliente
 	qrSecret       string
@@ -132,6 +133,9 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 	}
 	if evento.Status != domain.StatusEventoPublicado {
 		return nil, nil, ErrEventoNaoDisponivelParaCompra
+	}
+	if s.plateia != nil && !s.plateia.PodeComprar(evento, usuarioID) {
+		return nil, nil, ErrPrecisaAprovacao
 	}
 
 	totalUnidades := 0
@@ -519,6 +523,7 @@ func (s *CheckoutService) ExpirarReservas() (int, error) {
 	}
 
 	total := 0
+	eventosLiberados := map[int64]bool{}
 	for i := range pedidosExpirados {
 		pedido := &pedidosExpirados[i]
 		itens, err := s.itensPedido.ListarPorPedido(pedido.ID)
@@ -543,7 +548,16 @@ func (s *CheckoutService) ExpirarReservas() (int, error) {
 		if err := s.pedidos.Salvar(pedido); err != nil {
 			return total, err
 		}
+		eventosLiberados[pedido.EventoID] = true
 		total++
+	}
+	if s.plateia != nil {
+		for eventoID := range eventosLiberados {
+			s.plateia.PromoverListaEspera(eventoID)
+		}
 	}
 	return total, nil
 }
+
+// DefinirPlateia liga a exigência de aprovação e a promoção da lista de espera (item 3.2).
+func (s *CheckoutService) DefinirPlateia(p *PlateiaService) { s.plateia = p }

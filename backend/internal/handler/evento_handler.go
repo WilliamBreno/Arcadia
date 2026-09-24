@@ -41,6 +41,7 @@ type eventoResposta struct {
 	InscricaoTalentosFim      *time.Time `json:"inscricao_talentos_fim"`
 	CapacidadeTotal           *int       `json:"capacidade_total"`
 	GarantiaHabilitada        bool       `json:"garantia_habilitada"`
+	AprovacaoManual           bool       `json:"aprovacao_manual"`
 	PoliticaCancelamentoTexto string     `json:"politica_cancelamento_texto"`
 	MaxItensPorPedido         int        `json:"max_itens_por_pedido"`
 	PublicadoEm               *time.Time `json:"publicado_em"`
@@ -67,6 +68,7 @@ func paraEventoResposta(e *domain.Evento) eventoResposta {
 		InscricaoTalentosFim:      e.InscricaoTalentosFim,
 		CapacidadeTotal:           e.CapacidadeTotal,
 		GarantiaHabilitada:        e.GarantiaHabilitada,
+		AprovacaoManual:           e.AprovacaoManual,
 		PoliticaCancelamentoTexto: e.PoliticaCancelamentoTexto,
 		MaxItensPorPedido:         e.MaxItensPorPedido,
 		PublicadoEm:               e.PublicadoEm,
@@ -90,15 +92,12 @@ type eventoRequest struct {
 	InscricaoTalentosFim      *time.Time `json:"inscricao_talentos_fim"`
 	CapacidadeTotal           *int       `json:"capacidade_total"`
 	GarantiaHabilitada        *bool      `json:"garantia_habilitada"`
+	AprovacaoManual           *bool      `json:"aprovacao_manual"`
 	PoliticaCancelamentoTexto string     `json:"politica_cancelamento_texto"`
 	MaxItensPorPedido         int        `json:"max_itens_por_pedido"`
 }
 
 func (req eventoRequest) paraDados() service.EventoDados {
-	garantia := true
-	if req.GarantiaHabilitada != nil {
-		garantia = *req.GarantiaHabilitada
-	}
 	return service.EventoDados{
 		Titulo:                    req.Titulo,
 		LocalID:                   req.LocalID,
@@ -115,7 +114,8 @@ func (req eventoRequest) paraDados() service.EventoDados {
 		InscricaoTalentosInicio:   req.InscricaoTalentosInicio,
 		InscricaoTalentosFim:      req.InscricaoTalentosFim,
 		CapacidadeTotal:           req.CapacidadeTotal,
-		GarantiaHabilitada:        garantia,
+		GarantiaHabilitada:        req.GarantiaHabilitada,
+		AprovacaoManual:           req.AprovacaoManual,
 		PoliticaCancelamentoTexto: req.PoliticaCancelamentoTexto,
 		MaxItensPorPedido:         req.MaxItensPorPedido,
 	}

@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 
@@ -23,9 +23,22 @@ export default function EventoDetalhe() {
   const [erro, setErro] = useState<string | null>(null)
   const [comprando, setComprando] = useState(false)
 
+  const queryClient = useQueryClient()
   const { data, isLoading, error } = useQuery({
     queryKey: ['evento-publico', slug],
     queryFn: () => api<EventoDetalheTipo>(`/eventos/${slug}`),
+  })
+  const { data: solicitacao } = useQuery({
+    queryKey: ['minha-solicitacao', slug],
+    enabled: !!usuario && !!data?.evento.aprovacao_manual,
+    queryFn: async () => {
+      try {
+        return await api<{ status: 'pendente' | 'aprovada' | 'rejeitada' | 'lista_espera' }>(`/eventos/${slug}/solicitacao`)
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 404) return null
+        throw e
+      }
+    },
   })
 
   if (isLoading) return <p className="p-8 text-center text-muted-foreground">Carregando…</p>
@@ -35,6 +48,22 @@ export default function EventoDetalhe() {
   if (!data) return null
 
   const { evento, local, organizador, ingressos } = data
+
+  const precisaAprovacao = evento.aprovacao_manual && solicitacao?.status !== 'aprovada'
+
+  const solicitar = async () => {
+    if (!usuario) {
+      navigate('/login', { state: { de: location.pathname } })
+      return
+    }
+    setErro(null)
+    try {
+      await api(`/eventos/${slug}/solicitacao`, { method: 'POST' })
+      queryClient.invalidateQueries({ queryKey: ['minha-solicitacao', slug] })
+    } catch (e) {
+      setErro(e instanceof ApiError ? e.message : 'Erro ao solicitar')
+    }
+  }
 
   const totalUnidades = Object.values(quantidades).reduce((a, b) => a + b, 0)
   const totalSelecionado = ingressos.reduce((soma, i) => {
@@ -121,6 +150,24 @@ export default function EventoDetalhe() {
 
       <section className="mt-8">
         <h2 className="mb-3 text-xl font-semibold text-foreground">Ingressos</h2>
+        {precisaAprovacao && (
+          <div className="mb-3 rounded-lg border border-border p-4 text-sm">
+            <p className="font-medium text-foreground">Este evento tem aprovação manual</p>
+            {!solicitacao && (
+              <>
+                <p className="mt-1 text-muted-foreground">Solicite sua participação; depois da aprovação do organizador você poderá comprar.</p>
+                <Button className="mt-3" size="sm" onClick={solicitar}>
+                  Solicitar participação
+                </Button>
+              </>
+            )}
+            {solicitacao?.status === 'pendente' && <p className="mt-1 text-muted-foreground">Solicitação enviada — aguardando o organizador.</p>}
+            {solicitacao?.status === 'lista_espera' && (
+              <p className="mt-1 text-muted-foreground">Você foi aprovado, mas as vagas acabaram. Está na lista de espera e será avisado por e-mail se abrir uma vaga.</p>
+            )}
+            {solicitacao?.status === 'rejeitada' && <p className="mt-1 text-destructive">Sua solicitação não foi aprovada.</p>}
+          </div>
+        )}
         <div className="flex flex-col gap-3">
           {ingressos.length === 0 && <p className="text-sm text-muted-foreground">Nenhum ingresso disponível no momento.</p>}
           {ingressos.map((i) => (
@@ -139,7 +186,7 @@ export default function EventoDetalhe() {
                     <span className="text-xs font-normal text-muted-foreground"> + taxa</span>
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className={`flex items-center gap-2 ${precisaAprovacao ? 'hidden' : ''}`}>
                   <Button
                     variant="outline"
                     size="icon-sm"
