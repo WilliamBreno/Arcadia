@@ -1,7 +1,7 @@
 {
   "rewrites": [
     { "source": "/api/:path*", "destination": "https://arcadia-production-d5a5.up.railway.app/api/:path*" },
-    { "source": "/((?!api/|assets/|sw\.js).*)", "destination": "/index.html" }
+    { "source": "/((?!api/|assets/|sw\\.js).*)", "destination": "/index.html" }
   ],
   "headers": [
     {
