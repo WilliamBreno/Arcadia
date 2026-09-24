@@ -19,6 +19,7 @@ type PublicoHandler struct {
 	organizadores *repository.OrganizadorRepository
 	config        *repository.ConfigPlataformaRepository
 	itensPedido   *repository.ItemPedidoRepository
+	cronograma    *repository.CronogramaRepository
 }
 
 func NovoPublicoHandler(
@@ -28,8 +29,9 @@ func NovoPublicoHandler(
 	organizadores *repository.OrganizadorRepository,
 	config *repository.ConfigPlataformaRepository,
 	itensPedido *repository.ItemPedidoRepository,
+	cronograma *repository.CronogramaRepository,
 ) *PublicoHandler {
-	return &PublicoHandler{eventos: eventos, tiposIngresso: tiposIngresso, locais: locais, organizadores: organizadores, config: config, itensPedido: itensPedido}
+	return &PublicoHandler{cronograma: cronograma, eventos: eventos, tiposIngresso: tiposIngresso, locais: locais, organizadores: organizadores, config: config, itensPedido: itensPedido}
 }
 
 type eventoPublicoItem struct {
@@ -236,7 +238,14 @@ func (h *PublicoHandler) ObterEvento(c *gin.Context) {
 	taxaPlataforma, _ := h.config.BuscarInt64(chaveTaxa)
 	garantiaCentavos, _ := h.config.BuscarInt64(domain.ChaveGarantiaCentavos)
 
+	itensCronograma, _ := h.cronograma.ListarPorEvento(evento.ID)
+	cronogramaResp := make([]cronogramaResposta, 0, len(itensCronograma))
+	for i := range itensCronograma {
+		cronogramaResp = append(cronogramaResp, paraCronogramaResposta(&itensCronograma[i]))
+	}
+
 	c.JSON(http.StatusOK, gin.H{
+		"cronograma":               cronogramaResp,
 		"evento":                   paraEventoResposta(evento),
 		"local":                    localResposta,
 		"organizador":              organizadorResposta,

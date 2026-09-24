@@ -12,6 +12,7 @@ import { adicionarStaff, listarStaff, removerStaff, type Staff } from '@/lib/che
 import { formatarCentavos, type Evento, type TipoIngresso } from '@/lib/evento'
 import type { Local } from '@/lib/organizador'
 import { CortesiasCard } from '@/components/cortesias-card'
+import { CronogramaCard, OrdemApresentacaoCard } from '@/components/cronograma-cards'
 import { CriteriosCard, RankingCard } from '@/components/resultado-cards'
 import { SolicitacoesCard } from '@/components/solicitacoes-card'
 import { CuponsCard } from '@/components/cupons-card'
@@ -260,6 +261,10 @@ export default function EventoEditar() {
           <RankingCard eventoId={Number(id)} />
         </>
       )}
+
+      <CronogramaCard eventoId={Number(id)} />
+
+      {evento.modo_participantes !== 'nenhum' && <OrdemApresentacaoCard eventoId={Number(id)} />}
 
       <StaffCard eventoId={Number(id)} />
 

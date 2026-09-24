@@ -102,6 +102,15 @@ func (h *UploadHandler) salvarAudio(c *gin.Context, arquivo io.Reader, tamanho i
 		return
 	}
 
+	// Content-Type é declarado pelo cliente; confere a assinatura do arquivo.
+	cabeca := make([]byte, 12)
+	n, _ := io.ReadFull(arquivo, cabeca)
+	if !assinaturaDeAudio(cabeca[:n], contentType) {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "o arquivo não parece ser um áudio válido"})
+		return
+	}
+	arquivo = io.MultiReader(bytes.NewReader(cabeca[:n]), arquivo)
+
 	extensao := map[string]string{"audio/mpeg": ".mp3", "audio/wav": ".wav", "audio/mp4": ".m4a"}[contentType]
 	nome, err := nomeAleatorio(extensao)
 	if err != nil {
@@ -116,4 +125,17 @@ func (h *UploadHandler) salvarAudio(c *gin.Context, arquivo io.Reader, tamanho i
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"url": url})
+}
+
+// assinaturaDeAudio confere os primeiros bytes contra o formato declarado.
+func assinaturaDeAudio(cabeca []byte, contentType string) bool {
+	switch contentType {
+	case "audio/mpeg":
+		return bytes.HasPrefix(cabeca, []byte("ID3")) || (len(cabeca) >= 2 && cabeca[0] == 0xFF && cabeca[1]&0xE0 == 0xE0)
+	case "audio/wav":
+		return len(cabeca) >= 12 && string(cabeca[0:4]) == "RIFF" && string(cabeca[8:12]) == "WAVE"
+	case "audio/mp4":
+		return len(cabeca) >= 8 && string(cabeca[4:8]) == "ftyp"
+	}
+	return false
 }

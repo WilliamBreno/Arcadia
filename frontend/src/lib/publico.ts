@@ -61,6 +61,7 @@ export type EventoDetalhe = {
   }[]
   taxa_plataforma_centavos: number
   garantia_centavos: number
+  cronograma: { id: number; titulo: string; descricao: string; local: string; inicio_em: string; fim_em: string | null }[]
 }
 
 export type OrganizadorDetalhe = {

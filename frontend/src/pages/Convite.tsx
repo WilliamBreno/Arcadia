@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import { api, ApiError } from '@/lib/api'
+import { UploadAudio } from '@/components/upload-audio'
 import { UploadImagem } from '@/components/upload-imagem'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -214,6 +215,12 @@ function FormularioFicha({
                   onEnviado={(url) => setDados({ ...dados, foto_referencia: url })}
                 />
               )}
+              <UploadAudio
+                id="audio"
+                rotulo="Áudio/música da apresentação (opcional)"
+                valor={dados.audio ?? ''}
+                onEnviado={(url) => setDados({ ...dados, audio: url })}
+              />
             </>
           )}
 

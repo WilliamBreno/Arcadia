@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import { api, ApiError } from '@/lib/api'
+import { UploadAudio } from '@/components/upload-audio'
 import { UploadImagem } from '@/components/upload-imagem'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -159,6 +160,15 @@ export default function Inscricao() {
               rotulo="Foto de referência (material oficial, obrigatória)"
               valor={dados.foto_referencia ?? ''}
               onEnviado={(url) => setDados({ ...dados, foto_referencia: url })}
+            />
+          )}
+
+          {tipoApresentacao && (
+            <UploadAudio
+              id="audio"
+              rotulo="Áudio/música da apresentação (opcional)"
+              valor={dados.audio ?? ''}
+              onEnviado={(url) => setDados({ ...dados, audio: url })}
             />
           )}
 

@@ -61,3 +61,23 @@ func (r *FichaParticipacaoRepository) ListarPorEventoEPapel(eventoID int64, pape
 	err := query.Order("ordem_apresentacao, criado_em").Find(&fichas).Error
 	return fichas, err
 }
+
+// DefinirOrdemApresentacao zera a ordem dos participantes do evento e grava
+// 1..n na sequência recebida, tudo numa transação.
+func (r *FichaParticipacaoRepository) DefinirOrdemApresentacao(eventoID int64, fichaIDs []int64) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&domain.FichaParticipacao{}).
+			Where("evento_id = ? AND papel = ?", eventoID, domain.PapelParticipante).
+			Update("ordem_apresentacao", nil).Error; err != nil {
+			return err
+		}
+		for i, id := range fichaIDs {
+			if err := tx.Model(&domain.FichaParticipacao{}).
+				Where("id = ? AND evento_id = ?", id, eventoID).
+				Update("ordem_apresentacao", i+1).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}

@@ -13,6 +13,7 @@ type FichaJurado = {
   idade: number | null
   foto_url: string
   tipo_apresentacao: string | null
+  ordem_apresentacao?: number | null
   dados: Record<string, string>
 }
 
@@ -46,6 +47,7 @@ export default function AreaJurado() {
               {f.foto_url && <img src={f.foto_url} alt="" className="size-16 shrink-0 rounded-lg object-cover" />}
               <div className="flex-1">
                 <p className="font-medium text-foreground">
+                  {f.ordem_apresentacao ? `${f.ordem_apresentacao}. ` : ''}
                   {f.nome} {f.nome_artistico && `(${f.nome_artistico})`}
                 </p>
                 <p className="text-sm text-muted-foreground">
@@ -56,7 +58,7 @@ export default function AreaJurado() {
                 {f.dados && Object.keys(f.dados).length > 0 && (
                   <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                     {Object.entries(f.dados)
-                      .filter(([chave]) => chave !== 'foto_referencia')
+                      .filter(([chave]) => chave !== 'foto_referencia' && chave !== 'audio')
                       .map(([chave, valor]) => (
                         <div key={chave}>
                           <dt className="text-muted-foreground capitalize">{chave.replace(/_/g, ' ')}</dt>
@@ -68,6 +70,7 @@ export default function AreaJurado() {
                 {f.dados?.foto_referencia && (
                   <img src={f.dados.foto_referencia} alt="Referência" className="mt-2 h-24 rounded-lg object-cover" />
                 )}
+                {f.dados?.audio && <audio controls src={f.dados.audio} className="mt-2 w-full" />}
                 <AvaliarFicha slug={slug!} fichaId={f.id} />
               </div>
             </CardContent>

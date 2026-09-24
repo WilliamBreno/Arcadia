@@ -296,3 +296,27 @@ func (s *FichaService) buscarDoOrganizador(organizadorID, eventoID, fichaID int6
 	}
 	return ficha, nil
 }
+
+// DefinirOrdem grava a ordem de apresentação (item 3.4): só participantes
+// aprovados do evento, sem repetição; quem não estiver na lista fica sem ordem.
+func (s *FichaService) DefinirOrdem(organizadorID, eventoID int64, fichaIDs []int64) error {
+	evento, err := s.eventos.BuscarPorID(eventoID)
+	if err != nil {
+		return ErrFichaNaoEncontrada
+	}
+	if evento.OrganizadorID != organizadorID {
+		return ErrEventoNaoPertenceAoOrganizador
+	}
+	vistos := map[int64]bool{}
+	for _, id := range fichaIDs {
+		if vistos[id] {
+			return fmt.Errorf("ficha %d repetida na ordem", id)
+		}
+		vistos[id] = true
+		f, err := s.fichas.BuscarPorID(id)
+		if err != nil || f.EventoID != eventoID || f.Papel != domain.PapelParticipante || f.Status != domain.StatusFichaAprovado {
+			return ErrFichaNaoEncontrada
+		}
+	}
+	return s.fichas.DefinirOrdemApresentacao(eventoID, fichaIDs)
+}
