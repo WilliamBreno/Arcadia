@@ -13,6 +13,7 @@ import { formatarCentavos, type Evento, type TipoIngresso } from '@/lib/evento'
 import type { Local } from '@/lib/organizador'
 import { AfiliadosCard } from '@/components/afiliados-card'
 import { CortesiasCard } from '@/components/cortesias-card'
+import { SessoesCard, rotuloSessao, type Sessao } from '@/components/sessoes-card'
 import { CronogramaCard, OrdemApresentacaoCard } from '@/components/cronograma-cards'
 import { CriteriosCard, RankingCard } from '@/components/resultado-cards'
 import { SolicitacoesCard } from '@/components/solicitacoes-card'
@@ -252,6 +253,8 @@ export default function EventoEditar() {
         </CardContent>
       </Card>
 
+      <SessoesCard eventoId={Number(id)} />
+
       <TiposIngressoCard eventoId={Number(id)} tipos={tiposIngresso ?? []} />
 
       <VendasCard eventoId={Number(id)} />
@@ -312,10 +315,11 @@ export default function EventoEditar() {
 
 function TiposIngressoCard({ eventoId, tipos }: { eventoId: number; tipos: TipoIngresso[] }) {
   const queryClient = useQueryClient()
-  const [novo, setNovo] = useState({ nome: '', preco: '0', quantidade: '10', lote: '', meia: false })
+  const [novo, setNovo] = useState({ nome: '', preco: '0', quantidade: '10', lote: '', meia: false, sessao: '' })
   const [erro, setErro] = useState<string | null>(null)
 
   const invalidar = () => queryClient.invalidateQueries({ queryKey: ['org-evento-ingressos', String(eventoId)] })
+  const { data: sessoes } = useQuery({ queryKey: ['org-sessoes', eventoId], queryFn: () => api<Sessao[]>(`/org/eventos/${eventoId}/sessoes`) })
 
   const adicionar = async () => {
     setErro(null)
@@ -328,11 +332,12 @@ function TiposIngressoCard({ eventoId, tipos }: { eventoId: number; tipos: TipoI
           quantidade: Number(novo.quantidade),
           lote_grupo: novo.lote,
           meia_entrada: novo.meia,
+          sessao_id: novo.sessao ? Number(novo.sessao) : null,
           ordem: tipos.length + 1,
           ativo: true,
         },
       })
-      setNovo({ nome: '', preco: '0', quantidade: '10', lote: '', meia: false })
+      setNovo({ nome: '', preco: '0', quantidade: '10', lote: '', meia: false, sessao: '' })
       invalidar()
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : 'Erro ao adicionar tipo de ingresso')
@@ -359,6 +364,7 @@ function TiposIngressoCard({ eventoId, tipos }: { eventoId: number; tipos: TipoI
                 {formatarCentavos(t.preco_centavos)} · {t.quantidade} unidades
                 {t.lote_grupo ? ` · lote "${t.lote_grupo}" (ordem ${t.ordem})` : ''}
                 {t.meia_entrada ? ' · meia-entrada' : ''}
+                {t.sessao_id ? ' · só uma sessão' : ''}
               </p>
             </div>
             <Button variant="destructive" size="sm" onClick={() => excluir(t.id)}>
@@ -367,6 +373,26 @@ function TiposIngressoCard({ eventoId, tipos }: { eventoId: number; tipos: TipoI
           </div>
         ))}
 
+        {sessoes && sessoes.length > 0 && (
+          <div className="flex flex-col gap-1.5 border-t border-border pt-4">
+            <Label htmlFor="novo-sessao">Válido para</Label>
+            <select
+              id="novo-sessao"
+              className="h-8 rounded-lg border border-border bg-background px-2.5 text-sm"
+              value={novo.sessao}
+              onChange={(e) => setNovo({ ...novo, sessao: e.target.value })}
+            >
+              <option value="">O evento todo (todas as sessões)</option>
+              {sessoes
+                .filter((s) => s.status === 'ativa')
+                .map((s) => (
+                  <option key={s.id} value={s.id}>
+                    Somente: {rotuloSessao(s)}
+                  </option>
+                ))}
+            </select>
+          </div>
+        )}
         <label className="flex items-center gap-2 border-t border-border pt-4 text-sm text-foreground">
           <input type="checkbox" checked={novo.meia} onChange={(e) => setNovo({ ...novo, meia: e.target.checked })} />
           Este é um ingresso de meia-entrada (máx. 40% do total; a portaria confere o documento)

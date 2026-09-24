@@ -20,6 +20,7 @@ const (
 	ResultadoOutroEvento   ResultadoValidacao = "outro_evento"
 	ResultadoNaoEncontrado ResultadoValidacao = "nao_encontrado"
 	ResultadoQRExpirado    ResultadoValidacao = "qr_expirado"
+	ResultadoForaDaSessao  ResultadoValidacao = "fora_da_sessao"
 )
 
 type ResultadoCheckin struct {
@@ -36,6 +37,7 @@ type CheckinService struct {
 	organizadores *repository.OrganizadorRepository
 	papeis        *repository.PapelEventoRepository
 	qrSecret      string
+	sessoes       *repository.SessaoRepository
 }
 
 func NovoCheckinService(
@@ -45,10 +47,11 @@ func NovoCheckinService(
 	organizadores *repository.OrganizadorRepository,
 	papeis *repository.PapelEventoRepository,
 	qrSecret string,
+	sessoes *repository.SessaoRepository,
 ) *CheckinService {
 	return &CheckinService{
 		itensPedido: itensPedido, tiposIngresso: tiposIngresso, eventos: eventos,
-		organizadores: organizadores, papeis: papeis, qrSecret: qrSecret,
+		organizadores: organizadores, papeis: papeis, qrSecret: qrSecret, sessoes: sessoes,
 	}
 }
 
@@ -108,6 +111,11 @@ func (s *CheckinService) Validar(usuarioID, eventoID int64, codigo, qrToken stri
 		return &ResultadoCheckin{Resultado: ResultadoOutroEvento, Item: item, TipoIngressoNome: tipo.Nome, MeiaEntrada: tipo.MeiaEntrada}, nil
 	}
 
+	// Evento com sessões: entrada por sessão (ingresso do evento todo entra uma vez em cada).
+	if sessoes, errS := s.sessoes.ListarPorEvento(eventoID); errS == nil && len(sessoes) > 0 {
+		return s.validarComSessoes(item, tipo, sessoes)
+	}
+
 	switch item.Status {
 	case domain.StatusItemUtilizado:
 		return &ResultadoCheckin{Resultado: ResultadoJaUtilizado, Item: item, TipoIngressoNome: tipo.Nome, MeiaEntrada: tipo.MeiaEntrada}, nil
@@ -145,6 +153,13 @@ func (s *CheckinService) Buscar(usuarioID, eventoID int64, texto string) ([]repo
 func (s *CheckinService) Resumo(usuarioID, eventoID int64) (repository.ResumoCheckin, error) {
 	if !s.TemAcesso(usuarioID, eventoID) {
 		return repository.ResumoCheckin{}, ErrSemAcessoCheckin
+	}
+	// Com sessões, o contador é da sessão em andamento.
+	if sessoes, err := s.sessoes.ListarPorEvento(eventoID); err == nil && len(sessoes) > 0 {
+		if atual := SessaoAtual(sessoes, time.Now()); atual != nil {
+			total, entraram, err := s.sessoes.ResumoDaSessao(eventoID, atual.ID)
+			return repository.ResumoCheckin{TotalPagos: total, TotalUtilizados: entraram}, err
+		}
 	}
 	return s.itensPedido.ResumoCheckin(eventoID)
 }

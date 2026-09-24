@@ -59,9 +59,11 @@ export type EventoDetalhe = {
     quantidade: number
     ativo: boolean
     meia_entrada: boolean
+    sessao_id: number | null
   }[]
   taxa_plataforma_centavos: number
   garantia_centavos: number
+  sessoes: { id: number; titulo: string; inicio_em: string; fim_em: string | null; status: 'ativa' | 'cancelada' }[]
   cronograma: { id: number; titulo: string; descricao: string; local: string; inicio_em: string; fim_em: string | null }[]
 }
 

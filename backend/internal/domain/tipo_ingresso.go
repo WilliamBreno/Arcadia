@@ -18,6 +18,7 @@ type TipoIngresso struct {
 	Ordem         int
 	LoteGrupo     string
 	MeiaEntrada   bool
+	SessaoID      *int64
 	Ativo         bool
 	CriadoEm      time.Time
 }

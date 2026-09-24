@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"strings"
 	"time"
 
@@ -11,10 +12,11 @@ import (
 type TipoIngressoService struct {
 	eventos *EventoService
 	tipos   *repository.TipoIngressoRepository
+	sessoes *repository.SessaoRepository
 }
 
-func NovoTipoIngressoService(eventos *EventoService, tipos *repository.TipoIngressoRepository) *TipoIngressoService {
-	return &TipoIngressoService{eventos: eventos, tipos: tipos}
+func NovoTipoIngressoService(eventos *EventoService, tipos *repository.TipoIngressoRepository, sessoes *repository.SessaoRepository) *TipoIngressoService {
+	return &TipoIngressoService{eventos: eventos, tipos: tipos, sessoes: sessoes}
 }
 
 type TipoIngressoDados struct {
@@ -29,6 +31,7 @@ type TipoIngressoDados struct {
 	Ordem         int
 	LoteGrupo     string
 	MeiaEntrada   bool
+	SessaoID      *int64
 	Ativo         bool
 }
 
@@ -57,8 +60,12 @@ func (s *TipoIngressoService) Criar(organizadorID, eventoID int64, dados TipoIng
 		Ordem:         dados.Ordem,
 		LoteGrupo:     strings.TrimSpace(dados.LoteGrupo),
 		MeiaEntrada:   dados.MeiaEntrada,
+		SessaoID:      dados.SessaoID,
 		Ativo:         dados.Ativo,
 		CriadoEm:      time.Now(),
+	}
+	if err := s.checarSessao(eventoID, tipo); err != nil {
+		return nil, err
 	}
 	if err := s.checarCotaMeia(eventoID, tipo); err != nil {
 		return nil, err
@@ -90,8 +97,12 @@ func (s *TipoIngressoService) Atualizar(organizadorID, eventoID, tipoID int64, d
 	tipo.Ordem = dados.Ordem
 	tipo.LoteGrupo = strings.TrimSpace(dados.LoteGrupo)
 	tipo.MeiaEntrada = dados.MeiaEntrada
+	tipo.SessaoID = dados.SessaoID
 	tipo.Ativo = dados.Ativo
 
+	if err := s.checarSessao(eventoID, tipo); err != nil {
+		return nil, err
+	}
 	if err := s.checarCotaMeia(eventoID, tipo); err != nil {
 		return nil, err
 	}
@@ -121,4 +132,18 @@ func (s *TipoIngressoService) buscarDoEvento(eventoID, tipoID int64) (*domain.Ti
 		return nil, ErrEventoNaoPertenceAoOrganizador
 	}
 	return tipo, nil
+}
+
+var ErrSessaoInvalidaParaTipo = errors.New("a sessão informada não existe neste evento ou está cancelada")
+
+// checarSessao: tipo restrito a uma sessão só aceita sessão ATIVA do mesmo evento.
+func (s *TipoIngressoService) checarSessao(eventoID int64, t *domain.TipoIngresso) error {
+	if t.SessaoID == nil {
+		return nil
+	}
+	sessao, err := s.sessoes.BuscarPorID(*t.SessaoID)
+	if err != nil || sessao.EventoID != eventoID || sessao.Status != domain.SessaoAtiva {
+		return ErrSessaoInvalidaParaTipo
+	}
+	return nil
 }

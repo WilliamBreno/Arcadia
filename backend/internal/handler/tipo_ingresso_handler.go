@@ -34,6 +34,7 @@ type tipoIngressoResposta struct {
 	Ordem         int        `json:"ordem"`
 	LoteGrupo     string     `json:"lote_grupo"`
 	MeiaEntrada   bool       `json:"meia_entrada"`
+	SessaoID      *int64     `json:"sessao_id"`
 	Ativo         bool       `json:"ativo"`
 }
 
@@ -51,6 +52,7 @@ func paraTipoIngressoResposta(t *domain.TipoIngresso) tipoIngressoResposta {
 		Ordem:         t.Ordem,
 		LoteGrupo:     t.LoteGrupo,
 		MeiaEntrada:   t.MeiaEntrada,
+		SessaoID:      t.SessaoID,
 		Ativo:         t.Ativo,
 	}
 }
@@ -67,6 +69,7 @@ type tipoIngressoRequest struct {
 	Ordem         int        `json:"ordem"`
 	LoteGrupo     string     `json:"lote_grupo"`
 	MeiaEntrada   bool       `json:"meia_entrada"`
+	SessaoID      *int64     `json:"sessao_id"`
 	Ativo         bool       `json:"ativo"`
 }
 
@@ -83,6 +86,7 @@ func (req tipoIngressoRequest) paraDados() service.TipoIngressoDados {
 		Ordem:         req.Ordem,
 		LoteGrupo:     req.LoteGrupo,
 		MeiaEntrada:   req.MeiaEntrada,
+		SessaoID:      req.SessaoID,
 		Ativo:         req.Ativo,
 	}
 }
@@ -207,6 +211,10 @@ func (h *TipoIngressoHandler) Excluir(c *gin.Context) {
 func (h *TipoIngressoHandler) responderErro(c *gin.Context, err error) {
 	if errors.Is(err, service.ErrEventoNaoPertenceAoOrganizador) {
 		c.JSON(http.StatusForbidden, gin.H{"erro": "recurso não pertence a este organizador"})
+		return
+	}
+	if errors.Is(err, service.ErrSessaoInvalidaParaTipo) {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"erro": err.Error()})
 		return
 	}
 	if errors.Is(err, service.ErrCotaMeiaExcedida) {

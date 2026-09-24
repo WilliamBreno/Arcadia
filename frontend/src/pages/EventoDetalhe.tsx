@@ -210,6 +210,11 @@ export default function EventoDetalhe() {
               <CardContent className="flex items-center justify-between py-4">
                 <div>
                   <p className="font-medium text-foreground">{i.nome}</p>
+                  {i.sessao_id && (
+                    <p className="text-xs text-muted-foreground">
+                      Válido somente para: {data.sessoes.find((s) => s.id === i.sessao_id)?.titulo || 'uma sessão específica'}
+                    </p>
+                  )}
                   {i.meia_entrada && (
                     <p className="text-xs text-muted-foreground">
                       Meia-entrada (estudante, PcD, jovem de baixa renda): apresente o documento na entrada.
@@ -295,6 +300,24 @@ export default function EventoDetalhe() {
         <p className="mt-6 text-sm text-muted-foreground">
           Este evento oferece <strong>garantia de vaga</strong>: cancele até o início do evento e receba tudo de volta.
         </p>
+      )}
+
+      {data.sessoes.filter((s) => s.status === 'ativa').length > 1 && (
+        <Card className="mt-6">
+          <CardContent className="py-4">
+            <h2 className="mb-2 text-lg font-semibold text-foreground">Sessões</h2>
+            <ul className="flex flex-col gap-1 text-sm">
+              {data.sessoes.map((s) => (
+                <li key={s.id} className={s.status === 'cancelada' ? 'text-muted-foreground line-through' : 'text-foreground'}>
+                  {s.titulo ? `${s.titulo} — ` : ''}
+                  {new Date(s.inicio_em).toLocaleString('pt-BR', { dateStyle: 'full', timeStyle: 'short' })}
+                  {s.status === 'cancelada' && ' (cancelada)'}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-xs text-muted-foreground">Um ingresso comum vale para todas as sessões.</p>
+          </CardContent>
+        </Card>
       )}
 
       {data.cronograma.length > 0 && (

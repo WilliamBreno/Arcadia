@@ -314,44 +314,7 @@ func (s *CancelamentoService) CancelarEvento(organizadorID, eventoID int64, moti
 		return 0, nil, err
 	}
 
-	pedidosCache := map[int64]*domain.Pedido{}
-	pagamentosCache := map[int64]*domain.Pagamento{}
-
-	for i := range itens {
-		item := &itens[i]
-
-		pedido, ok := pedidosCache[item.PedidoID]
-		if !ok {
-			pedido, err = s.pedidos.BuscarPorID(item.PedidoID)
-			if err != nil {
-				falhas = append(falhas, item.ID)
-				continue
-			}
-			pedidosCache[item.PedidoID] = pedido
-		}
-
-		pagamento, ok := pagamentosCache[pedido.ID]
-		if !ok {
-			pagamento, err = s.pagamentos.BuscarAprovadoPorPedido(pedido.ID)
-			if err != nil {
-				falhas = append(falhas, item.ID)
-				continue
-			}
-			pagamentosCache[pedido.ID] = pagamento
-		}
-
-		ctx := &contextoCancelamento{item: item, pedido: pedido, evento: evento, pagamento: pagamento}
-		decisao := DecisaoCancelamento{
-			Pode: true, Motivo: "evento cancelado pelo organizador", Tipo: domain.TipoReembolsoEventoCancelado,
-			ValorReembolsoCentavos: item.TotalCentavos,
-		}
-
-		if _, err := s.executarReembolso(ctx, decisao, organizadorID, nil); err != nil {
-			falhas = append(falhas, item.ID)
-			continue
-		}
-		sucessos++
-	}
+	sucessos, falhas = s.reembolsarItens(evento, itens, organizadorID, "evento cancelado pelo organizador")
 
 	agora := time.Now()
 	evento.Status = domain.StatusEventoCancelado
@@ -362,4 +325,47 @@ func (s *CancelamentoService) CancelarEvento(organizadorID, eventoID int64, moti
 	}
 
 	return sucessos, falhas, nil
+}
+
+// reembolsarItens estorna integralmente (preço + taxa + garantia) cada item
+// pago da lista — sem travar se algum falhar; devolve os ids que falharam.
+func (s *CancelamentoService) reembolsarItens(evento *domain.Evento, itens []domain.ItemPedido, solicitadoPor int64, motivo string) (sucessos int, falhas []int64) {
+	pedidosCache := map[int64]*domain.Pedido{}
+	pagamentosCache := map[int64]*domain.Pagamento{}
+
+	for i := range itens {
+		item := &itens[i]
+
+		pedido, ok := pedidosCache[item.PedidoID]
+		if !ok {
+			var err error
+			pedido, err = s.pedidos.BuscarPorID(item.PedidoID)
+			if err != nil {
+				falhas = append(falhas, item.ID)
+				continue
+			}
+			pedidosCache[item.PedidoID] = pedido
+		}
+
+		pagamento, ok := pagamentosCache[pedido.ID]
+		if !ok {
+			var err error
+			pagamento, err = s.pagamentos.BuscarAprovadoPorPedido(pedido.ID)
+			if err != nil {
+				falhas = append(falhas, item.ID)
+				continue
+			}
+			pagamentosCache[pedido.ID] = pagamento
+		}
+
+		ctx := &contextoCancelamento{item: item, pedido: pedido, evento: evento, pagamento: pagamento}
+		decisao := DecisaoCancelamento{Pode: true, Motivo: motivo, Tipo: domain.TipoReembolsoEventoCancelado, ValorReembolsoCentavos: item.TotalCentavos}
+
+		if _, err := s.executarReembolso(ctx, decisao, solicitadoPor, nil); err != nil {
+			falhas = append(falhas, item.ID)
+			continue
+		}
+		sucessos++
+	}
+	return sucessos, falhas
 }

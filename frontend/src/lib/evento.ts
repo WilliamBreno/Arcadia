@@ -37,6 +37,7 @@ export type TipoIngresso = {
   ordem: number
   lote_grupo: string
   meia_entrada: boolean
+  sessao_id: number | null
   ativo: boolean
 }
 
