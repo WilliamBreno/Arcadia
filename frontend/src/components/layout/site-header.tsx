@@ -4,7 +4,7 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { useAuth } from '@/hooks/use-auth'
 
-const NOME_PLATAFORMA = import.meta.env.VITE_NOME_PLATAFORMA ?? 'Arcadia'
+const NOME_PLATAFORMA = import.meta.env.VITE_NOME_PLATAFORMA ?? 'Evve'
 
 export function SiteHeader() {
   const { usuario, logout, carregando } = useAuth()

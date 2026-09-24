@@ -7,7 +7,7 @@ import { EventoCard } from '@/components/evento-card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
-const NOME_PLATAFORMA = import.meta.env.VITE_NOME_PLATAFORMA ?? 'Arcadia'
+const NOME_PLATAFORMA = import.meta.env.VITE_NOME_PLATAFORMA ?? 'Evve'
 
 const atalhos = [
   { valor: '', rotulo: 'Todos' },

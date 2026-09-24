@@ -20,7 +20,7 @@ func HashAPIKey(chave string) string {
 }
 
 // ExigirAPIKey autentica a API pública: header X-API-Key ou
-// "Authorization: Bearer arc_...". Injeta o organizador dono da chave.
+// "Authorization: Bearer evve_...". Injeta o organizador dono da chave.
 func ExigirAPIKey(repo *repository.APIKeyRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		chave := c.GetHeader("X-API-Key")
@@ -29,7 +29,7 @@ func ExigirAPIKey(repo *repository.APIKeyRepository) gin.HandlerFunc {
 				chave = partes[1]
 			}
 		}
-		if !strings.HasPrefix(chave, "arc_") {
+		if !strings.HasPrefix(chave, "evve_") {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"erro": "chave de API ausente ou inválida"})
 			return
 		}

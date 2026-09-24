@@ -8,7 +8,7 @@ type ThemeProviderState = {
   alternarTema: () => void
 }
 
-const CHAVE_LOCALSTORAGE = 'arcadia-tema'
+const CHAVE_LOCALSTORAGE = 'evve-tema'
 
 const ThemeProviderContext = createContext<ThemeProviderState | undefined>(undefined)
 

@@ -54,7 +54,7 @@ func getEnvInt(chave string, padrao int) int {
 func Carregar() Config {
 	return Config{
 		Porta:          getEnv("PORTA", "8080"),
-		NomePlataforma: getEnv("NOME_PLATAFORMA", "Arcadia"),
+		NomePlataforma: getEnv("NOME_PLATAFORMA", "Evve"),
 		AmbienteApp:    getEnv("AMBIENTE_APP", "development"),
 		DatabaseURL:    getEnv("DATABASE_URL", "postgres://arcadia:arcadia@localhost:5442/arcadia?sslmode=disable"),
 
@@ -67,7 +67,7 @@ func Carregar() Config {
 		GoogleClientID: getEnv("GOOGLE_CLIENT_ID", ""),
 
 		ResendAPIKey:   getEnv("RESEND_API_KEY", ""),
-		EmailRemetente: getEnv("EMAIL_REMETENTE", "Arcadia <no-reply@arcadia.local>"),
+		EmailRemetente: getEnv("EMAIL_REMETENTE", "Evve <no-reply@evve.local>"),
 
 		UploadsDir:     getEnv("UPLOADS_DIR", "./uploads"),
 		UploadsBaseURL: getEnv("UPLOADS_BASE_URL", "http://localhost:8080/uploads"),

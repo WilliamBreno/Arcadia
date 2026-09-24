@@ -748,7 +748,7 @@ function StaffCard({ eventoId }: { eventoId: number }) {
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <p className="text-sm text-muted-foreground">
-          Pessoas adicionadas aqui (já precisam ter uma conta na Arcadia) podem operar o leitor de QR na portaria.
+          Pessoas adicionadas aqui (já precisam ter uma conta na Evve) podem operar o leitor de QR na portaria.
         </p>
 
         <Link to={`/checkin/${eventoId}`} className={buttonVariants({ variant: 'outline' })}>

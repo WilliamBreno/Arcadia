@@ -8,7 +8,7 @@
 //
 // Configuração necessária no projeto Vercel (Settings > Environment
 // Variables): BACKEND_API_URL apontando para a API em produção
-// (ex.: https://arcadia-api.onrender.com/api). Não é o mesmo que
+// (ex.: https://evve-api.onrender.com/api). Não é o mesmo que
 // VITE_API_URL — aquela é embutida no build do cliente, esta só existe
 // em runtime de Edge Function.
 export const config = {

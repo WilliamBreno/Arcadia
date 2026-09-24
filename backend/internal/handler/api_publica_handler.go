@@ -51,7 +51,7 @@ func (h *APIPublicaHandler) CriarChave(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao gerar chave"})
 		return
 	}
-	chave := "arc_" + hex.EncodeToString(buf)
+	chave := "evve_" + hex.EncodeToString(buf)
 	k := &repository.APIKey{OrganizadorID: org.ID, Nome: req.Nome, Prefixo: chave[:10], Hash: middleware.HashAPIKey(chave), Ativo: true, CriadoEm: time.Now()}
 	if err := h.chaves.Criar(k); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao salvar chave"})

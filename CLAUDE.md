@@ -1,4 +1,4 @@
-# Arcadia — Plataforma de Eventos e Ingressos
+# Evve — Plataforma de Eventos e Ingressos
 
 Sistema de gerenciamento de eventos e venda de ingressos, com gestão de jurados e participantes (concursos de cosplay, dança, canto e atuação) como diferencial.
 
