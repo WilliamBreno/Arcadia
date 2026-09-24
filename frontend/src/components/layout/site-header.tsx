@@ -12,8 +12,9 @@ export function SiteHeader() {
   return (
     <header className="border-border sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-        <Link to="/" className="text-lg font-semibold text-foreground">
-          {NOME_PLATAFORMA}
+        <Link to="/" aria-label={NOME_PLATAFORMA} className="flex items-center">
+          <img src="/brand/logo.png" alt={NOME_PLATAFORMA} className="h-8 w-auto dark:hidden" />
+          <img src="/brand/logo-dark.png" alt="" aria-hidden="true" className="hidden h-8 w-auto dark:block" />
         </Link>
         <nav className="flex items-center gap-2">
           {!carregando && usuario && (

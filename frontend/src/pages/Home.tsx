@@ -36,7 +36,9 @@ export default function Home() {
   return (
     <main className="mx-auto max-w-5xl px-4 py-12">
       <section className="mb-10 flex flex-col items-center gap-4 text-center">
-        <h1 className="text-3xl font-semibold text-foreground">{NOME_PLATAFORMA}</h1>
+        <h1 className="sr-only">{NOME_PLATAFORMA}</h1>
+        <img src="/brand/logo.png" alt="" aria-hidden="true" className="h-16 w-auto dark:hidden" />
+        <img src="/brand/logo-dark.png" alt="" aria-hidden="true" className="hidden h-16 w-auto dark:block" />
         <p className="max-w-md text-muted-foreground">
           Encontre eventos, compre ingressos e participe de concursos de cosplay, dança, canto e atuação.
         </p>
