@@ -160,6 +160,7 @@ function ItemLinha({ item, pedidoId }: { item: ItemPedido; pedidoId: number }) {
           <p className="text-xs text-muted-foreground">
             {formatarCentavos(item.preco_centavos)} + {formatarCentavos(item.taxa_plataforma_centavos)} de taxa
             {item.garantia_contratada && <> + {formatarCentavos(item.garantia_centavos)} de garantia de vaga</>}
+            {item.desconto_centavos > 0 && <> (cupom: −{formatarCentavos(item.desconto_centavos)})</>}
           </p>
         </div>
         <div className="flex items-center gap-2">

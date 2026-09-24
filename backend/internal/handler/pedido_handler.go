@@ -32,6 +32,7 @@ type itemPedidoResposta struct {
 	TaxaCentavos       int64      `json:"taxa_plataforma_centavos"`
 	GarantiaContratada bool       `json:"garantia_contratada"`
 	GarantiaCentavos   int64      `json:"garantia_centavos"`
+	DescontoCentavos   int64      `json:"desconto_centavos"`
 	TotalCentavos      int64      `json:"total_centavos"`
 	Status             string     `json:"status"`
 	Codigo             string     `json:"codigo"`
@@ -43,7 +44,7 @@ func paraItemPedidoResposta(i *domain.ItemPedido) itemPedidoResposta {
 	return itemPedidoResposta{
 		ID: i.ID, TipoIngressoID: i.TipoIngressoID, TitularNome: i.TitularNome, TitularEmail: i.TitularEmail,
 		PrecoCentavos: i.PrecoCentavos, TaxaCentavos: i.TaxaPlataformaCentavos,
-		GarantiaContratada: i.GarantiaContratada, GarantiaCentavos: i.GarantiaCentavos, TotalCentavos: i.TotalCentavos,
+		GarantiaContratada: i.GarantiaContratada, GarantiaCentavos: i.GarantiaCentavos, DescontoCentavos: i.DescontoCentavos, TotalCentavos: i.TotalCentavos,
 		Status: string(i.Status), Codigo: i.Codigo, QRToken: i.QRToken, UtilizadoEm: i.UtilizadoEm,
 	}
 }
@@ -76,6 +77,7 @@ type itemRequest struct {
 
 type criarPedidoRequest struct {
 	Itens []itemRequest `json:"itens" binding:"required,min=1,dive"`
+	Cupom string        `json:"cupom"`
 }
 
 // Criar é POST /eventos/:slug/pedidos — reserva + cálculo (seção 8).
@@ -106,7 +108,7 @@ func (h *PedidoHandler) Criar(c *gin.Context) {
 		}
 	}
 
-	pedido, itens, err := h.service.Reservar(usuarioID, evento.ID, itensReq, comprador.Nome, comprador.Email)
+	pedido, itens, err := h.service.Reservar(usuarioID, evento.ID, itensReq, comprador.Nome, comprador.Email, req.Cupom)
 	if err != nil {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"erro": err.Error()})
 		return

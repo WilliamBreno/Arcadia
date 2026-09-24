@@ -11,6 +11,7 @@ import { api, ApiError } from '@/lib/api'
 import { adicionarStaff, listarStaff, removerStaff, type Staff } from '@/lib/checkin'
 import { formatarCentavos, type Evento, type TipoIngresso } from '@/lib/evento'
 import type { Local } from '@/lib/organizador'
+import { CuponsCard } from '@/components/cupons-card'
 import { obterFinanceiroEvento } from '@/lib/financeiro'
 import { obterVendas } from '@/lib/vendas'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -234,6 +235,8 @@ export default function EventoEditar() {
 
       <FinanceiroCard eventoId={Number(id)} />
 
+      <CuponsCard eventoId={Number(id)} />
+
       <ConvitesCard eventoId={Number(id)} />
 
       <ParticipantesCard eventoId={Number(id)} />
@@ -269,7 +272,7 @@ export default function EventoEditar() {
 
 function TiposIngressoCard({ eventoId, tipos }: { eventoId: number; tipos: TipoIngresso[] }) {
   const queryClient = useQueryClient()
-  const [novo, setNovo] = useState({ nome: '', preco: '0', quantidade: '10' })
+  const [novo, setNovo] = useState({ nome: '', preco: '0', quantidade: '10', lote: '' })
   const [erro, setErro] = useState<string | null>(null)
 
   const invalidar = () => queryClient.invalidateQueries({ queryKey: ['org-evento-ingressos', String(eventoId)] })
@@ -283,10 +286,12 @@ function TiposIngressoCard({ eventoId, tipos }: { eventoId: number; tipos: TipoI
           nome: novo.nome,
           preco_centavos: Math.round(Number(novo.preco) * 100),
           quantidade: Number(novo.quantidade),
+          lote_grupo: novo.lote,
+          ordem: tipos.length + 1,
           ativo: true,
         },
       })
-      setNovo({ nome: '', preco: '0', quantidade: '10' })
+      setNovo({ nome: '', preco: '0', quantidade: '10', lote: '' })
       invalidar()
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : 'Erro ao adicionar tipo de ingresso')
@@ -311,6 +316,7 @@ function TiposIngressoCard({ eventoId, tipos }: { eventoId: number; tipos: TipoI
               <p className="text-sm font-medium text-foreground">{t.nome}</p>
               <p className="text-xs text-muted-foreground">
                 {formatarCentavos(t.preco_centavos)} · {t.quantidade} unidades
+                {t.lote_grupo ? ` · lote "${t.lote_grupo}" (ordem ${t.ordem})` : ''}
               </p>
             </div>
             <Button variant="destructive" size="sm" onClick={() => excluir(t.id)}>
@@ -319,7 +325,16 @@ function TiposIngressoCard({ eventoId, tipos }: { eventoId: number; tipos: TipoI
           </div>
         ))}
 
-        <div className="grid grid-cols-[2fr_1fr_1fr_auto] items-end gap-2 border-t border-border pt-4">
+        <div className="flex flex-col gap-1.5 border-t border-border pt-4">
+          <Label htmlFor="novo-lote">Grupo de lotes (opcional)</Label>
+          <Input
+            id="novo-lote"
+            placeholder="Ex.: inteira — ingressos com o mesmo grupo viram lotes em sequência (esgotou ou passou a data, abre o próximo)"
+            value={novo.lote}
+            onChange={(e) => setNovo({ ...novo, lote: e.target.value })}
+          />
+        </div>
+        <div className="grid grid-cols-[2fr_1fr_1fr_auto] items-end gap-2">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="novo-nome">Nome</Label>
             <Input id="novo-nome" value={novo.nome} onChange={(e) => setNovo({ ...novo, nome: e.target.value })} />

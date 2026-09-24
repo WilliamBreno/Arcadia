@@ -35,6 +35,7 @@ var (
 	ErrReservaExpirada                  = errors.New("reserva expirada")
 	ErrMercadoPagoNaoConfigurado        = errors.New("Mercado Pago não configurado")
 	ErrGarantiaNaoDisponivel            = errors.New("este evento não oferece garantia de vaga")
+	ErrLoteIndisponivel                 = errors.New("este lote não está disponível no momento")
 )
 
 type ItemRequisitado struct {
@@ -51,6 +52,8 @@ type CheckoutService struct {
 	pagamentos     *repository.PagamentoRepository
 	lancamentos    *repository.LancamentoRepository
 	config         *repository.ConfigPlataformaRepository
+	cupons         *repository.CupomRepository
+	tipos          *repository.TipoIngressoRepository
 	mp             *mercadopago.Cliente
 	mailCliente    *mail.Cliente
 	qrSecret       string
@@ -67,13 +70,15 @@ func NovoCheckoutService(
 	pagamentos *repository.PagamentoRepository,
 	lancamentos *repository.LancamentoRepository,
 	config *repository.ConfigPlataformaRepository,
+	cupons *repository.CupomRepository,
+	tipos *repository.TipoIngressoRepository,
 	mp *mercadopago.Cliente,
 	mailCliente *mail.Cliente,
 	qrSecret, frontendURL, backendURL, nomePlataforma string,
 ) *CheckoutService {
 	return &CheckoutService{
 		db: db, eventos: eventos, itensPedido: itensPedido, pedidos: pedidos,
-		pagamentos: pagamentos, lancamentos: lancamentos, config: config,
+		pagamentos: pagamentos, lancamentos: lancamentos, config: config, cupons: cupons, tipos: tipos,
 		mp: mp, mailCliente: mailCliente, qrSecret: qrSecret,
 		frontendURL: frontendURL, backendURL: backendURL, nomePlataforma: nomePlataforma,
 	}
@@ -116,7 +121,7 @@ func calcularTotalItem(precoCentavos, taxaPlataformaCentavos, garantiaCentavos i
 // tipo_ingresso (SELECT ... FOR UPDATE) dentro de uma transação para
 // impedir overselling sob concorrência (seção 7.2) — preço, taxa e
 // garantia são sempre recalculados aqui, nunca aceitos do cliente.
-func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemRequisitado, compradorNome, compradorEmail string) (*domain.Pedido, []domain.ItemPedido, error) {
+func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemRequisitado, compradorNome, compradorEmail, cupomCodigo string) (*domain.Pedido, []domain.ItemPedido, error) {
 	evento, err := s.eventos.BuscarPorID(eventoID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("evento não encontrado: %w", err)
@@ -175,6 +180,17 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 			return err
 		}
 
+		// Cupom vale para todos os itens do pedido; a linha é travada para
+		// max_usos não estourar sob concorrência.
+		var cupom *domain.Cupom
+		if cupomCodigo != "" {
+			c, errCupom := s.cupons.BuscarPorCodigo(tx, eventoID, cupomCodigo, true)
+			if errCupom != nil || !cupomUtilizavel(c, totalUnidades, agora) {
+				return ErrCupomInvalido
+			}
+			cupom = c
+		}
+
 		var totalPedido int64
 
 		for _, ir := range itensReq {
@@ -195,6 +211,24 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 				return fmt.Errorf("%w para %s", ErrQuantidadeInvalida, tipo.Nome)
 			}
 
+			if tipo.LoteGrupo != "" {
+				grupo, err := s.tipos.ListarPorGrupoLote(tx, eventoID, tipo.LoteGrupo)
+				if err != nil {
+					return err
+				}
+				ids := make([]int64, len(grupo))
+				for i := range grupo {
+					ids[i] = grupo[i].ID
+				}
+				vendidos, err := s.itensPedido.ContarAtivosPorTipos(tx, ids)
+				if err != nil {
+					return err
+				}
+				if LoteAtual(grupo, vendidos, agora) != tipo.ID {
+					return fmt.Errorf("%w: %s", ErrLoteIndisponivel, tipo.Nome)
+				}
+			}
+
 			ativos, err := s.itensPedido.ContarAtivosPorTipo(tx, tipo.ID)
 			if err != nil {
 				return err
@@ -209,6 +243,14 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 				itemGarantiaCentavos = garantiaCentavos
 			}
 
+			var descontoCentavos int64
+			var cupomID *int64
+			if cupom != nil {
+				descontoCentavos = calcularDesconto(cupom.Tipo, cupom.Valor, tipo.PrecoCentavos)
+				cupomID = &cupom.ID
+			}
+			precoFinal := tipo.PrecoCentavos - descontoCentavos
+
 			for i := 0; i < ir.Quantidade; i++ {
 				codigo, err := gerarCodigoItem()
 				if err != nil {
@@ -219,11 +261,13 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 					TipoIngressoID:         tipo.ID,
 					TitularNome:            compradorNome,
 					TitularEmail:           compradorEmail,
-					PrecoCentavos:          tipo.PrecoCentavos,
+					CupomID:                cupomID,
+					DescontoCentavos:       descontoCentavos,
+					PrecoCentavos:          precoFinal,
 					TaxaPlataformaCentavos: taxaPlataforma,
 					GarantiaContratada:     ir.GarantiaContratada,
 					GarantiaCentavos:       itemGarantiaCentavos,
-					TotalCentavos:          calcularTotalItem(tipo.PrecoCentavos, taxaPlataforma, itemGarantiaCentavos, ir.GarantiaContratada),
+					TotalCentavos:          calcularTotalItem(precoFinal, taxaPlataforma, itemGarantiaCentavos, ir.GarantiaContratada),
 					Status:                 domain.StatusItemReservado,
 					Codigo:                 codigo,
 					QRToken:                s.gerarQRToken(codigo),
@@ -234,6 +278,12 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 				}
 				totalPedido += item.TotalCentavos
 				itensCriados = append(itensCriados, item)
+			}
+		}
+
+		if cupom != nil {
+			if err := s.cupons.AjustarUsos(tx, cupom.ID, totalUnidades); err != nil {
+				return err
 			}
 		}
 
@@ -477,6 +527,11 @@ func (s *CheckoutService) ExpirarReservas() (int, error) {
 				item.Status = domain.StatusItemExpirado
 				if err := s.itensPedido.Salvar(item); err != nil {
 					return total, err
+				}
+				if item.CupomID != nil {
+					if err := s.cupons.AjustarUsos(nil, *item.CupomID, -1); err != nil {
+						return total, err
+					}
 				}
 			}
 		}

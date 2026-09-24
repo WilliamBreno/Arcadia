@@ -17,6 +17,9 @@ export default function EventoDetalhe() {
   const navigate = useNavigate()
   const [quantidades, setQuantidades] = useState<Record<number, number>>({})
   const [garantia, setGarantia] = useState(false)
+  const [cupomCodigo, setCupomCodigo] = useState('')
+  const [cupom, setCupom] = useState<{ codigo: string; tipo: 'percentual' | 'valor'; valor: number } | null>(null)
+  const [erroCupom, setErroCupom] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [comprando, setComprando] = useState(false)
 
@@ -36,9 +39,26 @@ export default function EventoDetalhe() {
   const totalUnidades = Object.values(quantidades).reduce((a, b) => a + b, 0)
   const totalSelecionado = ingressos.reduce((soma, i) => {
     const qtd = quantidades[i.id] ?? 0
-    const porUnidade = i.preco_centavos + data.taxa_plataforma_centavos + (garantia ? data.garantia_centavos : 0)
+    const desconto = !cupom
+      ? 0
+      : Math.min(i.preco_centavos, cupom.tipo === 'percentual' ? Math.floor((i.preco_centavos * cupom.valor) / 100) : cupom.valor)
+    const porUnidade = i.preco_centavos - desconto + data.taxa_plataforma_centavos + (garantia ? data.garantia_centavos : 0)
     return soma + qtd * porUnidade
   }, 0)
+
+  const aplicarCupom = async () => {
+    setErroCupom(null)
+    if (!usuario) {
+      navigate('/login', { state: { de: location.pathname } })
+      return
+    }
+    try {
+      setCupom(await api(`/eventos/${slug}/cupom`, { method: 'POST', body: { codigo: cupomCodigo } }))
+    } catch (e) {
+      setCupom(null)
+      setErroCupom(e instanceof ApiError ? e.message : 'Erro ao validar cupom')
+    }
+  }
 
   const comprar = async () => {
     if (!usuario) {
@@ -56,7 +76,10 @@ export default function EventoDetalhe() {
           garantia_contratada: garantia,
         }))
 
-      const pedido = await api<Pedido>(`/eventos/${slug}/pedidos`, { method: 'POST', body: { itens } })
+      const pedido = await api<Pedido>(`/eventos/${slug}/pedidos`, {
+        method: 'POST',
+        body: { itens, cupom: cupom?.codigo ?? '' },
+      })
       navigate(`/pedidos/${pedido.id}`)
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : 'Erro ao criar pedido')
@@ -151,6 +174,19 @@ export default function EventoDetalhe() {
                 </span>
               </label>
             )}
+            <div className="flex items-start gap-2">
+              <input
+                className="h-8 flex-1 rounded-lg border border-border bg-background px-2.5 text-sm uppercase"
+                placeholder="Cupom de desconto"
+                value={cupomCodigo}
+                onChange={(e) => setCupomCodigo(e.target.value)}
+              />
+              <Button type="button" variant="outline" size="sm" onClick={aplicarCupom} disabled={!cupomCodigo}>
+                Aplicar
+              </Button>
+            </div>
+            {cupom && <p className="text-xs text-primary">Cupom {cupom.codigo} aplicado.</p>}
+            {erroCupom && <p className="text-xs text-destructive">{erroCupom}</p>}
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">

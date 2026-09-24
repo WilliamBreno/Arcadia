@@ -9,6 +9,7 @@ import (
 
 	"github.com/WilliamBreno/Arcadia/backend/internal/domain"
 	"github.com/WilliamBreno/Arcadia/backend/internal/repository"
+	"github.com/WilliamBreno/Arcadia/backend/internal/service"
 )
 
 type PublicoHandler struct {
@@ -17,6 +18,7 @@ type PublicoHandler struct {
 	locais        *repository.LocalRepository
 	organizadores *repository.OrganizadorRepository
 	config        *repository.ConfigPlataformaRepository
+	itensPedido   *repository.ItemPedidoRepository
 }
 
 func NovoPublicoHandler(
@@ -25,8 +27,9 @@ func NovoPublicoHandler(
 	locais *repository.LocalRepository,
 	organizadores *repository.OrganizadorRepository,
 	config *repository.ConfigPlataformaRepository,
+	itensPedido *repository.ItemPedidoRepository,
 ) *PublicoHandler {
-	return &PublicoHandler{eventos: eventos, tiposIngresso: tiposIngresso, locais: locais, organizadores: organizadores, config: config}
+	return &PublicoHandler{eventos: eventos, tiposIngresso: tiposIngresso, locais: locais, organizadores: organizadores, config: config, itensPedido: itensPedido}
 }
 
 type eventoPublicoItem struct {
@@ -191,6 +194,16 @@ func (h *PublicoHandler) ObterEvento(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao carregar ingressos"})
 		return
 	}
+	ids := make([]int64, len(tipos))
+	for i := range tipos {
+		ids[i] = tipos[i].ID
+	}
+	vendidos, err := h.itensPedido.ContarAtivosPorTipos(nil, ids)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao carregar ingressos"})
+		return
+	}
+	tipos = service.FiltrarLotes(tipos, vendidos, time.Now())
 	tiposResposta := make([]tipoIngressoResposta, 0, len(tipos))
 	for i := range tipos {
 		tiposResposta = append(tiposResposta, paraTipoIngressoResposta(&tipos[i]))

@@ -49,6 +49,7 @@ func main() {
 	reembolsoRepo := repository.NovoReembolsoRepository(db)
 	regraRegionalRepo := repository.NovoRegraRegionalRepository(db)
 	repasseRepo := repository.NovoRepasseRepository(db)
+	cupomRepo := repository.NovoCupomRepository(db)
 
 	jwtService := service.NovoJWTService(cfg.JWTSecret, cfg.AccessTokenTTLMin)
 	authService := service.NovoAuthService(usuarioRepo, refreshTokenRepo, jwtService, cfg.RefreshTokenTTLDias)
@@ -62,7 +63,7 @@ func main() {
 	fichaService := service.NovoFichaService(fichaRepo, papelEventoRepo, eventoRepo, usuarioRepo, mailCliente)
 	mpCliente := mercadopago.NovoCliente(cfg.MercadoPagoAccessToken)
 	checkoutService := service.NovoCheckoutService(
-		db, eventoRepo, itemPedidoRepo, pedidoRepo, pagamentoRepo, lancamentoRepo, configPlataformaRepo,
+		db, eventoRepo, itemPedidoRepo, pedidoRepo, pagamentoRepo, lancamentoRepo, configPlataformaRepo, cupomRepo, tipoIngressoRepo,
 		mpCliente, mailCliente, cfg.JWTSecret, cfg.FrontendURL, cfg.BackendURL, cfg.NomePlataforma,
 	)
 	cancelamentoService := service.NovoCancelamentoService(
@@ -86,7 +87,9 @@ func main() {
 	localHandler := handler.NovoLocalHandler(organizadorHandler, localService)
 	eventoHandler := handler.NovoEventoHandler(organizadorHandler, eventoService, cancelamentoService)
 	tipoIngressoHandler := handler.NovoTipoIngressoHandler(organizadorHandler, tipoIngressoService)
-	publicoHandler := handler.NovoPublicoHandler(eventoRepo, tipoIngressoRepo, localRepo, organizadorRepo, configPlataformaRepo)
+	publicoHandler := handler.NovoPublicoHandler(eventoRepo, tipoIngressoRepo, localRepo, organizadorRepo, configPlataformaRepo, itemPedidoRepo)
+	cupomService := service.NovoCupomService(eventoService, cupomRepo)
+	cupomHandler := handler.NovoCupomHandler(organizadorHandler, eventoRepo, cupomService)
 	conviteHandler := handler.NovoConviteHandler(organizadorHandler, eventoRepo, conviteService)
 	fichaHandler := handler.NovoFichaHandler(eventoRepo, organizadorHandler, fichaService)
 	uploadHandler := handler.NovoUploadHandler(armazenamento)
@@ -148,6 +151,7 @@ func main() {
 		autenticado.GET("/eventos/:slug/participantes/:fichaId", fichaHandler.ObterParaJurado)
 		autenticado.POST("/uploads", uploadHandler.Criar)
 		autenticado.POST("/eventos/:slug/pedidos", pedidoHandler.Criar)
+		autenticado.POST("/eventos/:slug/cupom", cupomHandler.Validar)
 		autenticado.GET("/pedidos/:id", pedidoHandler.Obter)
 		autenticado.POST("/pedidos/:id/pagar", pedidoHandler.Pagar)
 		autenticado.GET("/itens/:id/cancelamento", cancelamentoHandler.Simular)
@@ -175,6 +179,10 @@ func main() {
 		org.POST("/eventos/:id/ingressos", tipoIngressoHandler.Criar)
 		org.PUT("/eventos/:id/ingressos/:ingressoId", tipoIngressoHandler.Atualizar)
 		org.DELETE("/eventos/:id/ingressos/:ingressoId", tipoIngressoHandler.Excluir)
+
+		org.GET("/eventos/:id/cupons", cupomHandler.Listar)
+		org.POST("/eventos/:id/cupons", cupomHandler.Criar)
+		org.DELETE("/eventos/:id/cupons/:cupomId", cupomHandler.Desativar)
 
 		org.GET("/eventos/:id/convites", conviteHandler.Listar)
 		org.POST("/eventos/:id/convites", conviteHandler.Gerar)

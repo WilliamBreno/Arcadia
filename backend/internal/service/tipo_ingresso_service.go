@@ -1,6 +1,7 @@
 package service
 
 import (
+	"strings"
 	"time"
 
 	"github.com/WilliamBreno/Arcadia/backend/internal/domain"
@@ -26,6 +27,7 @@ type TipoIngressoDados struct {
 	MinPorPedido  int
 	MaxPorPedido  int
 	Ordem         int
+	LoteGrupo     string
 	Ativo         bool
 }
 
@@ -52,6 +54,7 @@ func (s *TipoIngressoService) Criar(organizadorID, eventoID int64, dados TipoIng
 		MinPorPedido:  valorIntOuPadrao(dados.MinPorPedido, 1),
 		MaxPorPedido:  valorIntOuPadrao(dados.MaxPorPedido, 10),
 		Ordem:         dados.Ordem,
+		LoteGrupo:     strings.TrimSpace(dados.LoteGrupo),
 		Ativo:         dados.Ativo,
 		CriadoEm:      time.Now(),
 	}
@@ -80,6 +83,7 @@ func (s *TipoIngressoService) Atualizar(organizadorID, eventoID, tipoID int64, d
 	tipo.MinPorPedido = valorIntOuPadrao(dados.MinPorPedido, 1)
 	tipo.MaxPorPedido = valorIntOuPadrao(dados.MaxPorPedido, 10)
 	tipo.Ordem = dados.Ordem
+	tipo.LoteGrupo = strings.TrimSpace(dados.LoteGrupo)
 	tipo.Ativo = dados.Ativo
 
 	if err := s.tipos.Salvar(tipo); err != nil {

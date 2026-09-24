@@ -26,6 +26,8 @@ type ItemPedido struct {
 	TaxaPlataformaCentavos int64
 	GarantiaContratada     bool
 	GarantiaCentavos       int64
+	CupomID                *int64
+	DescontoCentavos       int64
 	TotalCentavos          int64
 	Status                 StatusItemPedido
 	Codigo                 string

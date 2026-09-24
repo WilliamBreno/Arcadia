@@ -32,6 +32,7 @@ type tipoIngressoResposta struct {
 	MinPorPedido  int        `json:"min_por_pedido"`
 	MaxPorPedido  int        `json:"max_por_pedido"`
 	Ordem         int        `json:"ordem"`
+	LoteGrupo     string     `json:"lote_grupo"`
 	Ativo         bool       `json:"ativo"`
 }
 
@@ -47,6 +48,7 @@ func paraTipoIngressoResposta(t *domain.TipoIngresso) tipoIngressoResposta {
 		MinPorPedido:  t.MinPorPedido,
 		MaxPorPedido:  t.MaxPorPedido,
 		Ordem:         t.Ordem,
+		LoteGrupo:     t.LoteGrupo,
 		Ativo:         t.Ativo,
 	}
 }
@@ -61,6 +63,7 @@ type tipoIngressoRequest struct {
 	MinPorPedido  int        `json:"min_por_pedido"`
 	MaxPorPedido  int        `json:"max_por_pedido"`
 	Ordem         int        `json:"ordem"`
+	LoteGrupo     string     `json:"lote_grupo"`
 	Ativo         bool       `json:"ativo"`
 }
 
@@ -75,6 +78,7 @@ func (req tipoIngressoRequest) paraDados() service.TipoIngressoDados {
 		MinPorPedido:  req.MinPorPedido,
 		MaxPorPedido:  req.MaxPorPedido,
 		Ordem:         req.Ordem,
+		LoteGrupo:     req.LoteGrupo,
 		Ativo:         req.Ativo,
 	}
 }
