@@ -219,6 +219,7 @@ func main() {
 		org.POST("/eventos/:id/cancelar", eventoHandler.Cancelar)
 		org.GET("/eventos/:id/ingressos", tipoIngressoHandler.Listar)
 		org.POST("/eventos/:id/ingressos", tipoIngressoHandler.Criar)
+		org.POST("/eventos/:id/ingressos/por-sessao", tipoIngressoHandler.CriarPorSessao)
 		org.PUT("/eventos/:id/ingressos/:ingressoId", tipoIngressoHandler.Atualizar)
 		org.DELETE("/eventos/:id/ingressos/:ingressoId", tipoIngressoHandler.Excluir)
 
@@ -234,6 +235,7 @@ func main() {
 		org.DELETE("/api-keys/:id", apiPublicaHandler.RevogarChave)
 		org.GET("/eventos/:id/sessoes", sessaoHandler.Listar)
 		org.POST("/eventos/:id/sessoes", sessaoHandler.Criar)
+		org.POST("/eventos/:id/sessoes/lote", sessaoHandler.CriarLote)
 		org.PUT("/eventos/:id/sessoes/:sessaoId", sessaoHandler.Atualizar)
 		org.DELETE("/eventos/:id/sessoes/:sessaoId", sessaoHandler.Excluir)
 		org.POST("/eventos/:id/sessoes/:sessaoId/cancelar", sessaoHandler.Cancelar)

@@ -146,11 +146,11 @@ func (s *SessaoService) Cancelar(organizadorID, eventoID, sessaoID int64, motivo
 	if err := s.sessoes.Salvar(sessao); err != nil {
 		return 0, nil, err
 	}
-	if err := s.sessoes.DesativarTiposDaSessao(sessaoID); err != nil {
+	if err := s.sessoes.DesativarTiposSemSessaoAtiva(eventoID); err != nil {
 		return 0, nil, err
 	}
 
-	itens, err := s.sessoes.ListarPagosDaSessao(sessaoID)
+	itens, err := s.sessoes.ListarPagosSemSessaoAtiva(eventoID, sessaoID)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -159,17 +159,43 @@ func (s *SessaoService) Cancelar(organizadorID, eventoID, sessaoID int64, motivo
 	if err := s.recalcularPeriodo(eventoID); err != nil {
 		return sucessos, falhas, err
 	}
-	if emails, errE := s.sessoes.TitularesDoEventoTodo(eventoID); errE == nil {
+	if emails, errE := s.sessoes.TitularesAfetados(eventoID, sessaoID); errE == nil {
 		titulo := sessao.Titulo
 		if titulo == "" {
 			titulo = sessao.InicioEm.In(time.Local).Format("02/01/2006 15:04")
 		}
 		for _, email := range emails {
 			_ = s.mailCliente.Enviar(email, "Sessão cancelada — "+evento.Titulo+" — "+s.plataforma,
-				fmt.Sprintf("<p>A sessão <strong>%s</strong> de <strong>%s</strong> foi cancelada pelo organizador. Seu ingresso continua válido para as demais sessões.</p><p>Motivo: %s</p>", titulo, evento.Titulo, motivo))
+				fmt.Sprintf("<p>A sessão <strong>%s</strong> de <strong>%s</strong> foi cancelada pelo organizador. Seu ingresso continua válido para as demais sessões a que ele dá direito.</p><p>Motivo: %s</p>", titulo, evento.Titulo, motivo))
 		}
 	}
 	return sucessos, falhas, nil
+}
+
+// CriarLote cria várias sessões de uma vez (um fim de semana, todas as sextas
+// do mês...). Valida todas antes de gravar a primeira.
+func (s *SessaoService) CriarLote(organizadorID, eventoID int64, itens []SessaoDados) ([]domain.Sessao, error) {
+	if _, err := s.eventos.BuscarDoOrganizador(organizadorID, eventoID); err != nil {
+		return nil, err
+	}
+	if len(itens) == 0 || len(itens) > 100 {
+		return nil, ErrSessaoInvalida
+	}
+	for _, d := range itens {
+		if err := validarSessao(d); err != nil {
+			return nil, err
+		}
+	}
+	criadas := make([]domain.Sessao, 0, len(itens))
+	for _, d := range itens {
+		sessao := domain.Sessao{EventoID: eventoID, Titulo: strings.TrimSpace(d.Titulo), InicioEm: d.InicioEm, FimEm: d.FimEm,
+			Status: domain.SessaoAtiva, CriadoEm: time.Now()}
+		if err := s.sessoes.Criar(&sessao); err != nil {
+			return criadas, err
+		}
+		criadas = append(criadas, sessao)
+	}
+	return criadas, s.recalcularPeriodo(eventoID)
 }
 
 // Excluir só sessão sem tipos de ingresso nem entradas.

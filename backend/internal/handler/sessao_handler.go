@@ -154,6 +154,41 @@ func (h *SessaoHandler) Excluir(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
+type sessaoLoteRequest struct {
+	Sessoes []sessaoRequest `json:"sessoes" binding:"required,min=1"`
+}
+
+// CriarLote é POST /org/eventos/:id/sessoes/lote.
+func (h *SessaoHandler) CriarLote(c *gin.Context) {
+	org, ok := h.organizadorHandler.ObterOrganizadorAtual(c)
+	if !ok {
+		return
+	}
+	eventoID, ok := idDaURL(c)
+	if !ok {
+		return
+	}
+	var req sessaoLoteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "informe as sessões"})
+		return
+	}
+	dados := make([]service.SessaoDados, 0, len(req.Sessoes))
+	for _, s := range req.Sessoes {
+		dados = append(dados, s.dados())
+	}
+	criadas, err := h.service.CriarLote(org.ID, eventoID, dados)
+	if err != nil {
+		h.responderErro(c, err)
+		return
+	}
+	resp := make([]sessaoResposta, 0, len(criadas))
+	for i := range criadas {
+		resp = append(resp, paraSessaoResposta(&criadas[i]))
+	}
+	c.JSON(http.StatusCreated, resp)
+}
+
 type cancelarSessaoRequest struct {
 	Motivo string `json:"motivo"`
 }

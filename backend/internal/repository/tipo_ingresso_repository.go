@@ -31,7 +31,11 @@ func (r *TipoIngressoRepository) BuscarPorID(id int64) (*domain.TipoIngresso, er
 	if err := r.db.First(&t, id).Error; err != nil {
 		return nil, err
 	}
-	return &t, nil
+	lista := []domain.TipoIngresso{t}
+	if err := r.PreencherSessoes(lista); err != nil {
+		return nil, err
+	}
+	return &lista[0], nil
 }
 
 func (r *TipoIngressoRepository) ListarPorEvento(eventoID int64) ([]domain.TipoIngresso, error) {
@@ -39,7 +43,7 @@ func (r *TipoIngressoRepository) ListarPorEvento(eventoID int64) ([]domain.TipoI
 	if err := r.db.Where("evento_id = ?", eventoID).Order("ordem, id").Find(&tipos).Error; err != nil {
 		return nil, err
 	}
-	return tipos, nil
+	return tipos, r.PreencherSessoes(tipos)
 }
 
 func (r *TipoIngressoRepository) ContarAtivosPorEvento(eventoID int64) (int64, error) {
@@ -62,8 +66,10 @@ func (r *TipoIngressoRepository) ExisteComPrecoMaiorQueZero(eventoID int64) (boo
 // exibir preço/quantidade na página pública do evento.
 func (r *TipoIngressoRepository) ListarAtivosPublicoPorEvento(eventoID int64) ([]domain.TipoIngresso, error) {
 	var tipos []domain.TipoIngresso
-	err := r.db.Where("evento_id = ? AND ativo = true", eventoID).Order("ordem, id").Find(&tipos).Error
-	return tipos, err
+	if err := r.db.Where("evento_id = ? AND ativo = true", eventoID).Order("ordem, id").Find(&tipos).Error; err != nil {
+		return nil, err
+	}
+	return tipos, r.PreencherSessoes(tipos)
 }
 
 // PrecoMinimoPorEvento retorna, para cada evento_id em eventoIDs, o menor
@@ -92,4 +98,45 @@ func (r *TipoIngressoRepository) PrecoMinimoPorEvento(eventoIDs []int64) (map[in
 		resultado[l.EventoID] = l.PrecoCentavos
 	}
 	return resultado, nil
+}
+
+// PreencherSessoes carrega, em lote, as sessões de cada tipo (vazio = todas).
+func (r *TipoIngressoRepository) PreencherSessoes(tipos []domain.TipoIngresso) error {
+	if len(tipos) == 0 {
+		return nil
+	}
+	ids := make([]int64, len(tipos))
+	for i := range tipos {
+		ids[i] = tipos[i].ID
+	}
+	var linhas []struct {
+		TipoIngressoID int64
+		SessaoID       int64
+	}
+	if err := r.db.Table("tipo_ingresso_sessoes").Where("tipo_ingresso_id IN ?", ids).Order("sessao_id").Scan(&linhas).Error; err != nil {
+		return err
+	}
+	porTipo := map[int64][]int64{}
+	for _, l := range linhas {
+		porTipo[l.TipoIngressoID] = append(porTipo[l.TipoIngressoID], l.SessaoID)
+	}
+	for i := range tipos {
+		tipos[i].SessaoIDs = porTipo[tipos[i].ID]
+	}
+	return nil
+}
+
+// DefinirSessoes substitui o conjunto de sessões do tipo (vazio = todas).
+func (r *TipoIngressoRepository) DefinirSessoes(tipoID int64, sessaoIDs []int64) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec(`DELETE FROM tipo_ingresso_sessoes WHERE tipo_ingresso_id = ?`, tipoID).Error; err != nil {
+			return err
+		}
+		for _, id := range sessaoIDs {
+			if err := tx.Exec(`INSERT INTO tipo_ingresso_sessoes (tipo_ingresso_id, sessao_id) VALUES (?, ?) ON CONFLICT DO NOTHING`, tipoID, id).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }

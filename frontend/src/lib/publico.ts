@@ -59,7 +59,7 @@ export type EventoDetalhe = {
     quantidade: number
     ativo: boolean
     meia_entrada: boolean
-    sessao_id: number | null
+    sessao_ids: number[]
   }[]
   taxa_plataforma_centavos: number
   garantia_centavos: number

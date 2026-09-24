@@ -17,6 +17,14 @@ export function rotuloSessao(s: Sessao): string {
 export function SessoesCard({ eventoId }: { eventoId: number }) {
   const queryClient = useQueryClient()
   const [form, setForm] = useState({ titulo: '', inicio: '', fim: '' })
+  const [lote, setLote] = useState<{ de: string; ate: string; dias: number[]; horaIni: string; horaFim: string; prefixo: string }>({
+    de: '',
+    ate: '',
+    dias: [5, 6, 0],
+    horaIni: '18:00',
+    horaFim: '23:00',
+    prefixo: '',
+  })
   const [erro, setErro] = useState<string | null>(null)
   const { data } = useQuery({ queryKey: ['org-sessoes', eventoId], queryFn: () => api<Sessao[]>(`/org/eventos/${eventoId}/sessoes`) })
   const invalidar = () => {
@@ -40,6 +48,42 @@ export function SessoesCard({ eventoId }: { eventoId: number }) {
       invalidar()
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : 'Erro ao criar sessão')
+    }
+  }
+
+  // Gera uma sessão por dia do período nos dias da semana marcados.
+  const datasDoLote = () => {
+    if (!lote.de || !lote.ate) return []
+    const lista: { titulo: string; inicio_em: string; fim_em: string | null }[] = []
+    const dia = new Date(`${lote.de}T00:00:00`)
+    const fim = new Date(`${lote.ate}T00:00:00`)
+    while (dia <= fim && lista.length < 100) {
+      if (lote.dias.includes(dia.getDay())) {
+        const ymd = `${dia.getFullYear()}-${String(dia.getMonth() + 1).padStart(2, '0')}-${String(dia.getDate()).padStart(2, '0')}`
+        lista.push({
+          titulo: `${lote.prefixo}${dia.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' })}`.trim(),
+          inicio_em: new Date(`${ymd}T${lote.horaIni}:00`).toISOString(),
+          fim_em: lote.horaFim ? new Date(`${ymd}T${lote.horaFim}:00`).toISOString() : null,
+        })
+      }
+      dia.setDate(dia.getDate() + 1)
+    }
+    return lista
+  }
+
+  const criarLote = async () => {
+    setErro(null)
+    const sessoes = datasDoLote()
+    if (sessoes.length === 0) {
+      setErro('Nenhum dia no período com os dias da semana marcados.')
+      return
+    }
+    if (!confirm(`Criar ${sessoes.length} sessão(ões)?`)) return
+    try {
+      await api(`/org/eventos/${eventoId}/sessoes/lote`, { method: 'POST', body: { sessoes } })
+      invalidar()
+    } catch (e) {
+      setErro(e instanceof ApiError ? e.message : 'Erro ao criar sessões')
     }
   }
 
@@ -116,6 +160,42 @@ export function SessoesCard({ eventoId }: { eventoId: number }) {
           </div>
           <Button onClick={criar} disabled={!form.inicio}>
             Adicionar
+          </Button>
+        </div>
+        <div className="flex flex-col gap-2 border-t border-border pt-3 text-sm">
+          <p className="font-medium text-foreground">Ou gerar várias de uma vez (período + dias da semana)</p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="lt-de">De</Label>
+              <Input id="lt-de" type="date" value={lote.de} onChange={(e) => setLote({ ...lote, de: e.target.value })} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="lt-ate">Até</Label>
+              <Input id="lt-ate" type="date" value={lote.ate} onChange={(e) => setLote({ ...lote, ate: e.target.value })} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="lt-hi">Início</Label>
+              <Input id="lt-hi" type="time" value={lote.horaIni} onChange={(e) => setLote({ ...lote, horaIni: e.target.value })} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="lt-hf">Fim</Label>
+              <Input id="lt-hf" type="time" value={lote.horaFim} onChange={(e) => setLote({ ...lote, horaFim: e.target.value })} />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'].map((nome, i) => (
+              <label key={nome} className="flex items-center gap-1 text-foreground">
+                <input
+                  type="checkbox"
+                  checked={lote.dias.includes(i)}
+                  onChange={(e) => setLote({ ...lote, dias: e.target.checked ? [...lote.dias, i] : lote.dias.filter((d) => d !== i) })}
+                />
+                {nome}
+              </label>
+            ))}
+          </div>
+          <Button variant="outline" size="sm" className="w-fit" onClick={criarLote} disabled={!lote.de || !lote.ate}>
+            Gerar sessões ({datasDoLote().length})
           </Button>
         </div>
         {erro && <p className="text-sm text-destructive">{erro}</p>}

@@ -34,7 +34,7 @@ type tipoIngressoResposta struct {
 	Ordem         int        `json:"ordem"`
 	LoteGrupo     string     `json:"lote_grupo"`
 	MeiaEntrada   bool       `json:"meia_entrada"`
-	SessaoID      *int64     `json:"sessao_id"`
+	SessaoIDs     []int64    `json:"sessao_ids"`
 	Ativo         bool       `json:"ativo"`
 }
 
@@ -52,7 +52,7 @@ func paraTipoIngressoResposta(t *domain.TipoIngresso) tipoIngressoResposta {
 		Ordem:         t.Ordem,
 		LoteGrupo:     t.LoteGrupo,
 		MeiaEntrada:   t.MeiaEntrada,
-		SessaoID:      t.SessaoID,
+		SessaoIDs:     idsOuVazio(t.SessaoIDs),
 		Ativo:         t.Ativo,
 	}
 }
@@ -69,7 +69,7 @@ type tipoIngressoRequest struct {
 	Ordem         int        `json:"ordem"`
 	LoteGrupo     string     `json:"lote_grupo"`
 	MeiaEntrada   bool       `json:"meia_entrada"`
-	SessaoID      *int64     `json:"sessao_id"`
+	SessaoIDs     []int64    `json:"sessao_ids"`
 	Ativo         bool       `json:"ativo"`
 }
 
@@ -86,7 +86,7 @@ func (req tipoIngressoRequest) paraDados() service.TipoIngressoDados {
 		Ordem:         req.Ordem,
 		LoteGrupo:     req.LoteGrupo,
 		MeiaEntrada:   req.MeiaEntrada,
-		SessaoID:      req.SessaoID,
+		SessaoIDs:     req.SessaoIDs,
 		Ativo:         req.Ativo,
 	}
 }

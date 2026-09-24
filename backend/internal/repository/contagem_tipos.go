@@ -42,6 +42,8 @@ func (r *TipoIngressoRepository) ListarPorGrupoLote(db *gorm.DB, eventoID int64,
 		db = r.db
 	}
 	var tipos []domain.TipoIngresso
-	err := db.Where("evento_id = ? AND lote_grupo = ?", eventoID, grupo).Find(&tipos).Error
-	return tipos, err
+	if err := db.Where("evento_id = ? AND lote_grupo = ?", eventoID, grupo).Find(&tipos).Error; err != nil {
+		return nil, err
+	}
+	return tipos, r.PreencherSessoes(tipos)
 }

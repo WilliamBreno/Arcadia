@@ -41,3 +41,12 @@ func TestSessaoAtualEPeriodo(t *testing.T) {
 		t.Error("sem sessões não há período")
 	}
 }
+
+func TestTipoValeNaSessao(t *testing.T) {
+	if !tipoValeNaSessao(nil, 7) {
+		t.Error("sem lista vale em todas as sessões")
+	}
+	if !tipoValeNaSessao([]int64{1, 3}, 3) || tipoValeNaSessao([]int64{1, 3}, 2) {
+		t.Error("com lista, só nas sessões listadas")
+	}
+}

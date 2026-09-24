@@ -67,3 +67,16 @@ func PeriodoDoEvento(sessoes []domain.Sessao) (inicio time.Time, fim time.Time, 
 	}
 	return
 }
+
+// tipoValeNaSessao: tipo sem sessões listadas vale em todas; com lista, só nelas.
+func tipoValeNaSessao(sessaoIDs []int64, sessaoID int64) bool {
+	if len(sessaoIDs) == 0 {
+		return true
+	}
+	for _, id := range sessaoIDs {
+		if id == sessaoID {
+			return true
+		}
+	}
+	return false
+}

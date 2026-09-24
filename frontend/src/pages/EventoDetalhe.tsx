@@ -210,9 +210,16 @@ export default function EventoDetalhe() {
               <CardContent className="flex items-center justify-between py-4">
                 <div>
                   <p className="font-medium text-foreground">{i.nome}</p>
-                  {i.sessao_id && (
+                  {data.sessoes.length > 1 && (
                     <p className="text-xs text-muted-foreground">
-                      Válido somente para: {data.sessoes.find((s) => s.id === i.sessao_id)?.titulo || 'uma sessão específica'}
+                      {i.sessao_ids.length === 0
+                        ? 'Válido para todos os dias'
+                        : `Válido somente: ${i.sessao_ids
+                            .map((id) => {
+                              const s = data.sessoes.find((x) => x.id === id)
+                              return s ? s.titulo || new Date(s.inicio_em).toLocaleDateString('pt-BR') : ''
+                            })
+                            .join(', ')}`}
                     </p>
                   )}
                   {i.meia_entrada && (

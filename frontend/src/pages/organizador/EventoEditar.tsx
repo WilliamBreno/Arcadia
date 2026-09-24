@@ -315,7 +315,16 @@ export default function EventoEditar() {
 
 function TiposIngressoCard({ eventoId, tipos }: { eventoId: number; tipos: TipoIngresso[] }) {
   const queryClient = useQueryClient()
-  const [novo, setNovo] = useState({ nome: '', preco: '0', quantidade: '10', lote: '', meia: false, sessao: '' })
+  const [novo, setNovo] = useState<{
+    nome: string
+    preco: string
+    quantidade: string
+    lote: string
+    meia: boolean
+    modo: 'todas' | 'algumas' | 'porDia'
+    sel: number[]
+    dia: Record<number, { preco: string; qtd: string }>
+  }>({ nome: '', preco: '0', quantidade: '10', lote: '', meia: false, modo: 'todas', sel: [], dia: {} })
   const [erro, setErro] = useState<string | null>(null)
 
   const invalidar = () => queryClient.invalidateQueries({ queryKey: ['org-evento-ingressos', String(eventoId)] })
@@ -324,20 +333,42 @@ function TiposIngressoCard({ eventoId, tipos }: { eventoId: number; tipos: TipoI
   const adicionar = async () => {
     setErro(null)
     try {
-      await api(`/org/eventos/${eventoId}/ingressos`, {
-        method: 'POST',
-        body: {
-          nome: novo.nome,
-          preco_centavos: Math.round(Number(novo.preco) * 100),
-          quantidade: Number(novo.quantidade),
-          lote_grupo: novo.lote,
-          meia_entrada: novo.meia,
-          sessao_id: novo.sessao ? Number(novo.sessao) : null,
-          ordem: tipos.length + 1,
-          ativo: true,
-        },
-      })
-      setNovo({ nome: '', preco: '0', quantidade: '10', lote: '', meia: false, sessao: '' })
+      if (novo.modo === 'porDia') {
+        const linhas = (sessoes ?? [])
+          .filter((s) => s.status === 'ativa' && novo.dia[s.id]?.preco !== undefined && novo.dia[s.id]?.preco !== '')
+          .map((s) => ({
+            sessao_id: s.id,
+            preco_centavos: Math.round(Number(novo.dia[s.id].preco) * 100),
+            quantidade: Number(novo.dia[s.id].qtd || novo.quantidade),
+          }))
+        if (linhas.length === 0) {
+          setErro('Informe o preço de pelo menos um dia.')
+          return
+        }
+        await api(`/org/eventos/${eventoId}/ingressos/por-sessao`, {
+          method: 'POST',
+          body: { nome: novo.nome, meia_entrada: novo.meia, sessoes: linhas },
+        })
+      } else {
+        if (novo.modo === 'algumas' && novo.sel.length === 0) {
+          setErro('Marque pelo menos um dia.')
+          return
+        }
+        await api(`/org/eventos/${eventoId}/ingressos`, {
+          method: 'POST',
+          body: {
+            nome: novo.nome,
+            preco_centavos: Math.round(Number(novo.preco) * 100),
+            quantidade: Number(novo.quantidade),
+            lote_grupo: novo.lote,
+            meia_entrada: novo.meia,
+            sessao_ids: novo.modo === 'algumas' ? novo.sel : [],
+            ordem: tipos.length + 1,
+            ativo: true,
+          },
+        })
+      }
+      setNovo({ nome: '', preco: '0', quantidade: '10', lote: '', meia: false, modo: 'todas', sel: [], dia: {} })
       invalidar()
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : 'Erro ao adicionar tipo de ingresso')
@@ -364,7 +395,11 @@ function TiposIngressoCard({ eventoId, tipos }: { eventoId: number; tipos: TipoI
                 {formatarCentavos(t.preco_centavos)} · {t.quantidade} unidades
                 {t.lote_grupo ? ` · lote "${t.lote_grupo}" (ordem ${t.ordem})` : ''}
                 {t.meia_entrada ? ' · meia-entrada' : ''}
-                {t.sessao_id ? ' · só uma sessão' : ''}
+                {t.sessao_ids.length > 0
+                  ? ` · só: ${t.sessao_ids.map((sid) => sessoes?.find((s) => s.id === sid)?.titulo || `sessão ${sid}`).join(', ')}`
+                  : sessoes && sessoes.length > 0
+                    ? ' · todos os dias'
+                    : ''}
               </p>
             </div>
             <Button variant="destructive" size="sm" onClick={() => excluir(t.id)}>
@@ -373,24 +408,64 @@ function TiposIngressoCard({ eventoId, tipos }: { eventoId: number; tipos: TipoI
           </div>
         ))}
 
-        {sessoes && sessoes.length > 0 && (
-          <div className="flex flex-col gap-1.5 border-t border-border pt-4">
-            <Label htmlFor="novo-sessao">Válido para</Label>
-            <select
-              id="novo-sessao"
-              className="h-8 rounded-lg border border-border bg-background px-2.5 text-sm"
-              value={novo.sessao}
-              onChange={(e) => setNovo({ ...novo, sessao: e.target.value })}
-            >
-              <option value="">O evento todo (todas as sessões)</option>
-              {sessoes
-                .filter((s) => s.status === 'ativa')
-                .map((s) => (
-                  <option key={s.id} value={s.id}>
-                    Somente: {rotuloSessao(s)}
-                  </option>
-                ))}
-            </select>
+        {sessoes && sessoes.filter((s) => s.status === 'ativa').length > 0 && (
+          <div className="flex flex-col gap-2 border-t border-border pt-4 text-sm">
+            <Label>Este ingresso vale para</Label>
+            {(
+              [
+                ['todas', 'Todos os dias (um ingresso só, uma entrada em cada dia)'],
+                ['algumas', 'Só alguns dias que eu escolher (ex.: sábado e domingo)'],
+                ['porDia', 'Um ingresso por dia, cada dia com seu preço e quantidade'],
+              ] as const
+            ).map(([valor, rotulo]) => (
+              <label key={valor} className="flex items-center gap-2 text-foreground">
+                <input type="radio" name="modo-sessao" checked={novo.modo === valor} onChange={() => setNovo({ ...novo, modo: valor })} />
+                {rotulo}
+              </label>
+            ))}
+            {novo.modo === 'algumas' && (
+              <div className="ml-6 flex flex-col gap-1">
+                {sessoes
+                  .filter((s) => s.status === 'ativa')
+                  .map((s) => (
+                    <label key={s.id} className="flex items-center gap-2 text-foreground">
+                      <input
+                        type="checkbox"
+                        checked={novo.sel.includes(s.id)}
+                        onChange={(e) => setNovo({ ...novo, sel: e.target.checked ? [...novo.sel, s.id] : novo.sel.filter((x) => x !== s.id) })}
+                      />
+                      {rotuloSessao(s)}
+                    </label>
+                  ))}
+              </div>
+            )}
+            {novo.modo === 'porDia' && (
+              <div className="ml-6 flex flex-col gap-1.5">
+                <p className="text-xs text-muted-foreground">Deixe o preço em branco nos dias em que este ingresso não existe. Preço 0 = gratuito.</p>
+                {sessoes
+                  .filter((s) => s.status === 'ativa')
+                  .map((s) => (
+                    <div key={s.id} className="grid grid-cols-[1fr_6rem_6rem] items-center gap-2">
+                      <span className="text-foreground">{rotuloSessao(s)}</span>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="R$"
+                        value={novo.dia[s.id]?.preco ?? ''}
+                        onChange={(e) => setNovo({ ...novo, dia: { ...novo.dia, [s.id]: { preco: e.target.value, qtd: novo.dia[s.id]?.qtd ?? '' } } })}
+                      />
+                      <Input
+                        type="number"
+                        min="1"
+                        placeholder={`qtd (${novo.quantidade})`}
+                        value={novo.dia[s.id]?.qtd ?? ''}
+                        onChange={(e) => setNovo({ ...novo, dia: { ...novo.dia, [s.id]: { preco: novo.dia[s.id]?.preco ?? '', qtd: e.target.value } } })}
+                      />
+                    </div>
+                  ))}
+              </div>
+            )}
           </div>
         )}
         <label className="flex items-center gap-2 border-t border-border pt-4 text-sm text-foreground">

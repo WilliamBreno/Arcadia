@@ -18,7 +18,7 @@ type TipoIngresso struct {
 	Ordem         int
 	LoteGrupo     string
 	MeiaEntrada   bool
-	SessaoID      *int64
+	SessaoIDs     []int64 `gorm:"-"` // vazio = vale para todas as sessões
 	Ativo         bool
 	CriadoEm      time.Time
 }

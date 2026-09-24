@@ -19,7 +19,7 @@ func (s *CheckinService) validarComSessoes(item *domain.ItemPedido, tipo *domain
 	}
 	agora := time.Now()
 	atual := SessaoAtual(sessoes, agora)
-	if atual == nil || (tipo.SessaoID != nil && *tipo.SessaoID != atual.ID) {
+	if atual == nil || !tipoValeNaSessao(tipo.SessaoIDs, atual.ID) {
 		r := base
 		r.Resultado = ResultadoForaDaSessao
 		return &r, nil
