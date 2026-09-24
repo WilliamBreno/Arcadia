@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 
 import { api } from '@/lib/api'
 import type { MeuIngresso } from '@/lib/conta'
+import { TransferirIngresso } from '@/components/transferir-ingresso'
 import { Card, CardContent } from '@/components/ui/card'
 
 const rotuloStatus: Record<string, string> = {
@@ -60,6 +61,9 @@ export default function MeusIngressos() {
               <p className="font-mono text-sm text-foreground">{selecionado.codigo}</p>
               <p className="text-sm text-muted-foreground">{selecionado.titular_nome}</p>
               <p className="text-xs text-muted-foreground">{rotuloStatus[selecionado.status] ?? selecionado.status}</p>
+              {selecionado.status === 'pago' && (
+                <TransferirIngresso itemId={selecionado.id} onConcluido={() => setSelecionado(null)} />
+              )}
               <Link
                 to={`/e/${selecionado.evento_slug}`}
                 className="text-xs text-primary underline-offset-4 hover:underline"
