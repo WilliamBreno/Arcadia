@@ -75,7 +75,7 @@ func main() {
 		mpCliente, mailCliente, cfg.NomePlataforma,
 	)
 	contaService := service.NovoContaService(organizadorRepo, eventoRepo, papelEventoRepo, itemPedidoRepo, pedidoRepo)
-	checkinService := service.NovoCheckinService(itemPedidoRepo, tipoIngressoRepo, eventoRepo, organizadorRepo, papelEventoRepo)
+	checkinService := service.NovoCheckinService(itemPedidoRepo, tipoIngressoRepo, eventoRepo, organizadorRepo, papelEventoRepo, cfg.JWTSecret)
 	staffService := service.NovoStaffService(eventoRepo, usuarioRepo, papelEventoRepo)
 	vendasService := service.NovoVendasService(eventoRepo, itemPedidoRepo)
 	repasseService := service.NovoRepasseService(db, eventoRepo, itemPedidoRepo, repasseRepo, configPlataformaRepo)
@@ -104,6 +104,7 @@ func main() {
 	plateiaHandler := handler.NovoPlateiaHandler(organizadorHandler, eventoRepo, plateiaService)
 	transferenciaService := service.NovoTransferenciaService(db, itemPedidoRepo, pedidoRepo, eventoRepo, mailCliente, cfg.JWTSecret, cfg.FrontendURL, cfg.NomePlataforma)
 	transferenciaHandler := handler.NovoTransferenciaHandler(transferenciaService)
+	qrHandler := handler.NovoQRHandler(service.NovoQRService(itemPedidoRepo, pedidoRepo, tipoIngressoRepo, eventoRepo, cfg.JWTSecret))
 	cortesiaService := service.NovoCortesiaService(db, eventoService, itemPedidoRepo, pedidoRepo, mailCliente, cfg.JWTSecret, cfg.FrontendURL, cfg.NomePlataforma)
 	cortesiaService.DefinirPromotor(plateiaService)
 	cortesiaHandler := handler.NovoCortesiaHandler(organizadorHandler, cortesiaService, fichaService, itemPedidoRepo, tipoIngressoRepo, eventoRepo)
@@ -145,6 +146,7 @@ func main() {
 		v1.GET("/categorias", publicoHandler.Categorias)
 		v1.GET("/eventos/:slug/resultado", avaliacaoHandler.ResultadoPublico)
 		v1.GET("/ingressos/:codigo/:token", cortesiaHandler.IngressoPublico)
+		v1.GET("/ingressos/:codigo/:token/qr", qrHandler.PorLink)
 		v1.GET("/convites/:token", conviteHandler.Consultar)
 		v1.POST("/webhooks/mercadopago", webhookHandler.MercadoPago)
 
@@ -163,6 +165,7 @@ func main() {
 		autenticado.GET("/me/eventos", contaHandler.MeusEventos)
 		autenticado.GET("/me/ingressos", contaHandler.MeusIngressos)
 		autenticado.GET("/me/ingressos/:id", contaHandler.MeuIngresso)
+		autenticado.GET("/me/ingressos/:id/qr", qrHandler.DoComprador)
 		autenticado.POST("/convites/:token/aceitar", conviteHandler.Aceitar)
 		autenticado.GET("/eventos/:slug/minha-ficha", fichaHandler.ObterMinha)
 		autenticado.PUT("/eventos/:slug/minha-ficha", fichaHandler.AtualizarMinha)

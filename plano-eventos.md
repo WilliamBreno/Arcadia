@@ -363,7 +363,8 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - [x] 3.6 **Fechar a fase:** commit, push e `git tag fase-3` + `git push --tags`
 
 ### Fase 4 — Extras
-- [ ] WhatsApp (API oficial), links de divulgadores/afiliados, temas por evento, eventos recorrentes/multi-sessão, assento ou mesa marcada, QR rotativo anti-print, check-in offline, API pública/integrações
+- [x] 4.1 QR rotativo anti-print
+- [ ] WhatsApp (API oficial), links de divulgadores/afiliados, temas por evento, eventos recorrentes/multi-sessão, assento ou mesa marcada, check-in offline, API pública/integrações
 
 ---
 
@@ -494,6 +495,8 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 
 - **Item 3.5 — equipe (`organizador_membros`, papel único `gestor`).** O dono adiciona por e-mail alguém que já tem conta. `ObterOrganizadorAtual` agora resolve: header `X-Organizador-ID` (dono ou membro, senão 403) → perfil próprio → primeira equipe da qual participa. Assim **todas** as rotas `/org/*` já valem para membros (eventos, ingressos, cupons, cortesias, participantes, convites, staff, check-in, cronograma, critérios...). **Só o dono** (`ObterOrganizadorDono`) acessa: perfil/Pix, financeiro do evento, repasses, relatórios (têm receita), cancelar evento (dispara reembolso em massa) e a própria equipe — verificado (403). Limitações: um papel só (sem "somente leitura"/"financeiro"), sem seletor de organizador na interface (o frontend não envia o header; quem é dono e membro ao mesmo tempo age como dono), e o membro ainda vê o card de Vendas com receita do evento (item 1.11) — restringir se o dono quiser.
 - **Item 3.5 — relatórios avançados do organizador** (`GET /org/relatorios?de&ate`, tela `/organizador/relatorios`, só dono): totais, por evento (vendidos sem cortesia, cortesias, receita bruta = preço, check-ins e % de comparecimento, cancelados) e vendas por dia (por data de criação do item, sem cortesias). Receita é o preço do ingresso, sem taxas/repasse (isso segue no painel financeiro do 2.2).
+
+- **Item 4.1 — QR rotativo (`eventos.qr_rotativo`, opt-in do organizador).** O QR passa a ser `codigo:R<janela>.<HMAC>` com janela de 30s (`unix/30`), assinado com o mesmo segredo do QR estático; o servidor aceita a janela atual e as vizinhas (±30s de relógio) e devolve `qr_expirado` (laranja no leitor: "QR desatualizado") se vier token antigo **ou o estático** — em evento rotativo, print/foto do ingresso não entra (verificado, incl. reuso: `ja_utilizado`). O portador obtém o payload em `GET /me/ingressos/:id/qr` (só o dono do pedido) ou `GET /ingressos/:codigo/:token/qr` (link do e-mail), com `Cache-Control: no-store`, e o frontend renova sozinho (`useQR`). Consequência: com o flag ligado o participante **precisa de internet no celular** para abrir o ingresso na portaria. Eventos sem o flag continuam com o QR estático (o leitor aceita os dois formatos). O check-in offline (também da Fase 4) é incompatível por construção com este modo e **não foi feito**: exigiria service worker e distribuir o segredo de verificação aos leitores.
 
 **Pendências para validar fora do código:**
 - Contador/advogado: custódia de recursos de terceiros, nome "Garantia de vaga" (vs. "seguro"), retenção ou não da taxa no arrependimento, regras regionais por UF (incluindo Sergipe), emissão de nota fiscal e tributação da taxa/garantia.

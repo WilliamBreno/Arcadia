@@ -3,6 +3,7 @@ package service
 import (
 	"crypto/subtle"
 	"errors"
+	"time"
 
 	"github.com/WilliamBreno/Arcadia/backend/internal/domain"
 	"github.com/WilliamBreno/Arcadia/backend/internal/repository"
@@ -18,6 +19,7 @@ const (
 	ResultadoCancelado     ResultadoValidacao = "cancelado"
 	ResultadoOutroEvento   ResultadoValidacao = "outro_evento"
 	ResultadoNaoEncontrado ResultadoValidacao = "nao_encontrado"
+	ResultadoQRExpirado    ResultadoValidacao = "qr_expirado"
 )
 
 type ResultadoCheckin struct {
@@ -33,6 +35,7 @@ type CheckinService struct {
 	eventos       *repository.EventoRepository
 	organizadores *repository.OrganizadorRepository
 	papeis        *repository.PapelEventoRepository
+	qrSecret      string
 }
 
 func NovoCheckinService(
@@ -41,10 +44,11 @@ func NovoCheckinService(
 	eventos *repository.EventoRepository,
 	organizadores *repository.OrganizadorRepository,
 	papeis *repository.PapelEventoRepository,
+	qrSecret string,
 ) *CheckinService {
 	return &CheckinService{
 		itensPedido: itensPedido, tiposIngresso: tiposIngresso, eventos: eventos,
-		organizadores: organizadores, papeis: papeis,
+		organizadores: organizadores, papeis: papeis, qrSecret: qrSecret,
 	}
 }
 
@@ -74,13 +78,31 @@ func (s *CheckinService) Validar(usuarioID, eventoID int64, codigo, qrToken stri
 	if err != nil {
 		return &ResultadoCheckin{Resultado: ResultadoNaoEncontrado}, nil
 	}
-	if subtle.ConstantTimeCompare([]byte(item.QRToken), []byte(qrToken)) != 1 {
-		return &ResultadoCheckin{Resultado: ResultadoNaoEncontrado}, nil
-	}
-
 	tipo, err := s.tiposIngresso.BuscarPorID(item.TipoIngressoID)
 	if err != nil {
 		return &ResultadoCheckin{Resultado: ResultadoNaoEncontrado}, nil
+	}
+	dono, err := s.eventos.BuscarPorID(tipo.EventoID)
+	if err != nil {
+		return &ResultadoCheckin{Resultado: ResultadoNaoEncontrado}, nil
+	}
+
+	// Autenticidade: token rotativo (HMAC por janela de 30s) ou o estático.
+	// Evento com qr_rotativo só aceita o rotativo — print do QR não entra.
+	if ehTokenRotativo(qrToken) {
+		switch validarTokenRotativo(s.qrSecret, item.Codigo, qrToken, time.Now()) {
+		case qrExpirado:
+			return &ResultadoCheckin{Resultado: ResultadoQRExpirado, Item: item, TipoIngressoNome: tipo.Nome}, nil
+		case qrInvalido:
+			return &ResultadoCheckin{Resultado: ResultadoNaoEncontrado}, nil
+		}
+	} else {
+		if subtle.ConstantTimeCompare([]byte(item.QRToken), []byte(qrToken)) != 1 {
+			return &ResultadoCheckin{Resultado: ResultadoNaoEncontrado}, nil
+		}
+		if dono.QRRotativo {
+			return &ResultadoCheckin{Resultado: ResultadoQRExpirado, Item: item, TipoIngressoNome: tipo.Nome}, nil
+		}
 	}
 	if tipo.EventoID != eventoID {
 		return &ResultadoCheckin{Resultado: ResultadoOutroEvento, Item: item, TipoIngressoNome: tipo.Nome, MeiaEntrada: tipo.MeiaEntrada}, nil

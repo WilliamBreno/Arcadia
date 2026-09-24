@@ -17,6 +17,7 @@ export type Evento = {
   capacidade_total: number | null
   garantia_habilitada: boolean
   aprovacao_manual: boolean
+  qr_rotativo: boolean
   politica_cancelamento_texto: string
   max_itens_por_pedido: number
   publicado_em: string | null

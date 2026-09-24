@@ -1,0 +1,1 @@
+ALTER TABLE eventos ADD COLUMN qr_rotativo BOOLEAN NOT NULL DEFAULT false;

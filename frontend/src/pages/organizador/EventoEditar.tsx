@@ -48,6 +48,7 @@ const schemaBasico = z.object({
   inicio_em: z.string(),
   fim_em: z.string(),
   aprovacao_manual: z.boolean(),
+  qr_rotativo: z.boolean(),
 })
 
 type FormBasico = z.infer<typeof schemaBasico>
@@ -211,6 +212,11 @@ export default function EventoEditar() {
                 </select>
               </div>
             </div>
+
+            <label className="flex items-center gap-2 text-sm text-foreground">
+              <input type="checkbox" {...register('qr_rotativo')} />
+              QR rotativo anti-print (o QR muda a cada 30s; print/foto do ingresso não entra — o participante precisa abrir o ingresso online na portaria)
+            </label>
 
             <label className="flex items-center gap-2 text-sm text-foreground">
               <input type="checkbox" {...register('aprovacao_manual')} />

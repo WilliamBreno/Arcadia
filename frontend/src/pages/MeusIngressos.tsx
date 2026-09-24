@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { api } from '@/lib/api'
+import { useQR } from '@/lib/use-qr'
 import type { MeuIngresso } from '@/lib/conta'
 import { TransferirIngresso } from '@/components/transferir-ingresso'
 import { Card, CardContent } from '@/components/ui/card'
@@ -56,7 +57,7 @@ export default function MeusIngressos() {
             <CardContent className="flex flex-col items-center gap-4 py-6 text-center">
               <p className="font-medium text-foreground">{selecionado.evento_titulo}</p>
               <div className="rounded-lg bg-white p-4">
-                <QRCodeSVG value={`${selecionado.codigo}:${selecionado.qr_token}`} size={200} />
+                <QRDoIngresso id={selecionado.id} />
               </div>
               <p className="font-mono text-sm text-foreground">{selecionado.codigo}</p>
               <p className="text-sm text-muted-foreground">{selecionado.titular_nome}</p>
@@ -75,5 +76,17 @@ export default function MeusIngressos() {
         </div>
       )}
     </main>
+  )
+}
+
+function QRDoIngresso({ id }: { id: number }) {
+  const { qr, erro } = useQR(`/me/ingressos/${id}/qr`)
+  if (erro && !qr) return <p className="size-[200px] text-xs text-destructive">Não foi possível carregar o QR. Verifique a conexão.</p>
+  if (!qr) return <div className="size-[200px]" />
+  return (
+    <>
+      <QRCodeSVG value={qr.payload} size={200} />
+      {qr.rotativo && <p className="mt-2 text-xs text-muted-foreground">QR dinâmico — atualiza sozinho; prints não valem.</p>}
+    </>
   )
 }

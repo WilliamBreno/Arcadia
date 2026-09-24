@@ -42,6 +42,7 @@ type eventoResposta struct {
 	CapacidadeTotal           *int       `json:"capacidade_total"`
 	GarantiaHabilitada        bool       `json:"garantia_habilitada"`
 	AprovacaoManual           bool       `json:"aprovacao_manual"`
+	QRRotativo                bool       `json:"qr_rotativo"`
 	PoliticaCancelamentoTexto string     `json:"politica_cancelamento_texto"`
 	MaxItensPorPedido         int        `json:"max_itens_por_pedido"`
 	PublicadoEm               *time.Time `json:"publicado_em"`
@@ -69,6 +70,7 @@ func paraEventoResposta(e *domain.Evento) eventoResposta {
 		CapacidadeTotal:           e.CapacidadeTotal,
 		GarantiaHabilitada:        e.GarantiaHabilitada,
 		AprovacaoManual:           e.AprovacaoManual,
+		QRRotativo:                e.QRRotativo,
 		PoliticaCancelamentoTexto: e.PoliticaCancelamentoTexto,
 		MaxItensPorPedido:         e.MaxItensPorPedido,
 		PublicadoEm:               e.PublicadoEm,
@@ -93,6 +95,7 @@ type eventoRequest struct {
 	CapacidadeTotal           *int       `json:"capacidade_total"`
 	GarantiaHabilitada        *bool      `json:"garantia_habilitada"`
 	AprovacaoManual           *bool      `json:"aprovacao_manual"`
+	QRRotativo                *bool      `json:"qr_rotativo"`
 	PoliticaCancelamentoTexto string     `json:"politica_cancelamento_texto"`
 	MaxItensPorPedido         int        `json:"max_itens_por_pedido"`
 }
@@ -116,6 +119,7 @@ func (req eventoRequest) paraDados() service.EventoDados {
 		CapacidadeTotal:           req.CapacidadeTotal,
 		GarantiaHabilitada:        req.GarantiaHabilitada,
 		AprovacaoManual:           req.AprovacaoManual,
+		QRRotativo:                req.QRRotativo,
 		PoliticaCancelamentoTexto: req.PoliticaCancelamentoTexto,
 		MaxItensPorPedido:         req.MaxItensPorPedido,
 	}

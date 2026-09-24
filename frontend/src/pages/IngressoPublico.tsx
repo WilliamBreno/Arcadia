@@ -3,6 +3,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { useParams } from 'react-router-dom'
 
 import { api, ApiError } from '@/lib/api'
+import { useQR } from '@/lib/use-qr'
 import { Card, CardContent } from '@/components/ui/card'
 
 type Ingresso = {
@@ -40,7 +41,7 @@ export default function IngressoPublico() {
             <p className="text-sm text-muted-foreground">{new Date(data.evento_inicio_em).toLocaleString('pt-BR')}</p>
           )}
           {ativo ? (
-            <QRCodeSVG value={`${data.codigo}:${data.qr_token}`} size={220} />
+            <QRPublico codigo={data.codigo} token={data.qr_token} />
           ) : (
             <p className="text-sm text-destructive">Este ingresso não está mais válido ({data.status}).</p>
           )}
@@ -52,4 +53,9 @@ export default function IngressoPublico() {
       </Card>
     </main>
   )
+}
+
+function QRPublico({ codigo, token }: { codigo: string; token: string }) {
+  const { qr } = useQR(`/ingressos/${codigo}/${token}/qr`, true)
+  return qr ? <QRCodeSVG value={qr.payload} size={220} /> : <div className="size-[220px]" />
 }

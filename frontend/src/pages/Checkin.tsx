@@ -15,6 +15,7 @@ const corPorResultado: Record<ValidarCheckinResposta['resultado'], string> = {
   cancelado: 'bg-red-600 border-red-700',
   outro_evento: 'bg-red-600 border-red-700',
   nao_encontrado: 'bg-red-600 border-red-700',
+  qr_expirado: 'bg-orange-500 border-orange-600',
 }
 
 const tituloPorResultado: Record<ValidarCheckinResposta['resultado'], string> = {
@@ -23,6 +24,7 @@ const tituloPorResultado: Record<ValidarCheckinResposta['resultado'], string> = 
   cancelado: '❌ Ingresso cancelado',
   outro_evento: '❌ Ingresso de outro evento',
   nao_encontrado: '❌ Código não encontrado',
+  qr_expirado: '⏱️ QR desatualizado — peça para abrir o ingresso de novo',
 }
 
 export default function Checkin() {

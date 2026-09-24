@@ -1,0 +1,1 @@
+ALTER TABLE eventos DROP COLUMN IF EXISTS qr_rotativo;
