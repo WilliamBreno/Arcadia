@@ -12,6 +12,7 @@ WORKDIR /app
 COPY --from=build /out/api /out/migrate ./
 COPY migrations ./migrations
 COPY entrypoint.sh ./
+RUN sed -i "s/$//" entrypoint.sh && chmod +x entrypoint.sh
 USER app
 ENV TZ=America/Sao_Paulo
 EXPOSE 8080
