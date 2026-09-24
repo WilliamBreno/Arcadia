@@ -99,6 +99,7 @@ func main() {
 	staffHandler := handler.NovoStaffHandler(organizadorHandler, staffService)
 	vendasHandler := handler.NovoVendasHandler(organizadorHandler, vendasService)
 	repasseHandler := handler.NovoRepasseHandler(organizadorHandler, repasseService)
+	adminHandler := handler.NovoAdminHandler(reembolsoRepo, itemPedidoRepo, cancelamentoService)
 
 	router := gin.New()
 	router.Use(middleware.LogRequisicoes(), middleware.TratadorDeErros())
@@ -194,10 +195,14 @@ func main() {
 		jobs := v1.Group("/jobs", middleware.ExigirCronSecret(cfg.CronSecret))
 		jobs.POST("/expirar-reservas", jobHandler.ExpirarReservas)
 		jobs.POST("/gerar-repasses", repasseHandler.GerarRepasses)
+		jobs.POST("/reprocessar-reembolsos", adminHandler.ReprocessarFalhas)
 
 		admin := v1.Group("/admin", middleware.ExigirAutenticacao(jwtService), middleware.ExigirAdminPlataforma())
 		admin.GET("/repasses", repasseHandler.ListarAdmin)
 		admin.POST("/repasses/:id/pagar", repasseHandler.Pagar)
+		admin.GET("/relatorios", adminHandler.Relatorios)
+		admin.GET("/reembolsos", adminHandler.ListarReembolsos)
+		admin.POST("/reembolsos/:id/reprocessar", adminHandler.ReprocessarReembolso)
 	}
 
 	endereco := ":" + cfg.Porta

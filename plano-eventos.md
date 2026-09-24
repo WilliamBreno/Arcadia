@@ -348,7 +348,7 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 ### Fase 2 — Diferencial e dinheiro
 - [x] 2.1 **Garantia de vaga** (opt-in, cancelamento até o início do evento, estoque devolvido)
 - [x] 2.2 Painel financeiro do organizador (bruto, taxa do processador, líquido) + **repasses** (job, painel admin, marcar como pago, extrato)
-- [ ] 2.3 Relatórios admin (receita da plataforma, reembolsos, falhas) e reprocessamento de reembolsos
+- [x] 2.3 Relatórios admin (receita da plataforma, reembolsos, falhas) e reprocessamento de reembolsos
 - [ ] 2.4 Cupons de desconto e lotes com virada automática por data ou quantidade
 - [ ] 2.5 Cortesias (sem taxa) e exportação CSV de participantes/compradores
 - [ ] 2.6 Transferência de titularidade do ingresso
@@ -464,6 +464,10 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - **Item 2.2 — "dias úteis" = segunda a sexta, sem feriados**; "fim do último dia" = 23:59:59 do dia de `fim_em` (ou `inicio_em` se não houver fim), no fuso do servidor.
 - **Item 2.2 — taxa do processador alocada por divisão inteira** (`taxa × total_item ÷ valor_pago`); sobra de centavos fica com o organizador. Só itens `pago|utilizado` entram; itens cancelados não geram lançamento `custo_processador_perdido` ainda — depende de confirmar se o MP devolve a taxa em estornos (tarefa de verificação da seção 7.7).
 - **Item 2.2 — painel admin mínimo:** `/admin/repasses` (lista + marcar pago) protegido por `papel_plataforma=admin_plataforma`; não existe tela/fluxo para promover um usuário a admin (feito por SQL). O organizador vê `GET /org/eventos/:id/financeiro` (ao vivo até o repasse existir) e o extrato em `/organizador/repasses`. Chargeback pós-repasse continua tratamento manual (sem código).
+
+- **Item 2.3 — reprocessar reembolso reusa `executarReembolso` com a mesma linha de `reembolsos`** (não cria outra): só reembolsos `falhou` cujo item ainda está `pago`; se o MP falhar de novo, tudo continua como estava (verificado com pagamento inexistente → 502, reembolso segue `falhou`, item segue `pago`). Vale para o botão do admin (`POST /admin/reembolsos/:id/reprocessar`) e para o job `POST /jobs/reprocessar-reembolsos` (sem limite de tentativas — pendência).
+- **Item 2.3 — nova checagem em todo reembolso:** soma dos reembolsos concluídos + valor novo nunca excede o valor do pagamento (invariante da seção 7.4, antes só documentada).
+- **Item 2.3 — relatório admin** (`GET /admin/relatorios`, tela `/admin/relatorios`): receita = taxa + garantia dos itens `pago|utilizado` de eventos já iniciados, resumo de reembolsos por tipo/status e lista de falhas. Reembolsos de dev antigos com status `falhou` aparecem nele (vieram dos testes do item 1.8).
 
 **Pendências para validar fora do código:**
 - Contador/advogado: custódia de recursos de terceiros, nome "Garantia de vaga" (vs. "seguro"), retenção ou não da taxa no arrependimento, regras regionais por UF (incluindo Sergipe), emissão de nota fiscal e tributação da taxa/garantia.

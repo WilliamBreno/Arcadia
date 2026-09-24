@@ -192,34 +192,50 @@ func (s *CancelamentoService) Cancelar(itemID, usuarioID int64) (*domain.ItemPed
 		return nil, fmt.Errorf("%w: %s", ErrCancelamentoNaoPermitido, decisao.Motivo)
 	}
 
-	return s.executarReembolso(ctx, decisao, usuarioID)
+	return s.executarReembolso(ctx, decisao, usuarioID, nil)
 }
 
 // executarReembolso é compartilhado entre o cancelamento pelo comprador
 // (Cancelar) e pelo organizador (CancelarEvento) — sempre solicita o
 // estorno no MP antes de mexer no status do item ou no ledger.
-func (s *CancelamentoService) executarReembolso(ctx *contextoCancelamento, decisao DecisaoCancelamento, solicitadoPor int64) (*domain.ItemPedido, error) {
+// Se reembolsoExistente != nil, é um reprocessamento (seções 7.4/7.5): a
+// mesma linha de reembolsos é atualizada em vez de criar outra.
+func (s *CancelamentoService) executarReembolso(ctx *contextoCancelamento, decisao DecisaoCancelamento, solicitadoPor int64, reembolsoExistente *domain.Reembolso) (*domain.ItemPedido, error) {
 	item, evento, pedido, pagamento := ctx.item, ctx.evento, ctx.pedido, ctx.pagamento
+
+	// Invariante da seção 7.4: a soma dos reembolsos nunca excede o valor pago.
+	jaReembolsado, err := s.reembolsos.SomaConcluidosPorPagamento(pagamento.ID)
+	if err != nil {
+		return nil, err
+	}
+	if jaReembolsado+decisao.ValorReembolsoCentavos > pagamento.ValorCentavos {
+		return nil, fmt.Errorf("reembolso excederia o valor pago do pagamento %d", pagamento.ID)
+	}
 
 	respostaMP, erroMP := s.mp.SolicitarReembolso(pagamento.MPPaymentID, &decisao.ValorReembolsoCentavos)
 
-	reembolso := &domain.Reembolso{
-		PagamentoID:   pagamento.ID,
-		ItemID:        item.ID,
-		ValorCentavos: decisao.ValorReembolsoCentavos,
-		Tipo:          decisao.Tipo,
-		Motivo:        decisao.Motivo,
-		SolicitadoPor: solicitadoPor,
-		CriadoEm:      time.Now(),
+	reembolso := reembolsoExistente
+	salvarReembolso := s.reembolsos.Salvar
+	if reembolso == nil {
+		reembolso = &domain.Reembolso{
+			PagamentoID:   pagamento.ID,
+			ItemID:        item.ID,
+			ValorCentavos: decisao.ValorReembolsoCentavos,
+			Tipo:          decisao.Tipo,
+			Motivo:        decisao.Motivo,
+			SolicitadoPor: solicitadoPor,
+			CriadoEm:      time.Now(),
+		}
+		salvarReembolso = s.reembolsos.Criar
 	}
 	if erroMP != nil {
 		reembolso.Status = domain.StatusReembolsoFalhou
-		_ = s.reembolsos.Criar(reembolso)
+		_ = salvarReembolso(reembolso)
 		return nil, fmt.Errorf("erro ao processar reembolso no Mercado Pago: %w", erroMP)
 	}
 	reembolso.Status = domain.StatusReembolsoConcluido
 	reembolso.MPRefundID = fmt.Sprintf("%d", respostaMP.ID)
-	if err := s.reembolsos.Criar(reembolso); err != nil {
+	if err := salvarReembolso(reembolso); err != nil {
 		return nil, err
 	}
 
@@ -322,7 +338,7 @@ func (s *CancelamentoService) CancelarEvento(organizadorID, eventoID int64, moti
 			ValorReembolsoCentavos: item.TotalCentavos,
 		}
 
-		if _, err := s.executarReembolso(ctx, decisao, organizadorID); err != nil {
+		if _, err := s.executarReembolso(ctx, decisao, organizadorID, nil); err != nil {
 			falhas = append(falhas, item.ID)
 			continue
 		}

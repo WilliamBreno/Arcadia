@@ -16,6 +16,7 @@ import OrganizadorPublico from '@/pages/OrganizadorPublico'
 import Pedido from '@/pages/Pedido'
 import EventoEditar from '@/pages/organizador/EventoEditar'
 import EventoNovo from '@/pages/organizador/EventoNovo'
+import AdminRelatorios from '@/pages/admin/AdminRelatorios'
 import AdminRepasses from '@/pages/admin/AdminRepasses'
 import Eventos from '@/pages/organizador/Eventos'
 import Repasses from '@/pages/organizador/Repasses'
@@ -48,6 +49,7 @@ function App() {
           <Route path="/organizador/eventos" element={<Eventos />} />
           <Route path="/organizador/repasses" element={<Repasses />} />
           <Route path="/admin/repasses" element={<AdminRepasses />} />
+          <Route path="/admin/relatorios" element={<AdminRelatorios />} />
           <Route path="/organizador/eventos/novo" element={<EventoNovo />} />
           <Route path="/organizador/eventos/:id" element={<EventoEditar />} />
         </Route>
