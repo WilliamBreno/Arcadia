@@ -25,6 +25,16 @@ func main() {
 	if cfg.AmbienteApp == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
+	erros, avisos := cfg.ValidarProducao()
+	for _, aviso := range avisos {
+		slog.Warn("configuração de produção", "aviso", aviso)
+	}
+	if len(erros) > 0 {
+		for _, e := range erros {
+			slog.Error("configuração de produção inválida", "erro", e)
+		}
+		os.Exit(1)
+	}
 
 	db, err := repository.Conectar(cfg.DatabaseURL)
 	if err != nil {
@@ -83,7 +93,15 @@ func main() {
 	vendasService := service.NovoVendasService(eventoRepo, itemPedidoRepo)
 	repasseService := service.NovoRepasseService(db, eventoRepo, itemPedidoRepo, repasseRepo, configPlataformaRepo)
 
-	armazenamento, err := storage.NovoDiscoLocal(cfg.UploadsDir, cfg.UploadsBaseURL)
+	var armazenamento storage.Armazenamento
+	if cfg.StorageDriver == "s3" {
+		armazenamento, err = storage.NovoS3(storage.ConfigS3{
+			Endpoint: cfg.S3Endpoint, Bucket: cfg.S3Bucket, AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey,
+			Regiao: cfg.S3Regiao, BaseURL: cfg.UploadsBaseURL, UsarSSL: cfg.S3UsarSSL,
+		})
+	} else {
+		armazenamento, err = storage.NovoDiscoLocal(cfg.UploadsDir, cfg.UploadsBaseURL)
+	}
 	if err != nil {
 		slog.Error("erro ao preparar armazenamento de uploads", "erro", err)
 		os.Exit(1)
@@ -131,17 +149,19 @@ func main() {
 	adminHandler := handler.NovoAdminHandler(reembolsoRepo, itemPedidoRepo, cancelamentoService)
 
 	router := gin.New()
-	router.Use(middleware.LogRequisicoes(), middleware.TratadorDeErros())
+	router.Use(middleware.LogRequisicoes(), middleware.TratadorDeErros(), middleware.CabecalhosSeguranca())
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{cfg.FrontendURL},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Authorization", "Content-Type"},
+		AllowHeaders:     []string{"Authorization", "Content-Type", "X-Organizador-ID"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
 
 	router.GET("/healthz", handler.Healthz)
-	router.Static("/uploads", cfg.UploadsDir)
+	if cfg.StorageDriver != "s3" {
+		router.Static("/uploads", cfg.UploadsDir)
+	}
 
 	limiteAuth := middleware.LimitarTaxaPorIP(1, 10)
 

@@ -528,3 +528,7 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - Nome do produto e domínio.
 - Credenciais reais: `GOOGLE_CLIENT_ID`/secret (Google Cloud Console, para login com Google) e `RESEND_API_KEY` (conta Resend, para e-mails saírem de verdade). Sem elas, o backend funciona normalmente em modo degradado (Google desabilitado, e-mails só logados).
 - **🔴 Urgente: trocar `MERCADOPAGO_ACCESS_TOKEN`.** O `backend/.env` local está com o token de **produção** do projeto "drenux" (não commitado, mas apareceu em texto puro no chat desta sessão — vale rotacionar esse token no painel do drenux por segurança). Antes de qualquer teste de pagamento real da Evve, trocar por um token de **teste** (`TEST-...`) dedicado à Arcadia, criado no painel do Mercado Pago Developers.
+
+### E-mail de confirmação com QR e preparo de deploy
+- Confirmação de pagamento, cortesia e transferência enviam e-mail com QR embutido (PNG por CID) e link do ingresso. Evento com QR rotativo leva só o link (QR fixo seria recusado). Quem recebe o e-mail pode encaminhá-lo, e com isso o ingresso — o texto avisa para não compartilhar. Entrega real pelo Resend ainda não testada.
+- Deploy: Dockerfile + entrypoint (migrate up e API), `render.yaml`, `frontend/vercel.json` (rewrite `/api`), jobs via GitHub Actions, storage S3/R2 obrigatório em produção, validação de config no boot (`ValidarProducao`), cabeçalhos de segurança. Ver `DEPLOY.md`.

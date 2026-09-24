@@ -1,0 +1,31 @@
+# Jobs periódicos da API (o Render não tem cron no plano web). Requer os
+# secrets BACKEND_URL (https://...) e CRON_SECRET no repositório.
+name: jobs
+on:
+  schedule:
+    - cron: "*/5 * * * *"   # expirar reservas
+    - cron: "0 9 * * *"     # gerar repasses (06h BRT)
+    - cron: "17 * * * *"    # reprocessar reembolsos
+  workflow_dispatch:
+
+jobs:
+  rodar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Escolher job
+        id: job
+        run: |
+          case "${{ github.event.schedule }}" in
+            "*/5 * * * *") echo "nome=expirar-reservas" >> "$GITHUB_OUTPUT" ;;
+            "0 9 * * *") echo "nome=gerar-repasses" >> "$GITHUB_OUTPUT" ;;
+            "17 * * * *") echo "nome=reprocessar-reembolsos" >> "$GITHUB_OUTPUT" ;;
+            *) echo "nome=expirar-reservas" >> "$GITHUB_OUTPUT" ;;
+          esac
+      - name: Chamar API
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl --fail --silent --show-error --max-time 60 --retry 2 -X POST \
+            -H "X-Cron-Secret: $CRON_SECRET" \
+            "$BACKEND_URL/api/v1/jobs/${{ steps.job.outputs.nome }}"

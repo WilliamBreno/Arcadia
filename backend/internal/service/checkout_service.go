@@ -510,14 +510,18 @@ func (s *CheckoutService) enviarEmailConfirmacao(pedido *domain.Pedido, itens []
 		return
 	}
 
-	linkIngressos := fmt.Sprintf("%s/meus-ingressos", s.frontendURL)
-	corpo := fmt.Sprintf(`<p>Olá!</p><p>Seu pagamento para <strong>%s</strong> foi aprovado.</p><ul>`, evento.Titulo)
-	for _, item := range itens {
-		corpo += fmt.Sprintf("<li>Código: <strong>%s</strong></li>", item.Codigo)
+	pagos := make([]domain.ItemPedido, 0, len(itens))
+	for _, it := range itens {
+		if it.Status == domain.StatusItemPago {
+			pagos = append(pagos, it)
+		}
 	}
-	corpo += fmt.Sprintf(`</ul><p>Veja seus ingressos com QR code em <a href="%s">%s</a>.</p>`, linkIngressos, linkIngressos)
-
-	_ = s.mailCliente.Enviar(destinatario, "Ingresso confirmado — "+s.nomePlataforma, corpo)
+	if len(pagos) == 0 {
+		return
+	}
+	intro := fmt.Sprintf("Seu pagamento (pedido #%d, total %s) foi aprovado. Seus ingressos estão abaixo — guarde este e-mail como garantia.", pedido.ID, formatarReais(pedido.TotalCentavos))
+	corpo, imagens := corpoEmailIngressos("Olá, "+itens[0].TitularNome+"!", intro, evento, pagos, s.qrSecret, s.frontendURL)
+	_ = s.mailCliente.EnviarComImagens(destinatario, "Ingresso confirmado — "+evento.Titulo+" — "+s.nomePlataforma, corpo, imagens)
 }
 
 // ExpirarReservas roda periodicamente (job protegido por X-Cron-Secret,

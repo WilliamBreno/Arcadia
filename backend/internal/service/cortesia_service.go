@@ -103,14 +103,9 @@ func (s *CortesiaService) enviarEmail(evento *domain.Evento, itens []domain.Item
 	if len(itens) == 0 || itens[0].TitularEmail == "" {
 		return
 	}
-	corpo := fmt.Sprintf("<p>Olá, %s!</p><p>Você recebeu %d ingresso(s) de cortesia para <strong>%s</strong>.</p><ul>",
-		itens[0].TitularNome, len(itens), evento.Titulo)
-	for _, it := range itens {
-		corpo += fmt.Sprintf(`<li>Código <strong>%s</strong> — <a href="%s/ingresso/%s/%s">abrir ingresso com QR</a></li>`,
-			it.Codigo, s.frontendURL, it.Codigo, it.QRToken)
-	}
-	corpo += "</ul>"
-	_ = s.mailCliente.Enviar(itens[0].TitularEmail, "Ingresso de cortesia — "+s.plataforma, corpo)
+	intro := fmt.Sprintf("Você recebeu %d ingresso(s) de cortesia.", len(itens))
+	corpo, imagens := corpoEmailIngressos("Olá, "+itens[0].TitularNome+"!", intro, evento, itens, s.qrSecret, s.frontendURL)
+	_ = s.mailCliente.EnviarComImagens(itens[0].TitularEmail, "Ingresso de cortesia — "+evento.Titulo+" — "+s.plataforma, corpo, imagens)
 }
 
 func (s *CortesiaService) Listar(organizadorID, eventoID int64) ([]repository.ItemVenda, error) {

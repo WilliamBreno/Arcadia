@@ -121,9 +121,8 @@ func (s *TransferenciaService) Transferir(itemID, usuarioID int64, nome, email s
 
 func (s *TransferenciaService) notificar(evento *domain.Evento, anterior, novo *domain.ItemPedido) {
 	if novo.TitularEmail != "" {
-		corpo := fmt.Sprintf(`<p>Olá, %s!</p><p>Um ingresso para <strong>%s</strong> foi transferido para você.</p><p><a href="%s/ingresso/%s/%s">Abrir ingresso com QR</a> (código %s)</p>`,
-			novo.TitularNome, evento.Titulo, s.frontendURL, novo.Codigo, novo.QRToken, novo.Codigo)
-		_ = s.mailCliente.Enviar(novo.TitularEmail, "Ingresso recebido — "+s.plataforma, corpo)
+		corpo, imagens := corpoEmailIngressos("Olá, "+novo.TitularNome+"!", "Um ingresso foi transferido para você.", evento, []domain.ItemPedido{*novo}, s.qrSecret, s.frontendURL)
+		_ = s.mailCliente.EnviarComImagens(novo.TitularEmail, "Ingresso recebido — "+evento.Titulo+" — "+s.plataforma, corpo, imagens)
 	}
 	if anterior.TitularEmail != "" && anterior.TitularEmail != novo.TitularEmail {
 		corpo := fmt.Sprintf(`<p>Olá, %s!</p><p>Seu ingresso (código %s) para <strong>%s</strong> foi transferido para outra pessoa. O QR antigo não vale mais.</p>`,
