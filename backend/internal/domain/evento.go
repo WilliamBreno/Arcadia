@@ -61,6 +61,7 @@ type Evento struct {
 	CapacidadeTotal           *int
 	GarantiaHabilitada        bool
 	AprovacaoManual           bool
+	ResultadoLiberadoEm       *time.Time
 	PoliticaCancelamentoTexto string
 	MaxItensPorPedido         int
 	PublicadoEm               *time.Time

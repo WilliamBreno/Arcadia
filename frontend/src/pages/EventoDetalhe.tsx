@@ -8,6 +8,7 @@ import { formatarCentavos } from '@/lib/evento'
 import type { EventoDetalhe as EventoDetalheTipo } from '@/lib/publico'
 import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
+import { ListaRanking } from '@/components/resultado-cards'
 import { Card, CardContent } from '@/components/ui/card'
 
 export default function EventoDetalhe() {
@@ -27,6 +28,18 @@ export default function EventoDetalhe() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['evento-publico', slug],
     queryFn: () => api<EventoDetalheTipo>(`/eventos/${slug}`),
+  })
+  const { data: resultado } = useQuery({
+    queryKey: ['resultado', slug],
+    retry: false,
+    queryFn: async () => {
+      try {
+        return await api<{ ranking: Record<string, { posicao: number; nome: string; nota_final: number }[]> }>(`/eventos/${slug}/resultado`, { semAuth: true })
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 404) return null
+        throw e
+      }
+    },
   })
   const { data: solicitacao } = useQuery({
     queryKey: ['minha-solicitacao', slug],
@@ -260,6 +273,15 @@ export default function EventoDetalhe() {
         <p className="mt-6 text-sm text-muted-foreground">
           Este evento oferece <strong>garantia de vaga</strong>: cancele até o início do evento e receba tudo de volta.
         </p>
+      )}
+
+      {resultado && Object.keys(resultado.ranking).length > 0 && (
+        <Card className="mt-6">
+          <CardContent className="py-4">
+            <h2 className="mb-2 text-lg font-semibold text-foreground">Resultado do concurso</h2>
+            <ListaRanking ranking={resultado.ranking} />
+          </CardContent>
+        </Card>
       )}
 
       {(evento.modo_participantes === 'inscricao_aberta' || evento.modo_participantes === 'ambos') && (

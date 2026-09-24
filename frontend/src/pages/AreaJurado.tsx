@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 
 import { api, ApiError } from '@/lib/api'
+import { AvaliarFicha } from '@/components/avaliar-ficha'
 import { Card, CardContent } from '@/components/ui/card'
 
 type FichaJurado = {
@@ -67,6 +68,7 @@ export default function AreaJurado() {
                 {f.dados?.foto_referencia && (
                   <img src={f.dados.foto_referencia} alt="Referência" className="mt-2 h-24 rounded-lg object-cover" />
                 )}
+                <AvaliarFicha slug={slug!} fichaId={f.id} />
               </div>
             </CardContent>
           </Card>
