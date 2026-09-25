@@ -1,7 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 
 import { api } from '@/lib/api'
+import { useOrganizador } from '@/hooks/use-organizador'
+import { Carregando } from '@/components/carregando'
 import type { Evento } from '@/lib/evento'
 import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -14,10 +16,15 @@ const rotuloStatus: Record<Evento['status'], string> = {
 }
 
 export default function Eventos() {
+  const { organizador, carregando } = useOrganizador()
   const { data: eventos, isLoading } = useQuery({
     queryKey: ['org-eventos'],
     queryFn: () => api<Evento[]>('/org/eventos'),
+    enabled: !!organizador,
   })
+
+  if (carregando) return <Carregando />
+  if (!organizador) return <Navigate to="/organizador/perfil" replace />
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-12">

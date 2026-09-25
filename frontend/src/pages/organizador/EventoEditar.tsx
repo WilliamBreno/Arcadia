@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import { useParams } from 'react-router-dom'
 import { z } from 'zod'
 
@@ -20,6 +20,7 @@ import { SolicitacoesCard } from '@/components/solicitacoes-card'
 import { CuponsCard } from '@/components/cupons-card'
 import { obterFinanceiroEvento } from '@/lib/financeiro'
 import { obterVendas } from '@/lib/vendas'
+import { CategoriaSelect } from '@/components/categoria-select'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -81,6 +82,7 @@ export default function EventoEditar() {
     register,
     handleSubmit,
     reset,
+    control,
     formState: { isSubmitting },
   } = useForm<FormBasico>({ resolver: zodResolver(schemaBasico) })
 
@@ -156,7 +158,11 @@ export default function EventoEditar() {
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="categoria">Categoria</Label>
-                <Input id="categoria" {...register('categoria')} />
+                <Controller
+                  control={control}
+                  name="categoria"
+                  render={({ field }) => <CategoriaSelect id="categoria" value={field.value} onChange={field.onChange} />}
+                />
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="classificacao_etaria">Classificação etária</Label>

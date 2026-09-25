@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { useAuth } from '@/hooks/use-auth'
+import { useOrganizador } from '@/hooks/use-organizador'
 
 const NOME_PLATAFORMA = import.meta.env.VITE_NOME_PLATAFORMA ?? 'Evve'
 
 export function SiteHeader() {
   const { usuario, logout, carregando } = useAuth()
+  const { organizador, carregando: carregandoOrg } = useOrganizador()
 
   return (
     <header className="border-border sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
@@ -25,9 +27,17 @@ export function SiteHeader() {
               <Link to="/meus-eventos" className="px-2 text-sm text-muted-foreground hover:text-foreground">
                 Meus eventos
               </Link>
-              <Link to="/organizador/eventos" className="px-2 text-sm text-muted-foreground hover:text-foreground">
-                Painel do organizador
-              </Link>
+              {organizador ? (
+                <Link to="/organizador/eventos" className="px-2 text-sm text-muted-foreground hover:text-foreground">
+                  Painel do organizador
+                </Link>
+              ) : (
+                !carregandoOrg && (
+                  <Link to="/organizador/perfil" className="px-2 text-sm font-medium text-primary hover:underline">
+                    Seja um organizador
+                  </Link>
+                )
+              )}
             </>
           )}
           {!carregando && usuario ? (
