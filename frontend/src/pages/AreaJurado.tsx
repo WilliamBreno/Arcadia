@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom'
 import { api, ApiError } from '@/lib/api'
 import { AvaliarFicha } from '@/components/avaliar-ficha'
 import { Card, CardContent } from '@/components/ui/card'
+import { Carregando } from '@/components/carregando'
 
 type FichaJurado = {
   id: number
@@ -31,7 +32,7 @@ export default function AreaJurado() {
     queryFn: () => api<FichaJurado[]>(`/eventos/${slug}/participantes`),
   })
 
-  if (isLoading) return <p className="p-8 text-center text-muted-foreground">Carregando…</p>
+  if (isLoading) return <Carregando />
   if (error instanceof ApiError && error.status === 403) {
     return <p className="p-8 text-center text-muted-foreground">Você não é jurado confirmado deste evento.</p>
   }

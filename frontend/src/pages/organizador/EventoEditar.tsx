@@ -25,6 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Carregando } from '@/components/carregando'
 
 function paraDatetimeLocal(iso: string | null): string {
   if (!iso) return ''
@@ -129,7 +130,7 @@ export default function EventoEditar() {
   }
 
   if (!evento) {
-    return <p className="p-8 text-center text-muted-foreground">Carregando…</p>
+    return <Carregando />
   }
 
   return (

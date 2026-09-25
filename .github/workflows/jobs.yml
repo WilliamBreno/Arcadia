@@ -26,6 +26,10 @@ jobs:
           BACKEND_URL: ${{ secrets.BACKEND_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
+          if [ -z "$BACKEND_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::notice::Secrets BACKEND_URL/CRON_SECRET ainda não configurados; job ignorado."
+            exit 0
+          fi
           curl --fail --silent --show-error --max-time 60 --retry 2 -X POST \
             -H "X-Cron-Secret: $CRON_SECRET" \
             "$BACKEND_URL/api/v1/jobs/${{ steps.job.outputs.nome }}"

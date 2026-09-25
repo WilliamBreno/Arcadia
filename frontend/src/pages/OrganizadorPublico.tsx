@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom'
 import { api, ApiError } from '@/lib/api'
 import type { OrganizadorDetalhe } from '@/lib/publico'
 import { EventoCard } from '@/components/evento-card'
+import { Carregando } from '@/components/carregando'
 
 export default function OrganizadorPublico() {
   const { slug } = useParams()
@@ -12,7 +13,7 @@ export default function OrganizadorPublico() {
     queryFn: () => api<OrganizadorDetalhe>(`/organizadores/${slug}`),
   })
 
-  if (isLoading) return <p className="p-8 text-center text-muted-foreground">Carregando…</p>
+  if (isLoading) return <Carregando />
   if (error instanceof ApiError && error.status === 404) {
     return <p className="p-8 text-center text-muted-foreground">Organizador não encontrado.</p>
   }

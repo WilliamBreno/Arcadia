@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Carregando } from '@/components/carregando'
 
 const schemaCriar = z.object({
   nome_publico: z.string().min(2, 'Informe o nome'),
@@ -44,7 +45,7 @@ export default function Perfil() {
   const [erro, setErro] = useState<string | null>(null)
 
   if (isLoading) {
-    return <p className="p-8 text-center text-muted-foreground">Carregando…</p>
+    return <Carregando />
   }
 
   return (

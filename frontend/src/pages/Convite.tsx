@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/hooks/use-auth'
+import { Carregando } from '@/components/carregando'
 
 type ConviteInfo = { tipo: 'jurado' | 'participante_especial'; evento_titulo: string; evento_slug: string }
 
@@ -41,7 +42,7 @@ export default function Convite() {
     queryFn: () => api<ConviteInfo>(`/convites/${token}`),
   })
 
-  if (isLoading || carregando) return <p className="p-8 text-center text-muted-foreground">Carregando…</p>
+  if (isLoading || carregando) return <Carregando />
   if (error instanceof ApiError) {
     return <p className="p-8 text-center text-muted-foreground">Convite inválido, expirado ou revogado.</p>
   }

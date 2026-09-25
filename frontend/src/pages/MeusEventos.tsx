@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { api } from '@/lib/api'
 import type { MeuEvento } from '@/lib/conta'
 import { Card, CardContent } from '@/components/ui/card'
+import { Carregando } from '@/components/carregando'
 
 const rotuloSelo: Record<MeuEvento['selos'][number], string> = {
   organizador: 'Organizador',
@@ -29,7 +30,7 @@ export default function MeusEventos() {
     queryFn: () => api<MeuEvento[]>('/me/eventos'),
   })
 
-  if (isLoading) return <p className="p-8 text-center text-muted-foreground">Carregando…</p>
+  if (isLoading) return <Carregando />
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-12">

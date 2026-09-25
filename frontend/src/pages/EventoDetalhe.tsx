@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { ListaCronograma } from '@/components/cronograma-cards'
 import { ListaRanking } from '@/components/resultado-cards'
 import { Card, CardContent } from '@/components/ui/card'
+import { Carregando } from '@/components/carregando'
 
 export default function EventoDetalhe() {
   const { slug } = useParams()
@@ -68,7 +69,7 @@ export default function EventoDetalhe() {
     },
   })
 
-  if (isLoading) return <p className="p-8 text-center text-muted-foreground">Carregando…</p>
+  if (isLoading) return <Carregando />
   if (error instanceof ApiError && error.status === 404) {
     return <p className="p-8 text-center text-muted-foreground">Evento não encontrado.</p>
   }

@@ -1,13 +1,14 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 
 import { useAuth } from '@/hooks/use-auth'
+import { Carregando } from '@/components/carregando'
 
 export function ProtectedRoute() {
   const { usuario, carregando } = useAuth()
   const location = useLocation()
 
   if (carregando) {
-    return <div className="p-8 text-center text-muted-foreground">Carregando…</div>
+    return <Carregando />
   }
 
   if (!usuario) {

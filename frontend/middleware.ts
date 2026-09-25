@@ -49,7 +49,7 @@ export default async function middleware(request: Request): Promise<Response> {
     }
     const titulo = escapeHtml(evento.titulo ?? '')
     const descricao = escapeHtml((evento.descricao || `Ingressos para ${evento.titulo}`).slice(0, 200))
-    const imagem = evento.capa_url ? escapeHtml(evento.capa_url) : null
+    const imagem = escapeHtml(evento.capa_url || `${url.origin}/brand/og.png`)
 
     const html = await respostaOrigem.text()
     const metaTags = [
@@ -57,11 +57,12 @@ export default async function middleware(request: Request): Promise<Response> {
       `<meta property="og:title" content="${titulo}" />`,
       `<meta property="og:description" content="${descricao}" />`,
       `<meta property="og:url" content="${escapeHtml(url.toString())}" />`,
-      imagem ? `<meta property="og:image" content="${imagem}" />` : '',
-      `<meta name="twitter:card" content="${imagem ? 'summary_large_image' : 'summary'}" />`,
+      `<meta property="og:image" content="${imagem}" />`,
+      `<meta name="twitter:card" content="summary_large_image" />`,
     ].join('\n    ')
 
-    const htmlComMeta = html.replace('</head>', `    ${metaTags}\n  </head>`)
+    const semMetaGenerica = html.replace(/<meta (?:property="og:|name="twitter:)[^>]*>\s*/g, '')
+    const htmlComMeta = semMetaGenerica.replace('</head>', `    ${metaTags}\n  </head>`)
 
     return new Response(htmlComMeta, {
       status: respostaOrigem.status,

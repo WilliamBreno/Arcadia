@@ -8,6 +8,7 @@ import { useQR } from '@/lib/use-qr'
 import type { MeuIngresso } from '@/lib/conta'
 import { TransferirIngresso } from '@/components/transferir-ingresso'
 import { Card, CardContent } from '@/components/ui/card'
+import { Carregando } from '@/components/carregando'
 
 const rotuloStatus: Record<string, string> = {
   pago: 'Válido',
@@ -23,7 +24,7 @@ export default function MeusIngressos() {
   })
   const [selecionado, setSelecionado] = useState<MeuIngresso | null>(null)
 
-  if (isLoading) return <p className="p-8 text-center text-muted-foreground">Carregando…</p>
+  if (isLoading) return <Carregando />
 
   return (
     <main className="mx-auto max-w-lg px-4 py-12">

@@ -8,10 +8,26 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#1a8f5a" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Evve</title>
+    <title>Evve — Eventos sem limites</title>
+    <meta name="description" content="Encontre eventos, compre ingressos e participe de concursos de cosplay, dança, canto e atuação." />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Evve" />
+    <meta property="og:title" content="Evve — Eventos sem limites" />
+    <meta property="og:description" content="Encontre eventos, compre ingressos e participe de concursos de cosplay, dança, canto e atuação." />
+    <meta property="og:image" content="https://evve-delta.vercel.app/brand/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      #splash{display:flex;min-height:100vh;align-items:center;justify-content:center;background:#fff}
+      @media (prefers-color-scheme:dark){#splash{background:#0f172a}}
+      #splash img{width:64px;height:64px;animation:evve-pulse 1.4s ease-in-out infinite}
+      @keyframes evve-pulse{50%{opacity:.4;transform:scale(.94)}}
+      @media (prefers-reduced-motion:reduce){#splash img{animation:none}}
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div id="splash"><img src="/brand/icon-192.png" alt="Evve" /></div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

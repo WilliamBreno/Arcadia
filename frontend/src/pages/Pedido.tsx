@@ -7,6 +7,7 @@ import type { ItemPedido, Pedido as PedidoTipo } from '@/lib/checkout'
 import { formatarCentavos } from '@/lib/evento'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Carregando } from '@/components/carregando'
 
 type DecisaoCancelamento = { pode: boolean; motivo: string; valor_reembolso_centavos: number }
 
@@ -51,7 +52,7 @@ export default function Pedido() {
     }
   }
 
-  if (isLoading) return <p className="p-8 text-center text-muted-foreground">Carregando…</p>
+  if (isLoading) return <Carregando />
   if (!pedido) return null
 
   const banner = statusRetorno ? bannerRetorno[statusRetorno] : null
