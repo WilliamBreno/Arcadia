@@ -32,7 +32,7 @@ export default function Pedido() {
   const [searchParams] = useSearchParams()
   const statusRetorno = searchParams.get('status')
   const [erro, setErro] = useState<string | null>(null)
-  const [pagando, setPagando] = useState(false)
+  const [pagando, setPagando] = useState<'pix' | 'cartao' | null>(null)
 
   const { data: pedido, isLoading, refetch } = useQuery({
     queryKey: ['pedido', id],
@@ -40,15 +40,15 @@ export default function Pedido() {
     refetchInterval: (query) => (query.state.data?.status === 'aguardando_pagamento' ? 5000 : false),
   })
 
-  const pagar = async () => {
+  const pagar = async (metodo: 'pix' | 'cartao') => {
     setErro(null)
-    setPagando(true)
+    setPagando(metodo)
     try {
-      const resp = await api<{ checkout_url: string }>(`/pedidos/${id}/pagar`, { method: 'POST' })
+      const resp = await api<{ checkout_url: string }>(`/pedidos/${id}/pagar`, { method: 'POST', body: { metodo } })
       window.location.href = resp.checkout_url
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : 'Erro ao iniciar pagamento')
-      setPagando(false)
+      setPagando(null)
     }
   }
 
@@ -94,9 +94,18 @@ export default function Pedido() {
                 </p>
               )}
               {erro && <p className="text-sm text-destructive">{erro}</p>}
-              <Button onClick={pagar} disabled={pagando}>
-                {pagando ? 'Redirecionando…' : 'Pagar com Mercado Pago'}
-              </Button>
+              <div className="flex flex-col gap-2">
+                <Button size="lg" onClick={() => pagar('pix')} disabled={pagando !== null}>
+                  {pagando === 'pix' ? 'Gerando o Pix…' : 'Pagar com Pix'}
+                </Button>
+                <p className="text-center text-xs text-muted-foreground">
+                  Recomendado: confirma na hora e o ingresso chega em segundos.
+                </p>
+                <Button variant="outline" onClick={() => pagar('cartao')} disabled={pagando !== null}>
+                  {pagando === 'cartao' ? 'Abrindo o pagamento…' : 'Pagar com cartão'}
+                </Button>
+                <p className="text-center text-xs text-muted-foreground">Pagamento processado com segurança pelo Mercado Pago.</p>
+              </div>
             </>
           )}
 

@@ -73,6 +73,7 @@ func (h *RepasseHandler) FinanceiroEvento(c *gin.Context) {
 	resp := gin.H{
 		"bruto_centavos": f.BrutoCentavos, "taxa_processador_centavos": f.TaxaProcessadorCentavos, "taxa_absorvida_centavos": f.TaxaAbsorvidaCentavos,
 		"liquido_centavos": f.LiquidoCentavos, "liberar_em": f.LiberarEm, "repasse_status": nil,
+		"metodos": f.Metodos,
 	}
 	if f.Repasse != nil {
 		resp["repasse_status"] = f.Repasse.Status

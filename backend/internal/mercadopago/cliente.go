@@ -1,6 +1,7 @@
 // Package mercadopago fala com a API REST do Mercado Pago diretamente
 // (sem o SDK oficial) — só as duas chamadas que a plataforma precisa:
-// criar uma preference (Checkout Pro) e consultar um pagamento. Mantém a
+// criar uma preference (Checkout Pro), consultar um pagamento e estornar.
+// Os serviços usam o adaptador Processador (contrato pagamento.Processador). Mantém a
 // dependência mínima e o comportamento totalmente sob controle.
 package mercadopago
 
@@ -17,10 +18,11 @@ const baseURL = "https://api.mercadopago.com"
 type Cliente struct {
 	accessToken string
 	httpClient  *http.Client
+	baseURL     string // trocado só em teste
 }
 
 func NovoCliente(accessToken string) *Cliente {
-	return &Cliente{accessToken: accessToken, httpClient: &http.Client{}}
+	return &Cliente{accessToken: accessToken, httpClient: &http.Client{}, baseURL: baseURL}
 }
 
 func (c *Cliente) Habilitado() bool {
@@ -37,7 +39,7 @@ func (c *Cliente) requisitar(metodo, caminho string, corpo any, resposta any) er
 		leitor = bytes.NewReader(bruto)
 	}
 
-	req, err := http.NewRequest(metodo, baseURL+caminho, leitor)
+	req, err := http.NewRequest(metodo, c.baseURL+caminho, leitor)
 	if err != nil {
 		return err
 	}
@@ -78,12 +80,25 @@ type backURLs struct {
 	Pending string `json:"pending"`
 }
 
+type tipoExcluido struct {
+	ID string `json:"id"`
+}
+
+type metodosPagamento struct {
+	ExcludedPaymentTypes []tipoExcluido `json:"excluded_payment_types,omitempty"`
+	Installments         int            `json:"installments,omitempty"` // máximo de parcelas
+}
+
 type criarPreferenceRequest struct {
-	Items             []ItemPreference `json:"items"`
-	ExternalReference string           `json:"external_reference"`
-	BackURLs          backURLs         `json:"back_urls"`
-	AutoReturn        string           `json:"auto_return,omitempty"`
-	NotificationURL   string           `json:"notification_url"`
+	Items             []ItemPreference  `json:"items"`
+	ExternalReference string            `json:"external_reference"`
+	BackURLs          backURLs          `json:"back_urls"`
+	AutoReturn        string            `json:"auto_return,omitempty"`
+	NotificationURL   string            `json:"notification_url"`
+	PaymentMethods    *metodosPagamento `json:"payment_methods,omitempty"`
+	Expires           bool              `json:"expires,omitempty"`
+	ExpirationDateTo  string            `json:"expiration_date_to,omitempty"`
+	DateOfExpiration  string            `json:"date_of_expiration,omitempty"` // validade do Pix
 }
 
 type Preference struct {
@@ -92,7 +107,7 @@ type Preference struct {
 	SandboxInitPoint string `json:"sandbox_init_point"`
 }
 
-// CriarPreference cria uma sessão de checkout (Checkout Pro). Não move
+// criarPreference cria uma sessão de checkout (Checkout Pro). Não move
 // dinheiro — só gera o link para onde o comprador é redirecionado.
 //
 // auto_return fica de fora de propósito: o MP só aceita esse campo
@@ -100,14 +115,7 @@ type Preference struct {
 // quebraria em dev. Sem ele, o comprador só precisa clicar em "voltar ao
 // site" após pagar em vez de ser redirecionado automaticamente — o
 // webhook (que de fato confirma o pagamento) não depende disso.
-func (c *Cliente) CriarPreference(externalReference string, itens []ItemPreference, urlSucesso, urlFalha, urlPendente, notificationURL string) (*Preference, error) {
-	req := criarPreferenceRequest{
-		Items:             itens,
-		ExternalReference: externalReference,
-		BackURLs:          backURLs{Success: urlSucesso, Failure: urlFalha, Pending: urlPendente},
-		NotificationURL:   notificationURL,
-	}
-
+func (c *Cliente) criarPreference(req criarPreferenceRequest) (*Preference, error) {
 	var resp Preference
 	if err := c.requisitar(http.MethodPost, "/checkout/preferences", req, &resp); err != nil {
 		return nil, err

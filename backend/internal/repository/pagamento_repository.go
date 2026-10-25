@@ -38,3 +38,23 @@ func (r *PagamentoRepository) BuscarAprovadoPorPedido(pedidoID int64) (*domain.P
 	}
 	return &p, nil
 }
+
+// ResumoMetodo soma os pagamentos aprovados de um evento por método
+// (pix/cartao) — base do quadro "economia com Pix" (item 5.2).
+type ResumoMetodo struct {
+	Metodo        string
+	Quantidade    int64
+	ValorCentavos int64
+	TaxaCentavos  int64
+}
+
+func (r *PagamentoRepository) ResumoPorMetodo(eventoID int64) ([]ResumoMetodo, error) {
+	var linhas []ResumoMetodo
+	err := r.db.Table("pagamentos").
+		Select("pagamentos.metodo, COUNT(*) as quantidade, COALESCE(SUM(pagamentos.valor_centavos),0) as valor_centavos, COALESCE(SUM(pagamentos.taxa_processador_centavos),0) as taxa_centavos").
+		Joins("JOIN pedidos ON pedidos.id = pagamentos.pedido_id").
+		Where("pedidos.evento_id = ? AND pagamentos.status = ?", eventoID, "approved").
+		Group("pagamentos.metodo").
+		Scan(&linhas).Error
+	return linhas, err
+}

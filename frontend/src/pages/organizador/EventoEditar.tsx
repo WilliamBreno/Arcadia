@@ -569,6 +569,30 @@ function FinanceiroCard({ eventoId }: { eventoId: number }) {
                 <span className="text-foreground">− {formatarCentavos(data.taxa_absorvida_centavos)}</span>
               </div>
             )}
+            {data.metodos && data.metodos.pix_quantidade + data.metodos.cartao_quantidade > 0 && (
+              <div className="flex flex-col gap-1 rounded-lg border border-border p-3 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">
+                    Pix: {data.metodos.pix_quantidade} pagamento(s) · {formatarCentavos(data.metodos.pix_valor_centavos)}
+                  </span>
+                  <span className="text-foreground">taxa {formatarCentavos(data.metodos.pix_taxa_centavos)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">
+                    Cartão: {data.metodos.cartao_quantidade} pagamento(s) · {formatarCentavos(data.metodos.cartao_valor_centavos)}
+                  </span>
+                  <span className="text-foreground">taxa {formatarCentavos(data.metodos.cartao_taxa_centavos)}</span>
+                </div>
+                {data.metodos.economia_pix_centavos > 0 && (
+                  <p className="font-medium text-primary">
+                    Você economizou {formatarCentavos(data.metodos.economia_pix_centavos)} porque essas vendas foram no Pix
+                    {data.metodos.taxa_cartao_estimada
+                      ? ` (estimativa com taxa de cartão de ${(data.metodos.taxa_cartao_bp / 100).toLocaleString('pt-BR')}%).`
+                      : ` (taxa média do cartão neste evento: ${(data.metodos.taxa_cartao_bp / 100).toLocaleString('pt-BR')}%).`}
+                  </p>
+                )}
+              </div>
+            )}
             <div className="flex justify-between border-t border-border pt-2 font-medium">
               <span className="text-foreground">Líquido a receber</span>
               <span className="text-foreground">{formatarCentavos(data.liquido_centavos)}</span>

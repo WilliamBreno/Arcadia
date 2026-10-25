@@ -16,7 +16,7 @@ import (
 
 	"github.com/WilliamBreno/Arcadia/backend/internal/domain"
 	"github.com/WilliamBreno/Arcadia/backend/internal/mail"
-	"github.com/WilliamBreno/Arcadia/backend/internal/mercadopago"
+	"github.com/WilliamBreno/Arcadia/backend/internal/pagamento"
 	"github.com/WilliamBreno/Arcadia/backend/internal/repository"
 )
 
@@ -57,7 +57,7 @@ type CheckoutService struct {
 	plateia        *PlateiaService
 	taxas          *TaxasService
 	afiliados      *repository.AfiliadoRepository
-	mp             *mercadopago.Cliente
+	mp             pagamento.Processador
 	mailCliente    *mail.Cliente
 	qrSecret       string
 	frontendURL    string
@@ -75,7 +75,7 @@ func NovoCheckoutService(
 	config *repository.ConfigPlataformaRepository,
 	cupons *repository.CupomRepository,
 	tipos *repository.TipoIngressoRepository,
-	mp *mercadopago.Cliente,
+	mp pagamento.Processador,
 	mailCliente *mail.Cliente,
 	qrSecret, frontendURL, backendURL, nomePlataforma string,
 ) *CheckoutService {
@@ -320,13 +320,16 @@ func (s *CheckoutService) ObterPedido(usuarioID, pedidoID int64) (*domain.Pedido
 	return pedido, itens, nil
 }
 
-// IniciarPagamento cria a preference no Mercado Pago (Checkout Pro, conta
-// da plataforma — seção 2.3: sem split, sem marketplace_fee). Gerar a
-// preference não move dinheiro; só o pagamento em si, feito pelo
-// comprador na página do MP, move.
-func (s *CheckoutService) IniciarPagamento(usuarioID, pedidoID int64) (string, error) {
+// IniciarPagamento cria a cobrança no processador (Checkout Pro na conta
+// da plataforma — seção 2.3: sem split). metodo é "pix" (padrão,
+// recomendado) ou "cartao": o checkout do processador mostra só o meio
+// escolhido (item 5.2). Gerar a cobrança não move dinheiro.
+func (s *CheckoutService) IniciarPagamento(usuarioID, pedidoID int64, metodo string) (string, error) {
 	if !s.mp.Habilitado() {
 		return "", ErrMercadoPagoNaoConfigurado
+	}
+	if metodo != pagamento.MetodoCartao {
+		metodo = pagamento.MetodoPix
 	}
 
 	pedido, itens, err := s.ObterPedido(usuarioID, pedidoID)
@@ -341,7 +344,7 @@ func (s *CheckoutService) IniciarPagamento(usuarioID, pedidoID int64) (string, e
 	}
 
 	tiposCache := map[int64]*domain.TipoIngresso{}
-	mpItens := make([]mercadopago.ItemPreference, 0, len(itens))
+	cobrancaItens := make([]pagamento.Item, 0, len(itens))
 	for _, item := range itens {
 		if item.Status != domain.StatusItemReservado {
 			continue
@@ -354,36 +357,32 @@ func (s *CheckoutService) IniciarPagamento(usuarioID, pedidoID int64) (string, e
 			}
 			tiposCache[item.TipoIngressoID] = tipo
 		}
-		mpItens = append(mpItens, mercadopago.ItemPreference{
-			Title:      tipo.Nome,
-			Quantity:   1,
-			UnitPrice:  float64(item.TotalCentavos) / 100,
-			CurrencyID: "BRL",
-		})
+		cobrancaItens = append(cobrancaItens, pagamento.Item{Titulo: tipo.Nome, ValorCentavos: item.TotalCentavos})
 	}
 
 	pedidoIDStr := strconv.FormatInt(pedido.ID, 10)
-	pref, err := s.mp.CriarPreference(
-		pedidoIDStr,
-		mpItens,
-		s.frontendURL+"/pedidos/"+pedidoIDStr+"?status=sucesso",
-		s.frontendURL+"/pedidos/"+pedidoIDStr+"?status=falha",
-		s.frontendURL+"/pedidos/"+pedidoIDStr+"?status=pendente",
-		s.backendURL+"/api/v1/webhooks/mercadopago",
-	)
+	nova := pagamento.NovaCobranca{
+		Referencia:     pedidoIDStr,
+		Itens:          cobrancaItens,
+		Metodo:         metodo,
+		URLSucesso:     s.frontendURL + "/pedidos/" + pedidoIDStr + "?status=sucesso",
+		URLFalha:       s.frontendURL + "/pedidos/" + pedidoIDStr + "?status=falha",
+		URLPendente:    s.frontendURL + "/pedidos/" + pedidoIDStr + "?status=pendente",
+		URLNotificacao: s.backendURL + "/api/v1/webhooks/mercadopago",
+	}
+	if pedido.ExpiraEm != nil {
+		nova.ExpiraEm = *pedido.ExpiraEm
+	}
+	cobranca, err := s.mp.CriarCobranca(nova)
 	if err != nil {
 		return "", err
 	}
 
-	pedido.MPPreferenceID = &pref.ID
+	pedido.MPPreferenceID = &cobranca.ID
 	if err := s.pedidos.Salvar(pedido); err != nil {
 		return "", err
 	}
-
-	if pref.InitPoint != "" {
-		return pref.InitPoint, nil
-	}
-	return pref.SandboxInitPoint, nil
+	return cobranca.URL, nil
 }
 
 // ProcessarWebhook é idempotente por mp_payment_id (seção 7.3) e SEMPRE
@@ -399,9 +398,9 @@ func (s *CheckoutService) ProcessarWebhook(mpPaymentID string) error {
 		return err
 	}
 
-	pedidoID, err := strconv.ParseInt(pagamentoMP.ExternalReference, 10, 64)
+	pedidoID, err := strconv.ParseInt(pagamentoMP.Referencia, 10, 64)
 	if err != nil {
-		return fmt.Errorf("external_reference inválida: %q", pagamentoMP.ExternalReference)
+		return fmt.Errorf("external_reference inválida: %q", pagamentoMP.Referencia)
 	}
 
 	pedido, err := s.pedidos.BuscarPorID(pedidoID)
@@ -409,12 +408,7 @@ func (s *CheckoutService) ProcessarWebhook(mpPaymentID string) error {
 		return fmt.Errorf("pedido %d do webhook não encontrado: %w", pedidoID, err)
 	}
 
-	metodo := "cartao"
-	if pagamentoMP.PaymentTypeID == "bank_transfer" || pagamentoMP.PaymentTypeID == "pix" {
-		metodo = "pix"
-	}
-
-	payloadJSON, err := json.Marshal(pagamentoMP)
+	payloadJSON, err := json.Marshal(pagamentoMP.Bruto)
 	if err != nil {
 		return err
 	}
@@ -422,10 +416,11 @@ func (s *CheckoutService) ProcessarWebhook(mpPaymentID string) error {
 	registro := &domain.Pagamento{
 		PedidoID:                pedido.ID,
 		MPPaymentID:             mpPaymentID,
-		Metodo:                  metodo,
+		Processador:             s.mp.Nome(),
+		Metodo:                  pagamentoMP.Metodo,
 		Status:                  pagamentoMP.Status,
-		ValorCentavos:           int64(pagamentoMP.TransactionAmount*100 + 0.5),
-		TaxaProcessadorCentavos: pagamentoMP.TaxaProcessadorCentavos(),
+		ValorCentavos:           pagamentoMP.ValorCentavos,
+		TaxaProcessadorCentavos: pagamentoMP.TaxaProcessadorCentavos,
 		PayloadJSON:             datatypes.JSON(payloadJSON),
 		CriadoEm:                time.Now(),
 	}
@@ -435,7 +430,7 @@ func (s *CheckoutService) ProcessarWebhook(mpPaymentID string) error {
 		return nil
 	}
 
-	if pagamentoMP.Status != "approved" {
+	if pagamentoMP.Status != pagamento.StatusAprovado {
 		return nil
 	}
 

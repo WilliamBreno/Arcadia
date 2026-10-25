@@ -135,7 +135,7 @@ func (h *PedidoHandler) Obter(c *gin.Context) {
 	c.JSON(http.StatusOK, paraPedidoResposta(pedido, itens))
 }
 
-// Pagar é POST /pedidos/:id/pagar — cria a preference no Mercado Pago e
+// Pagar é POST /pedidos/:id/pagar — cria a cobrança no processador e
 // devolve o link de checkout para o frontend redirecionar o comprador.
 func (h *PedidoHandler) Pagar(c *gin.Context) {
 	pedidoID, ok := idDaURL(c)
@@ -144,7 +144,13 @@ func (h *PedidoHandler) Pagar(c *gin.Context) {
 	}
 	usuarioID := c.GetInt64(middleware.ChaveContextoUsuarioID)
 
-	initPoint, err := h.service.IniciarPagamento(usuarioID, pedidoID)
+	// Corpo opcional: {"metodo": "pix" | "cartao"} — padrão Pix (item 5.2).
+	var corpo struct {
+		Metodo string `json:"metodo"`
+	}
+	_ = c.ShouldBindJSON(&corpo)
+
+	initPoint, err := h.service.IniciarPagamento(usuarioID, pedidoID, corpo.Metodo)
 	if err != nil {
 		if errors.Is(err, service.ErrMercadoPagoNaoConfigurado) {
 			c.JSON(http.StatusServiceUnavailable, gin.H{"erro": "pagamento não configurado"})

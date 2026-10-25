@@ -67,6 +67,7 @@ type RepasseService struct {
 	itensPedido *repository.ItemPedidoRepository
 	repasses    *repository.RepasseRepository
 	config      *repository.ConfigPlataformaRepository
+	pagamentos  *repository.PagamentoRepository
 }
 
 func NovoRepasseService(
@@ -100,6 +101,7 @@ type FinanceiroEvento struct {
 	Financeiro
 	LiberarEm *time.Time
 	Repasse   *domain.Repasse
+	Metodos   *ResumoMetodos
 }
 
 // FinanceiroDoEvento é o painel do organizador (seção 3): valores ao vivo
@@ -114,6 +116,9 @@ func (s *RepasseService) FinanceiroDoEvento(organizadorID, eventoID int64) (*Fin
 	}
 
 	res := &FinanceiroEvento{}
+	if res.Metodos, err = s.resumoMetodos(eventoID); err != nil {
+		return nil, err
+	}
 	if rep, err := s.repasses.BuscarAtivoPorEvento(eventoID); err == nil {
 		res.Repasse = rep
 		res.Financeiro = Financeiro{rep.ValorBrutoCentavos, rep.TaxaProcessadorCentavos, rep.TaxaAbsorvidaCentavos, rep.ValorLiquidoCentavos}

@@ -7,6 +7,17 @@ export type FinanceiroEvento = {
   liquido_centavos: number
   liberar_em: string | null
   repasse_status: 'calculado' | 'pendente' | 'pago' | 'cancelado' | null
+  metodos: {
+    pix_quantidade: number
+    pix_valor_centavos: number
+    pix_taxa_centavos: number
+    cartao_quantidade: number
+    cartao_valor_centavos: number
+    cartao_taxa_centavos: number
+    taxa_cartao_bp: number
+    taxa_cartao_estimada: boolean
+    economia_pix_centavos: number
+  } | null
 }
 
 export type Repasse = {

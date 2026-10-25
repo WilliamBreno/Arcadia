@@ -9,7 +9,8 @@ import (
 type Pagamento struct {
 	ID                      int64 `gorm:"primaryKey"`
 	PedidoID                int64
-	MPPaymentID             string
+	MPPaymentID             string // id do pagamento no processador (nome histórico)
+	Processador             string // "mercadopago" (item 5.2)
 	Metodo                  string
 	Status                  string
 	ValorCentavos           int64

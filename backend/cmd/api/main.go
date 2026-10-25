@@ -78,7 +78,9 @@ func main() {
 	tipoIngressoService := service.NovoTipoIngressoService(eventoService, tipoIngressoRepo, sessaoRepo)
 	conviteService := service.NovoConviteService(conviteRepo, eventoService, papelEventoRepo, fichaRepo)
 	fichaService := service.NovoFichaService(fichaRepo, papelEventoRepo, eventoRepo, usuarioRepo, mailCliente)
-	mpCliente := mercadopago.NovoCliente(cfg.MercadoPagoAccessToken)
+	// Item 5.2: os serviços falam com pagamento.Processador; o Mercado Pago
+	// é a implementação atual.
+	mpCliente := mercadopago.NovoProcessador(mercadopago.NovoCliente(cfg.MercadoPagoAccessToken))
 	checkoutService := service.NovoCheckoutService(
 		db, eventoRepo, itemPedidoRepo, pedidoRepo, pagamentoRepo, lancamentoRepo, configPlataformaRepo, cupomRepo, tipoIngressoRepo,
 		mpCliente, mailCliente, cfg.JWTSecret, cfg.FrontendURL, cfg.BackendURL, cfg.NomePlataforma,
@@ -92,6 +94,7 @@ func main() {
 	staffService := service.NovoStaffService(eventoRepo, usuarioRepo, papelEventoRepo)
 	vendasService := service.NovoVendasService(eventoRepo, itemPedidoRepo)
 	repasseService := service.NovoRepasseService(db, eventoRepo, itemPedidoRepo, repasseRepo, configPlataformaRepo)
+	repasseService.DefinirPagamentos(pagamentoRepo)
 
 	var armazenamento storage.Armazenamento
 	if cfg.StorageDriver == "s3" {

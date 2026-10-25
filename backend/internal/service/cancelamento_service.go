@@ -7,7 +7,7 @@ import (
 
 	"github.com/WilliamBreno/Arcadia/backend/internal/domain"
 	"github.com/WilliamBreno/Arcadia/backend/internal/mail"
-	"github.com/WilliamBreno/Arcadia/backend/internal/mercadopago"
+	"github.com/WilliamBreno/Arcadia/backend/internal/pagamento"
 	"github.com/WilliamBreno/Arcadia/backend/internal/repository"
 )
 
@@ -36,7 +36,7 @@ type CancelamentoService struct {
 	lancamentos    *repository.LancamentoRepository
 	eventos        *repository.EventoRepository
 	config         *repository.ConfigPlataformaRepository
-	mp             *mercadopago.Cliente
+	mp             pagamento.Processador
 	mailCliente    *mail.Cliente
 	nomePlataforma string
 	promotor       PromotorListaEspera
@@ -50,7 +50,7 @@ func NovoCancelamentoService(
 	lancamentos *repository.LancamentoRepository,
 	eventos *repository.EventoRepository,
 	config *repository.ConfigPlataformaRepository,
-	mp *mercadopago.Cliente,
+	mp pagamento.Processador,
 	mailCliente *mail.Cliente,
 	nomePlataforma string,
 ) *CancelamentoService {
@@ -257,7 +257,7 @@ func (s *CancelamentoService) executarReembolso(ctx *contextoCancelamento, decis
 		return nil, fmt.Errorf("reembolso excederia o valor pago do pagamento %d", pagamento.ID)
 	}
 
-	respostaMP, erroMP := s.mp.SolicitarReembolso(pagamento.MPPaymentID, &decisao.ValorReembolsoCentavos)
+	respostaMP, erroMP := s.mp.Reembolsar(pagamento.MPPaymentID, decisao.ValorReembolsoCentavos)
 
 	reembolso := reembolsoExistente
 	salvarReembolso := s.reembolsos.Salvar
@@ -279,7 +279,7 @@ func (s *CancelamentoService) executarReembolso(ctx *contextoCancelamento, decis
 		return nil, fmt.Errorf("erro ao processar reembolso no Mercado Pago: %w", erroMP)
 	}
 	reembolso.Status = domain.StatusReembolsoConcluido
-	reembolso.MPRefundID = fmt.Sprintf("%d", respostaMP.ID)
+	reembolso.MPRefundID = respostaMP.ID
 	if err := salvarReembolso(reembolso); err != nil {
 		return nil, err
 	}
