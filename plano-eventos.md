@@ -43,6 +43,30 @@ Referências estudadas (o que copiar e o que superar):
 ## 2. Decisões de negócio FECHADAS (não mudar sem consultar o dono)
 
 ### 2.1 Taxas (valores em config, nunca hardcoded)
+
+> **Tabela aprovada pelo dono em 24/10/2026** (vem da `analise-concorrencia.md`, seção 4). **Em vigor no código desde o item 5.1.**
+
+**Taxa da plataforma: valor fixo por faixa de preço do ingresso**
+| Preço do item | Taxa | Comparação (Sympla: 10%, mínimo R$ 3,99) |
+|---|---|---|
+| Evento gratuito (`cadastro` com preço R$ 0,00) | **R$ 0,00**, sem checkout de pagamento | Sympla: R$ 0 |
+| Até R$ 30,00 | **R$ 0,99** | R$ 3,99 |
+| R$ 30,01 a R$ 80,00 | **R$ 1,99** | R$ 3,99 a R$ 8,00 |
+| R$ 80,01 a R$ 200,00 | **R$ 3,99** | R$ 8,00 a R$ 20,00 |
+| Acima de R$ 200,00 | **R$ 6,99** | R$ 20,00 ou mais |
+
+- Config sugerida: `TAXA_FAIXAS` em `config_plataforma` (limite superior em centavos → taxa em centavos), ex.: `3000:99,8000:199,20000:399,*:699`. Nunca fixo no código.
+- **Garantia de vaga:** **5% do preço do item**, com **mínimo de R$ 1,99 e teto de R$ 14,90** (`GARANTIA_PERCENTUAL_BP=500`, `GARANTIA_MIN_CENTAVOS=199`, `GARANTIA_MAX_CENTAVOS=1490`). Continua opt-in, desmarcada, com reembolso de tudo até o início do evento (2.2).
+- **Quem paga a taxa (por evento):** `taxa_paga_por = comprador | organizador`. Padrão `comprador` (como hoje). Com `organizador`, o comprador vê só o preço do ingresso e a taxa é descontada do repasse do organizador. A garantia, quando contratada, é sempre paga pelo comprador.
+- **UF com limite percentual** (ex.: AL, 10%): a taxa nunca passa do limite; quando passaria, é reduzida automaticamente ao limite em vez de bloquear a publicação. UFs que proíbem a taxa continuam bloqueando (ou o organizador escolhe absorver). Validar com advogado.
+
+**Pontos decididos pelo dono em 25/10/2026:**
+1. Cadastro **pago** (`tipo_acesso=cadastro` com preço > 0) usa **as mesmas faixas** do ingresso. A taxa de R$ 0,49 deixa de existir.
+2. A faixa e os 5% da garantia são calculados sobre o preço **depois** do cupom de desconto (o que o comprador realmente paga).
+3. Garantia arredondada para o **centavo mais próximo**, depois aplicados o mínimo e o teto.
+4. Com `taxa_paga_por=organizador`, se o item for cancelado/reembolsado o comprador recebe o que pagou e a taxa absorvida **deixa de ser descontada** do repasse do organizador (a venda deixou de existir).
+
+**Tabela antiga (substituída no item 5.1; mantida só como histórico):**
 | Item | Valor | Config |
 |---|---|---|
 | Taxa por **ingresso** | R$ 0,99 por ingresso | `TAXA_INGRESSO_CENTAVOS=99` |
@@ -370,7 +394,66 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - [x] 4.5 Eventos com várias sessões (multi-data)
 - [x] 4.6 Dias por ingresso (todos / alguns / um por dia) e preço por sessão
 - [x] 4.7 Check-in offline (pacote + fila + sincronização)
-- [ ] WhatsApp (API oficial), assento ou mesa marcada
+- WhatsApp (API oficial) → movido para o item 9.3; assento ou mesa marcada → movido para o item 9.5 (reordenação de 25/10/2026).
+
+> **Fases 5 a 10: melhorias da `analise-concorrencia.md`**, ordenadas pelo dono em 25/10/2026. Os códigos entre parênteses (A1, B4, G1...) são os das tabelas da análise. Itens com 💰 mexem com dinheiro, cancelamento ou dados pessoais: antes de implementar, o dono decide os pontos em aberto.
+
+### Fase 5 — Taxas novas e proteção da margem
+- [x] 5.1 💰 **Taxas por faixa, evento gratuito a R$ 0, garantia de 5% (mín. R$ 1,99, teto R$ 14,90), opção "organizador absorve a taxa" e redução automática ao limite da UF** (seção 2.1). Cálculo no backend, ledger, repasse, reembolso, página do evento, checkout, painel do organizador e cenários da seção 13, com testes.
+- [ ] 5.2 Processador: isolar o Mercado Pago atrás de uma interface (para somar Pagar.me/Efí depois), Pix em destaque no checkout e painel do organizador mostrando quanto economizou com Pix. Dono: mudar a liberação do cartão para 30 dias no painel do MP.
+- [ ] 5.3 💰 Antifraude e chargeback (D1): limite de ingressos por CPF/cartão por evento, bloqueio de quem já contestou, webhook de chargeback do MP gravando no ledger e alertando o admin.
+- [ ] 5.4 💰 Verificação do organizador com selo "Verificado" (C18) e **reserva de risco** no repasse de vendas no cartão de organizador novo (4.2.3).
+- [ ] 5.5 Escala técnica mínima (D4): rate limit e controle de sessão fora da memória, fila para e-mails e reembolsos, monitoramento de erros, teste de carga na abertura de lote.
+- [ ] 5.6 **Fechar a fase:** commit, push e `git tag fase-5` + `git push --tags`
+
+### Fase 6 — Tráfego e descoberta
+- [ ] 6.1 SEO das páginas públicas (A1, A2): HTML completo para buscadores em evento, organizador, cidade e categoria; JSON-LD `schema.org/Event`; `sitemap.xml` e `robots.txt`.
+- [ ] 6.2 Páginas por cidade, categoria e data (A3), "Em alta" (A5), coleções curadas pelo admin (A6) e mapa "perto de mim" (A7).
+- [ ] 6.3 Página "Quanto custa" com simulador (C1), selo "Evve Garante" (B12) e preço final em destaque (B3).
+- [ ] 6.4 Seguir organizador e categoria com aviso de novo evento (A4); lembretes automáticos e "adicionar ao calendário" (A12).
+- [ ] 6.5 Avaliação do evento e do organizador por quem fez check-in (A15).
+- [ ] 6.6 **Fechar a fase:** commit, push e `git tag fase-6` + `git push --tags`
+
+### Fase 7 — Conversão no checkout
+- [ ] 7.1 💰 Pagamento dentro da página do Evve: QR do Pix na tela e cartão sem redirecionar (B1), com 3DS.
+- [ ] 7.2 Login por código no e-mail direto no checkout (B2) e recuperação de carrinho (B11).
+- [ ] 7.3 Lista de espera em evento esgotado, com aviso e prazo para comprar quando uma vaga volta (B4).
+- [ ] 7.4 💰 Revenda oficial ligada à lista de espera (B5/R1): taxa, teto de preço e parte do organizador a decidir.
+- [ ] 7.5 Pixels por evento (Meta, GA4, TikTok) (C2) e widget de compra/link de bio (C10).
+- [ ] 7.6 💰 Parcelamento com juros do comprador (B8) e perguntas personalizadas no checkout (B10).
+- [ ] 7.7 **Fechar a fase:** commit, push e `git tag fase-7` + `git push --tags`
+
+### Fase 8 — Rede geek e concursos
+- [ ] 8.1 💰 Perfil público do talento (G1), com regras próprias para menores.
+- [ ] 8.2 Voto popular validado pelo check-in (G3) e devolutiva dos jurados para o participante (G5).
+- [ ] 8.3 Modo palco/telão (G4) e camarim/check-in de participantes (G8).
+- [ ] 8.4 💰 Inscrição paga de talento, com garantia opcional (G9/R6).
+- [ ] 8.5 Ranking por temporada e circuito, seletivas e classificação (G2, G7).
+- [ ] 8.6 💰 Artist alley e expositores: mapa de mesas, venda de espaço, ficha e credencial (G6/R7).
+- [ ] 8.7 💰 Galeria oficial do evento (G10) e caravanas (G11).
+- [ ] 8.8 **Fechar a fase:** commit, push e `git tag fase-8` + `git push --tags`
+
+### Fase 9 — Ferramentas do organizador e operação
+- [ ] 9.1 💰 Repasse automático por Pix via API, D+1 útil para organizador verificado (C4).
+- [ ] 9.2 💰 Comissão de afiliados e promoters (C5).
+- [ ] 9.3 💰 CRM do organizador com e-mail para a base e integração Mailchimp/Brevo (C6); WhatsApp oficial (C7).
+- [ ] 9.4 💰 Venda na porta pelo celular (C8).
+- [ ] 9.5 Mapa de assentos e mesas (C9).
+- [ ] 9.6 Painel ao vivo do dia do evento (C11), importar ingressos de outras plataformas (C12), credencial impressa (C15).
+- [ ] 9.7 Certificados automáticos (C13) e pesquisa pós-evento (C14).
+- [ ] 9.8 💰 Permissões de equipe por função (C17) e coprodução com divisão de repasse (C16).
+- [ ] 9.9 Central de ajuda (D3), verificação "este ingresso é válido?" (D2) e página de status (D5).
+- [ ] 9.10 **Fechar a fase:** commit, push e `git tag fase-9` + `git push --tags`
+
+### Fase 10 — Crescimento e receitas extras
+- [ ] 10.1 💰 Indique e ganhe (A8) e "amigos que vão" (A9).
+- [ ] 10.2 PWA instalável com push (A10) e Apple/Google Wallet (A11).
+- [ ] 10.3 💰 Pacotes e adicionais no checkout (B7/R5) e compra em grupo com divisão do pagamento (B6).
+- [ ] 10.4 💰 Plano Pro do organizador (R3) e destaque pago na vitrine (R4).
+- [ ] 10.5 Criar evento em 2 minutos com importação e IA (C3), recomendações (A13) e distribuição externa (A14).
+- [ ] 10.6 **Fechar a fase:** commit, push e `git tag fase-10` + `git push --tags`
+
+Fora do plano por enquanto (seção 7.3 da análise): app nativo, cashless/bar, antecipação de repasse, preço dinâmico, seguro do produtor.
 
 ---
 
@@ -387,7 +470,7 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 
 ## 13. Cenários de aceitação críticos (viram testes)
 
-1. Ingresso R$ 30 sem garantia → total R$ 30,99; com garantia → R$ 32,98. Cadastro gratuito → R$ 0,49; cadastro R$ 10 com garantia → R$ 12,48.
+1. Ingresso R$ 30 sem garantia → total R$ 30,99; com garantia → R$ 32,98. Cadastro gratuito → R$ 0,49; cadastro R$ 10 com garantia → R$ 12,48. *(Com a tabela nova do item 5.1: R$ 30 → R$ 30,99 / R$ 32,98 (igual); gratuito → R$ 0,00 sem pagamento; R$ 50 → R$ 51,99, com garantia R$ 54,49; R$ 150 → R$ 153,99, com garantia R$ 161,49; R$ 400 → R$ 406,99, com garantia R$ 421,89 (teto); organizador absorve → comprador paga R$ 30,00 e o repasse cai R$ 0,99.)*
 2. Duas pessoas tentam comprar o último ingresso ao mesmo tempo: só uma conclui; a outra vê "esgotado".
 3. Webhook do MP chega duplicado: pedido processado uma única vez.
 4. Comprador com garantia cancela 1 minuto antes do início: recebe preço + taxa + garantia; vaga volta ao estoque; ledger consistente.
@@ -521,6 +604,13 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 
 - **Item 4.7 — check-in offline.** Fluxo: com internet, o staff toca em "Baixar pacote offline" (`GET /checkin/eventos/:id/pacote`); o aparelho guarda no IndexedDB os ingressos válidos (código, nome, tipo, meia, status, dias válidos) **com o SHA-256 do token — nunca o token em claro** — e as sessões. Sem sinal, o leitor (que abre offline graças ao service worker `/sw.js`, que guarda só o casco do app, nunca `/api`) confere o hash do QR lido, aplica a regra de sessão (mesma janela do servidor: 3h antes até o fim) e grava a entrada numa fila local. Ao voltar o sinal (evento `online` ou botão "Sincronizar"), `POST /checkin/sincronizar` envia o lote (até 2000): o servidor decide quem chegou primeiro (UPDATE atômico, ou UNIQUE item+sessão), grava a trilha em `checkins_offline` e devolve `aceito | conflito | cancelado | nao_encontrado | sessao_invalida`; `utilizado_em` recebe o **horário real da leitura**. Reenviar o mesmo lote é seguro (`entrada_id` gerado no aparelho, UNIQUE por evento). Conflitos ficam listados em `GET /checkin/eventos/:id/conflitos` e aparecem no aparelho ao sincronizar.
 - **Item 4.7 — limites e riscos assumidos:** (1) **dois aparelhos offline podem aceitar o mesmo ingresso** — o segundo só descobre ao sincronizar (a pessoa já entrou; o conflito fica registrado para o organizador); é inerente ao offline. (2) **Indisponível em evento com QR rotativo** (o pacote responde 422; o leitor mostra "QR dinâmico precisa de internet"). (3) Cancelamentos/transferências feitos **depois** de baixar o pacote não chegam ao aparelho até atualizar (recomenda-se baixar de novo logo antes de abrir a portaria); ingresso transferido perde o QR antigo no servidor, mas o pacote velho ainda o aceita. (4) **Dados pessoais no aparelho:** o pacote leva o nome dos titulares (para exibir na portaria) — só staff/organizador do evento baixam, mas fica no navegador do celular até limpar os dados do site; orientar a equipe a limpar ao fim do evento. (5) O SHA-256 exige contexto seguro (HTTPS ou localhost). (6) O service worker só é registrado ao abrir a tela de check-in online pelo menos uma vez no aparelho; não testei em celular real nem o cenário de modo avião (só a lógica de validação em Node e o backend por curl).
+
+- **Item 5.1 — taxas por faixa, gratuito a R$ 0, garantia 5% e taxa absorvida.** Todo cálculo fica em `service/taxas.go` (`TaxasService.ParaEvento` + `TaxasEvento.Calcular`), usado pelo checkout, pela página pública (`GET /eventos/:slug` devolve `taxas` com faixas, garantia, limite regional e quem paga; o front tem um espelho em `lib/taxas.ts` só para exibir) e pela publicação. Config nova: `TAXA_FAIXAS`, `GARANTIA_PERCENTUAL_BP`, `GARANTIA_MIN_CENTAVOS`, `GARANTIA_MAX_CENTAVOS` (migração 000034 apaga `TAXA_INGRESSO_CENTAVOS`, `TAXA_CADASTRO_CENTAVOS` e `GARANTIA_CENTAVOS`). Testes em `taxas_test.go` + roteiro de ponta a ponta (34 conferências) contra a API local.
+- **Item 5.1 — item gratuito:** preço final zero (inclusive por cupom de 100%) não paga taxa e **não tem garantia** (não há o que devolver; se o comprador marcar, é ignorado nesse item). Pedido de total zero é **confirmado na hora**, sem Mercado Pago, com QR e e-mail; nenhum lançamento de valor zero é gravado. O participante pode cancelar a inscrição gratuita até o início do evento (sem reembolso, vaga volta ao estoque, lista de espera é promovida). Cortesia continua só revogável pelo organizador. Cancelar evento/sessão cancela os itens de valor zero sem tentar estorno (antes, cortesias davam "falha" nesse fluxo por não terem pagamento).
+- **Item 5.1 — taxa absorvida:** `eventos.taxa_paga_por` (`comprador` padrão | `organizador`), e cada item guarda `taxa_absorvida` (trocar a opção vale só para vendas futuras). Ledger na venda: `taxa_plataforma` (+) e `taxa_absorvida` (−); no cancelamento: `reembolso_taxa` (−) e `estorno_taxa_absorvida` (+), ou seja, a taxa deixa de ser cobrada do organizador. Repasse: `líquido = bruto − taxa do processador − taxas absorvidas dos itens ativos` (nova coluna `repasses.taxa_absorvida_centavos`). O CDC/garantia devolvem ao comprador só o que ele pagou.
+- **Item 5.1 — regras regionais:** limite percentual (AL 10%) não bloqueia mais; a taxa é reduzida ao limite no cálculo (ex.: ingresso de R$ 5 em AL paga R$ 0,50). Com o organizador absorvendo, o limite não se aplica (o comprador não paga taxa). UF que proíbe taxa ou exige canal sem taxa (AC, RR, ES, Fortaleza) continua bloqueando, **exceto** se o organizador absorver a taxa ou se o evento só tiver itens gratuitos. Validar esse entendimento com advogado.
+- **Item 5.1 — ledger do reembolso corrigido:** antes, no cancelamento de evento, a garantia devolvida era gravada como `reembolso_taxa`. Agora o valor devolvido é decomposto em preço → taxa → garantia (`decomporReembolso`, testado).
+- **Item 5.1 — ⚠️ banco local apagado durante os testes:** `go run ./cmd/migrate down` desfaz **todas** as migrações (`m.Down()`), não só a última. Rodei para testar a migração 000034 e isso apagou os dados de teste do Postgres local do Docker (não afeta o Neon). As tabelas foram recriadas; os dados de dev antigos (usuários e eventos de teste) se perderam. Sugestão futura: um comando `migrate down 1`.
 
 **Pendências para validar fora do código:**
 - Contador/advogado: custódia de recursos de terceiros, nome "Garantia de vaga" (vs. "seguro"), retenção ou não da taxa no arrependimento, regras regionais por UF (incluindo Sergipe), emissão de nota fiscal e tributação da taxa/garantia.

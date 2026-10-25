@@ -16,6 +16,7 @@ export type Evento = {
   modo_participantes: 'nenhum' | 'convite' | 'inscricao_aberta' | 'ambos'
   capacidade_total: number | null
   garantia_habilitada: boolean
+  taxa_paga_por: 'comprador' | 'organizador'
   aprovacao_manual: boolean
   qr_rotativo: boolean
   cor_tema: string

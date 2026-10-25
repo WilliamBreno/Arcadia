@@ -28,6 +28,15 @@ func (r *ConfigPlataformaRepository) BuscarInt64(chave string) (int64, error) {
 	return strconv.ParseInt(registro.Valor, 10, 64)
 }
 
+// Buscar lê uma chave de configuração como texto.
+func (r *ConfigPlataformaRepository) Buscar(chave string) (string, error) {
+	var registro domain.ConfigPlataforma
+	if err := r.db.First(&registro, "chave = ?", chave).Error; err != nil {
+		return "", err
+	}
+	return registro.Valor, nil
+}
+
 // BuscarBool lê uma chave de configuração como booleano ("true"/"false").
 func (r *ConfigPlataformaRepository) BuscarBool(chave string) (bool, error) {
 	var registro domain.ConfigPlataforma

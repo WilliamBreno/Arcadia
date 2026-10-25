@@ -59,7 +59,8 @@ export default function AdminRepasses() {
                   {r.organizador_nome} · Pix ({r.tipo_chave_pix}): <span className="font-mono">{r.chave_pix || 'não cadastrada'}</span>
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Bruto {formatarCentavos(r.valor_bruto_centavos)} − taxa {formatarCentavos(r.taxa_processador_centavos)} · {r.status}
+                  Bruto {formatarCentavos(r.valor_bruto_centavos)} − taxa {formatarCentavos(r.taxa_processador_centavos)}
+                  {r.taxa_absorvida_centavos > 0 && <> − taxa absorvida {formatarCentavos(r.taxa_absorvida_centavos)}</>} · {r.status}
                 </p>
               </div>
               <div className="flex items-center gap-3">

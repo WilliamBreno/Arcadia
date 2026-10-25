@@ -59,6 +59,7 @@ type EventoDados struct {
 	AprovacaoManual           *bool // nil = padrão (false) ao criar, manter ao atualizar
 	QRRotativo                *bool // idem
 	CorTema                   *string
+	TaxaPagaPor               *string // nil = padrão (comprador) ao criar, manter ao atualizar
 	PoliticaCancelamentoTexto string
 	MaxItensPorPedido         int
 }
@@ -92,6 +93,7 @@ func (s *EventoService) Criar(organizadorID int64, dados EventoDados) (*domain.E
 		AprovacaoManual:           boolOuPadrao(dados.AprovacaoManual, false),
 		QRRotativo:                boolOuPadrao(dados.QRRotativo, false),
 		CorTema:                   corTemaOuPadrao(dados.CorTema, ""),
+		TaxaPagaPor:               taxaPagaPorOuPadrao(dados.TaxaPagaPor, domain.TaxaPagaPorComprador),
 		PoliticaCancelamentoTexto: dados.PoliticaCancelamentoTexto,
 		MaxItensPorPedido:         valorIntOuPadrao(dados.MaxItensPorPedido, 10),
 		CriadoEm:                  time.Now(),
@@ -127,6 +129,7 @@ func (s *EventoService) Atualizar(organizadorID, eventoID int64, dados EventoDad
 	evento.AprovacaoManual = boolOuPadrao(dados.AprovacaoManual, evento.AprovacaoManual)
 	evento.QRRotativo = boolOuPadrao(dados.QRRotativo, evento.QRRotativo)
 	evento.CorTema = corTemaOuPadrao(dados.CorTema, evento.CorTema)
+	evento.TaxaPagaPor = taxaPagaPorOuPadrao(dados.TaxaPagaPor, evento.TaxaPagaPor)
 	evento.PoliticaCancelamentoTexto = dados.PoliticaCancelamentoTexto
 	evento.MaxItensPorPedido = valorIntOuPadrao(dados.MaxItensPorPedido, 10)
 
@@ -215,66 +218,44 @@ func (s *EventoService) Publicar(organizadorID, eventoID int64) (*domain.Evento,
 }
 
 // checarRegraRegional aplica o levantamento da seção 7.8 (a validar com
-// advogado): bloqueia a publicação de evento pago numa UF/cidade com
-// restrição a taxa de conveniência, exceto quando a exceção de público
-// (ex.: ES até 200 pessoas) se aplica. Eventos online (sem local) não
-// têm UF determinável e ficam de fora dessa checagem.
+// advogado). Desde o item 5.1: o limite percentual (ex.: AL, 10%) não
+// bloqueia mais — a taxa é reduzida automaticamente no cálculo. Só
+// bloqueia UF/cidade que proíbe a taxa ou exige canal sem taxa, e só
+// quando o comprador paga a taxa e há ingresso pago (gratuito não tem
+// taxa). Se o organizador absorver a taxa, o comprador não paga taxa de
+// conveniência e não há bloqueio.
 func (s *EventoService) checarRegraRegional(evento *domain.Evento) ([]string, error) {
-	if evento.LocalID == nil {
+	if evento.TaxaPagaPor == domain.TaxaPagaPorOrganizador {
 		return nil, nil
 	}
-	local, err := s.locais.BuscarPorID(*evento.LocalID)
+	regra := NovoTaxasService(s.config, s.locais, s.regrasRegionais).RegraRegionalDoEvento(evento)
+	if regra == nil || (regra.PermiteTaxa && !regra.ExigeCanalSemTaxa) {
+		return nil, nil
+	}
+
+	tipos, err := s.tiposIngresso.ListarAtivosPublicoPorEvento(evento.ID)
 	if err != nil {
+		return nil, err
+	}
+	temPago := false
+	for _, tipo := range tipos {
+		if tipo.PrecoCentavos > 0 {
+			temPago = true
+			break
+		}
+	}
+	if !temPago {
 		return nil, nil
 	}
 
-	regra, err := s.regrasRegionais.Buscar(local.UF, local.Cidade)
-	if err != nil {
-		return nil, nil // sem regra cadastrada pra essa UF/cidade — nada a bloquear
+	lugar := regra.UF
+	if regra.Municipio != nil {
+		lugar = *regra.Municipio + "/" + regra.UF
 	}
-
-	if regra.ExcecaoPublicoAte != nil && evento.CapacidadeTotal != nil && *evento.CapacidadeTotal <= *regra.ExcecaoPublicoAte {
-		return nil, nil
-	}
-
-	var problemas []string
-
-	if !regra.PermiteTaxa || regra.ExigeCanalSemTaxa {
-		problemas = append(problemas, fmt.Sprintf(
-			"publicação bloqueada: %s/%s tem restrição à taxa de conveniência (%s). Peça liberação ao admin da plataforma se tiver um canal de venda sem taxa.",
-			local.Cidade, local.UF, regra.Observacao,
-		))
-	}
-
-	if regra.TaxaMaximaPercentual != nil {
-		chaveTaxa := domain.ChaveTaxaIngressoCentavos
-		if evento.TipoAcesso == domain.TipoAcessoCadastro {
-			chaveTaxa = domain.ChaveTaxaCadastroCentavos
-		}
-		taxaPlataforma, err := s.config.BuscarInt64(chaveTaxa)
-		if err != nil {
-			return problemas, nil
-		}
-
-		tipos, err := s.tiposIngresso.ListarAtivosPublicoPorEvento(evento.ID)
-		if err != nil {
-			return problemas, err
-		}
-		for _, tipo := range tipos {
-			if tipo.PrecoCentavos == 0 {
-				continue
-			}
-			limite := *regra.TaxaMaximaPercentual / 100 * float64(tipo.PrecoCentavos)
-			if float64(taxaPlataforma) > limite {
-				problemas = append(problemas, fmt.Sprintf(
-					"a taxa da plataforma excede o limite de %.0f%% permitido em %s/%s para o ingresso \"%s\"",
-					*regra.TaxaMaximaPercentual, local.Cidade, local.UF, tipo.Nome,
-				))
-			}
-		}
-	}
-
-	return problemas, nil
+	return []string{fmt.Sprintf(
+		"publicação bloqueada: %s tem restrição à taxa de conveniência (%s). Para publicar, escolha que o organizador paga a taxa (opção \"Quem paga a taxa\") ou peça liberação ao admin da plataforma.",
+		lugar, regra.Observacao,
+	)}, nil
 }
 
 func (s *EventoService) buscarDoOrganizador(organizadorID, eventoID int64) (*domain.Evento, error) {
@@ -343,4 +324,17 @@ func boolOuPadrao(v *bool, padrao bool) bool {
 		return padrao
 	}
 	return *v
+}
+
+// taxaPagaPorOuPadrao aceita só os dois valores conhecidos; qualquer outro
+// mantém o atual. A mudança vale para vendas futuras: cada item já vendido
+// guarda se a taxa dele foi absorvida.
+func taxaPagaPorOuPadrao(v *string, atual string) string {
+	if v != nil && (*v == domain.TaxaPagaPorComprador || *v == domain.TaxaPagaPorOrganizador) {
+		return *v
+	}
+	if atual == "" {
+		return domain.TaxaPagaPorComprador
+	}
+	return atual
 }

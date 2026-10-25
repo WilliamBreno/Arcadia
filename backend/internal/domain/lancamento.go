@@ -14,6 +14,10 @@ const (
 	LancamentoReembolsoGarantia       TipoLancamento = "reembolso_garantia"
 	LancamentoCustoProcessadorPerdido TipoLancamento = "custo_processador_perdido"
 	LancamentoRepasse                 TipoLancamento = "repasse"
+	// Organizador absorveu a taxa (item 5.1): sai do saldo dele na venda
+	// e volta (estorno) se o item for cancelado.
+	LancamentoTaxaAbsorvida        TipoLancamento = "taxa_absorvida"
+	LancamentoEstornoTaxaAbsorvida TipoLancamento = "estorno_taxa_absorvida"
 )
 
 // Lancamento é o ledger financeiro (seção 7.6/7.7): toda entrada e saída

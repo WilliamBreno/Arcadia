@@ -219,6 +219,8 @@ type ItemFinanceiro struct {
 	ItemID                    int64
 	PrecoCentavos             int64
 	TotalCentavos             int64
+	TaxaPlataformaCentavos    int64
+	TaxaAbsorvida             bool
 	PagamentoValorCentavos    int64
 	PagamentoTaxaProcCentavos int64
 }
@@ -226,7 +228,7 @@ type ItemFinanceiro struct {
 func (r *ItemPedidoRepository) ListarAtivosComPagamento(eventoID int64) ([]ItemFinanceiro, error) {
 	var linhas []ItemFinanceiro
 	err := r.db.Table("itens_pedido").
-		Select("itens_pedido.id as item_id, itens_pedido.preco_centavos, itens_pedido.total_centavos, pagamentos.valor_centavos as pagamento_valor_centavos, pagamentos.taxa_processador_centavos as pagamento_taxa_proc_centavos").
+		Select("itens_pedido.id as item_id, itens_pedido.preco_centavos, itens_pedido.total_centavos, itens_pedido.taxa_plataforma_centavos, itens_pedido.taxa_absorvida, pagamentos.valor_centavos as pagamento_valor_centavos, pagamentos.taxa_processador_centavos as pagamento_taxa_proc_centavos").
 		Joins("JOIN tipos_ingresso ON tipos_ingresso.id = itens_pedido.tipo_ingresso_id").
 		Joins("JOIN pagamentos ON pagamentos.pedido_id = itens_pedido.pedido_id AND pagamentos.status = 'approved'").
 		Where("tipos_ingresso.evento_id = ? AND itens_pedido.status IN ?", eventoID, []domain.StatusItemPedido{

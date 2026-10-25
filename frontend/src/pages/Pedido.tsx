@@ -102,7 +102,9 @@ export default function Pedido() {
 
           {pedido.status === 'pago' && (
             <p className="text-sm text-muted-foreground">
-              Pagamento confirmado! Os códigos dos ingressos aparecem em "Meus ingressos".
+              {pedido.total_centavos === 0
+                ? 'Inscrição confirmada! Os códigos aparecem em "Meus ingressos".'
+                : 'Pagamento confirmado! Os códigos dos ingressos aparecem em "Meus ingressos".'}
             </p>
           )}
           {pedido.status === 'expirado' && (
@@ -159,7 +161,16 @@ function ItemLinha({ item, pedidoId }: { item: ItemPedido; pedidoId: number }) {
             {item.titular_nome} <span className="text-xs text-muted-foreground">({rotuloStatusItem[item.status]})</span>
           </p>
           <p className="text-xs text-muted-foreground">
-            {formatarCentavos(item.preco_centavos)} + {formatarCentavos(item.taxa_plataforma_centavos)} de taxa
+            {item.total_centavos === 0 ? (
+              'Gratuito, sem taxa'
+            ) : (
+              <>
+                {formatarCentavos(item.preco_centavos)}
+                {item.taxa_absorvida
+                  ? ' (taxa paga pelo organizador)'
+                  : item.taxa_plataforma_centavos > 0 && <> + {formatarCentavos(item.taxa_plataforma_centavos)} de taxa</>}
+              </>
+            )}
             {item.garantia_contratada && <> + {formatarCentavos(item.garantia_centavos)} de garantia de vaga</>}
             {item.desconto_centavos > 0 && <> (cupom: −{formatarCentavos(item.desconto_centavos)})</>}
           </p>

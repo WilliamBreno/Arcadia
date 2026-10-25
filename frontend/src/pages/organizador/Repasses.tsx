@@ -24,6 +24,7 @@ export default function Repasses() {
                 <p className="font-medium text-foreground">{r.evento_titulo}</p>
                 <p className="text-xs text-muted-foreground">
                   Bruto {formatarCentavos(r.valor_bruto_centavos)} − taxa do processador {formatarCentavos(r.taxa_processador_centavos)}
+                  {r.taxa_absorvida_centavos > 0 && <> − taxa da plataforma paga por você {formatarCentavos(r.taxa_absorvida_centavos)}</>}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {r.pago_em ? `Pago em ${new Date(r.pago_em).toLocaleDateString('pt-BR')}` : `Liberado em ${new Date(r.liberar_em).toLocaleDateString('pt-BR')}`}

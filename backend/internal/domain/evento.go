@@ -10,6 +10,12 @@ const (
 	VisibilidadePrivado    Visibilidade = "privado"
 )
 
+// Quem paga a taxa da plataforma (seção 2.1).
+const (
+	TaxaPagaPorComprador   = "comprador"
+	TaxaPagaPorOrganizador = "organizador"
+)
+
 type TipoAcesso string
 
 const (
@@ -60,6 +66,7 @@ type Evento struct {
 	InscricaoTalentosFim      *time.Time
 	CapacidadeTotal           *int
 	GarantiaHabilitada        bool
+	TaxaPagaPor               string // comprador | organizador (item 5.1)
 	AprovacaoManual           bool
 	QRRotativo                bool
 	CorTema                   string

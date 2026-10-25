@@ -29,6 +29,7 @@ type repasseResposta struct {
 	TipoChavePix            string     `json:"tipo_chave_pix,omitempty"`
 	ValorBrutoCentavos      int64      `json:"valor_bruto_centavos"`
 	TaxaProcessadorCentavos int64      `json:"taxa_processador_centavos"`
+	TaxaAbsorvidaCentavos   int64      `json:"taxa_absorvida_centavos"`
 	ValorLiquidoCentavos    int64      `json:"valor_liquido_centavos"`
 	Status                  string     `json:"status"`
 	LiberarEm               time.Time  `json:"liberar_em"`
@@ -40,7 +41,7 @@ type repasseResposta struct {
 func paraRepasseResposta(r *repository.RepasseDetalhado, comPix bool) repasseResposta {
 	resp := repasseResposta{
 		ID: r.ID, EventoID: r.EventoID, EventoTitulo: r.EventoTitulo,
-		ValorBrutoCentavos: r.ValorBrutoCentavos, TaxaProcessadorCentavos: r.TaxaProcessadorCentavos,
+		ValorBrutoCentavos: r.ValorBrutoCentavos, TaxaProcessadorCentavos: r.TaxaProcessadorCentavos, TaxaAbsorvidaCentavos: r.TaxaAbsorvidaCentavos,
 		ValorLiquidoCentavos: r.ValorLiquidoCentavos, Status: string(r.Status), LiberarEm: r.LiberarEm,
 		PagoEm: r.PagoEm, ComprovanteURL: r.ComprovanteURL, Observacao: r.Observacao,
 	}
@@ -70,7 +71,7 @@ func (h *RepasseHandler) FinanceiroEvento(c *gin.Context) {
 		return
 	}
 	resp := gin.H{
-		"bruto_centavos": f.BrutoCentavos, "taxa_processador_centavos": f.TaxaProcessadorCentavos,
+		"bruto_centavos": f.BrutoCentavos, "taxa_processador_centavos": f.TaxaProcessadorCentavos, "taxa_absorvida_centavos": f.TaxaAbsorvidaCentavos,
 		"liquido_centavos": f.LiquidoCentavos, "liberar_em": f.LiberarEm, "repasse_status": nil,
 	}
 	if f.Repasse != nil {

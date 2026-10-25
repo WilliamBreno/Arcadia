@@ -21,6 +21,22 @@ type PublicoHandler struct {
 	itensPedido   *repository.ItemPedidoRepository
 	cronograma    *repository.CronogramaRepository
 	sessoes       *repository.SessaoRepository
+	taxas         *service.TaxasService
+}
+
+// DefinirTaxas liga o cálculo de taxas por faixa (item 5.1).
+func (h *PublicoHandler) DefinirTaxas(t *service.TaxasService) { h.taxas = t }
+
+// regraTaxasPublica vai para a página do evento: o front mostra a taxa
+// de cada ingresso (e com cupom) com a mesma regra do servidor — só para
+// exibição; o valor cobrado é sempre recalculado no checkout.
+type regraTaxasPublica struct {
+	Faixas               []service.FaixaTaxa `json:"faixas"`
+	GarantiaPercentualBP int64               `json:"garantia_percentual_bp"`
+	GarantiaMinCentavos  int64               `json:"garantia_min_centavos"`
+	GarantiaMaxCentavos  int64               `json:"garantia_max_centavos"`
+	LimiteBP             *int64              `json:"limite_bp"`
+	TaxaPagaPor          string              `json:"taxa_paga_por"`
 }
 
 func NovoPublicoHandler(
@@ -233,12 +249,23 @@ func (h *PublicoHandler) ObterEvento(c *gin.Context) {
 		}
 	}
 
-	chaveTaxa := domain.ChaveTaxaIngressoCentavos
-	if evento.TipoAcesso == domain.TipoAcessoCadastro {
-		chaveTaxa = domain.ChaveTaxaCadastroCentavos
+	taxasEvento, err := h.taxas.ParaEvento(evento)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao calcular taxas"})
+		return
 	}
-	taxaPlataforma, _ := h.config.BuscarInt64(chaveTaxa)
-	garantiaCentavos, _ := h.config.BuscarInt64(domain.ChaveGarantiaCentavos)
+	taxaPagaPor := domain.TaxaPagaPorComprador
+	if taxasEvento.Absorvida {
+		taxaPagaPor = domain.TaxaPagaPorOrganizador
+	}
+	regraTaxas := regraTaxasPublica{
+		Faixas:               taxasEvento.Regra.Faixas,
+		GarantiaPercentualBP: taxasEvento.Regra.GarantiaPercentualBP,
+		GarantiaMinCentavos:  taxasEvento.Regra.GarantiaMinCentavos,
+		GarantiaMaxCentavos:  taxasEvento.Regra.GarantiaMaxCentavos,
+		LimiteBP:             taxasEvento.LimiteBP,
+		TaxaPagaPor:          taxaPagaPor,
+	}
 
 	itensCronograma, _ := h.cronograma.ListarPorEvento(evento.ID)
 	cronogramaResp := make([]cronogramaResposta, 0, len(itensCronograma))
@@ -253,14 +280,13 @@ func (h *PublicoHandler) ObterEvento(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"sessoes":                  sessoesResp,
-		"cronograma":               cronogramaResp,
-		"evento":                   paraEventoResposta(evento),
-		"local":                    localResposta,
-		"organizador":              organizadorResposta,
-		"ingressos":                tiposResposta,
-		"taxa_plataforma_centavos": taxaPlataforma,
-		"garantia_centavos":        garantiaCentavos,
+		"sessoes":     sessoesResp,
+		"cronograma":  cronogramaResp,
+		"evento":      paraEventoResposta(evento),
+		"local":       localResposta,
+		"organizador": organizadorResposta,
+		"ingressos":   tiposResposta,
+		"taxas":       regraTaxas,
 	})
 }
 

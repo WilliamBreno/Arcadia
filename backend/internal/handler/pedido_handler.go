@@ -32,6 +32,7 @@ type itemPedidoResposta struct {
 	TaxaCentavos       int64      `json:"taxa_plataforma_centavos"`
 	GarantiaContratada bool       `json:"garantia_contratada"`
 	GarantiaCentavos   int64      `json:"garantia_centavos"`
+	TaxaAbsorvida      bool       `json:"taxa_absorvida"`
 	DescontoCentavos   int64      `json:"desconto_centavos"`
 	TotalCentavos      int64      `json:"total_centavos"`
 	Status             string     `json:"status"`
@@ -44,7 +45,7 @@ func paraItemPedidoResposta(i *domain.ItemPedido) itemPedidoResposta {
 	return itemPedidoResposta{
 		ID: i.ID, TipoIngressoID: i.TipoIngressoID, TitularNome: i.TitularNome, TitularEmail: i.TitularEmail,
 		PrecoCentavos: i.PrecoCentavos, TaxaCentavos: i.TaxaPlataformaCentavos,
-		GarantiaContratada: i.GarantiaContratada, GarantiaCentavos: i.GarantiaCentavos, DescontoCentavos: i.DescontoCentavos, TotalCentavos: i.TotalCentavos,
+		GarantiaContratada: i.GarantiaContratada, GarantiaCentavos: i.GarantiaCentavos, TaxaAbsorvida: i.TaxaAbsorvida, DescontoCentavos: i.DescontoCentavos, TotalCentavos: i.TotalCentavos,
 		Status: string(i.Status), Codigo: i.Codigo, QRToken: i.QRToken, UtilizadoEm: i.UtilizadoEm,
 	}
 }

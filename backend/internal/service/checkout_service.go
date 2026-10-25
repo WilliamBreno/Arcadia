@@ -55,6 +55,7 @@ type CheckoutService struct {
 	cupons         *repository.CupomRepository
 	tipos          *repository.TipoIngressoRepository
 	plateia        *PlateiaService
+	taxas          *TaxasService
 	afiliados      *repository.AfiliadoRepository
 	mp             *mercadopago.Cliente
 	mailCliente    *mail.Cliente
@@ -111,18 +112,6 @@ func assinarQR(segredo, codigo string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-// calcularTotalItem é a fórmula da seção 7.1:
-// total_item = preco_organizador + taxa_plataforma + garantia (se contratada).
-// Função pura (sem I/O) para poder testar o cálculo isolado do resto do
-// fluxo de reserva.
-func calcularTotalItem(precoCentavos, taxaPlataformaCentavos, garantiaCentavos int64, garantiaContratada bool) int64 {
-	total := precoCentavos + taxaPlataformaCentavos
-	if garantiaContratada {
-		total += garantiaCentavos
-	}
-	return total
-}
-
 // Reservar é a etapa "reserva + cálculo" da seção 8. Trava cada
 // tipo_ingresso (SELECT ... FOR UPDATE) dentro de uma transação para
 // impedir overselling sob concorrência (seção 7.2) — preço, taxa e
@@ -150,21 +139,15 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 		return nil, nil, ErrExcedeuMaxItensPorPedido
 	}
 
-	chaveTaxa := domain.ChaveTaxaIngressoCentavos
-	if evento.TipoAcesso == domain.TipoAcessoCadastro {
-		chaveTaxa = domain.ChaveTaxaCadastroCentavos
-	}
-	taxaPlataforma, err := s.config.BuscarInt64(chaveTaxa)
+	// Seção 7.1 / item 5.1: taxa por faixa do preço com desconto, limite
+	// regional e garantia percentual — tudo recalculado aqui.
+	taxasEvento, err := s.taxas.ParaEvento(evento)
 	if err != nil {
-		return nil, nil, fmt.Errorf("config de taxa ausente: %w", err)
+		return nil, nil, err
 	}
 	reservaMinutos, err := s.config.BuscarInt64(domain.ChaveReservaMinutos)
 	if err != nil {
 		return nil, nil, fmt.Errorf("config de reserva ausente: %w", err)
-	}
-	garantiaCentavos, err := s.config.BuscarInt64(domain.ChaveGarantiaCentavos)
-	if err != nil {
-		return nil, nil, fmt.Errorf("config de garantia ausente: %w", err)
 	}
 	for _, ir := range itensReq {
 		if ir.GarantiaContratada && !evento.GarantiaHabilitada {
@@ -253,11 +236,6 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 				return fmt.Errorf("%w: %s (restam %d)", ErrEstoqueInsuficiente, tipo.Nome, disponivel)
 			}
 
-			itemGarantiaCentavos := int64(0)
-			if ir.GarantiaContratada {
-				itemGarantiaCentavos = garantiaCentavos
-			}
-
 			var descontoCentavos int64
 			var cupomID *int64
 			if cupom != nil {
@@ -265,6 +243,8 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 				cupomID = &cupom.ID
 			}
 			precoFinal := tipo.PrecoCentavos - descontoCentavos
+			// Item gratuito não tem garantia (não há o que devolver).
+			valores := taxasEvento.Calcular(precoFinal, ir.GarantiaContratada && precoFinal > 0)
 
 			for i := 0; i < ir.Quantidade; i++ {
 				codigo, err := gerarCodigoItem()
@@ -279,10 +259,11 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 					CupomID:                cupomID,
 					DescontoCentavos:       descontoCentavos,
 					PrecoCentavos:          precoFinal,
-					TaxaPlataformaCentavos: taxaPlataforma,
-					GarantiaContratada:     ir.GarantiaContratada,
-					GarantiaCentavos:       itemGarantiaCentavos,
-					TotalCentavos:          calcularTotalItem(precoFinal, taxaPlataforma, itemGarantiaCentavos, ir.GarantiaContratada),
+					TaxaPlataformaCentavos: valores.TaxaCentavos,
+					TaxaAbsorvida:          valores.TaxaAbsorvida,
+					GarantiaContratada:     valores.GarantiaCentavos > 0,
+					GarantiaCentavos:       valores.GarantiaCentavos,
+					TotalCentavos:          valores.TotalCentavos,
 					Status:                 domain.StatusItemReservado,
 					Codigo:                 codigo,
 					QRToken:                s.gerarQRToken(codigo),
@@ -307,6 +288,18 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 	})
 	if err != nil {
 		return nil, nil, err
+	}
+
+	// Pedido de valor zero (evento gratuito ou cupom de 100% sem garantia):
+	// não passa pelo Mercado Pago — confirma na hora (item 5.1).
+	if pedido.TotalCentavos == 0 {
+		if err := s.aprovarPedido(pedido); err != nil {
+			return nil, nil, err
+		}
+		itensCriados, err = s.itensPedido.ListarPorPedido(pedido.ID)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	return pedido, itensCriados, nil
@@ -471,22 +464,7 @@ func (s *CheckoutService) aprovarPedido(pedido *domain.Pedido) error {
 			return err
 		}
 
-		lancamentos = append(lancamentos,
-			domain.Lancamento{
-				Tipo: domain.LancamentoVendaPreco, ValorCentavos: item.PrecoCentavos, Sinal: "+",
-				EventoID: &evento.ID, OrganizadorID: &evento.OrganizadorID, PedidoID: &pedido.ID, ItemID: &item.ID, CriadoEm: agora,
-			},
-			domain.Lancamento{
-				Tipo: domain.LancamentoTaxaPlataforma, ValorCentavos: item.TaxaPlataformaCentavos, Sinal: "+",
-				EventoID: &evento.ID, OrganizadorID: &evento.OrganizadorID, PedidoID: &pedido.ID, ItemID: &item.ID, CriadoEm: agora,
-			},
-		)
-		if item.GarantiaContratada && item.GarantiaCentavos > 0 {
-			lancamentos = append(lancamentos, domain.Lancamento{
-				Tipo: domain.LancamentoGarantia, ValorCentavos: item.GarantiaCentavos, Sinal: "+",
-				EventoID: &evento.ID, OrganizadorID: &evento.OrganizadorID, PedidoID: &pedido.ID, ItemID: &item.ID, CriadoEm: agora,
-			})
-		}
+		lancamentos = append(lancamentos, lancamentosDaVenda(item, evento, pedido.ID, agora)...)
 	}
 	if err := s.lancamentos.CriarEmLote(lancamentos); err != nil {
 		return err
@@ -499,6 +477,31 @@ func (s *CheckoutService) aprovarPedido(pedido *domain.Pedido) error {
 
 	s.enviarEmailConfirmacao(pedido, itens, evento)
 	return nil
+}
+
+// lancamentosDaVenda é o ledger de um item aprovado (seção 7.3). Valores
+// zero não geram linha (item gratuito). Com taxa absorvida, o organizador
+// paga a taxa: ela entra como receita da plataforma e sai do saldo dele.
+func lancamentosDaVenda(item *domain.ItemPedido, evento *domain.Evento, pedidoID int64, agora time.Time) []domain.Lancamento {
+	var ls []domain.Lancamento
+	add := func(tipo domain.TipoLancamento, valor int64, sinal string) {
+		if valor <= 0 {
+			return
+		}
+		ls = append(ls, domain.Lancamento{
+			Tipo: tipo, ValorCentavos: valor, Sinal: sinal,
+			EventoID: &evento.ID, OrganizadorID: &evento.OrganizadorID, PedidoID: &pedidoID, ItemID: &item.ID, CriadoEm: agora,
+		})
+	}
+	add(domain.LancamentoVendaPreco, item.PrecoCentavos, "+")
+	add(domain.LancamentoTaxaPlataforma, item.TaxaPlataformaCentavos, "+")
+	if item.TaxaAbsorvida {
+		add(domain.LancamentoTaxaAbsorvida, item.TaxaPlataformaCentavos, "-")
+	}
+	if item.GarantiaContratada {
+		add(domain.LancamentoGarantia, item.GarantiaCentavos, "+")
+	}
+	return ls
 }
 
 func (s *CheckoutService) enviarEmailConfirmacao(pedido *domain.Pedido, itens []domain.ItemPedido, evento *domain.Evento) {
@@ -572,6 +575,9 @@ func (s *CheckoutService) ExpirarReservas() (int, error) {
 
 // DefinirPlateia liga a exigência de aprovação e a promoção da lista de espera (item 3.2).
 func (s *CheckoutService) DefinirPlateia(p *PlateiaService) { s.plateia = p }
+
+// DefinirTaxas liga o cálculo de taxas por faixa (item 5.1). Obrigatório.
+func (s *CheckoutService) DefinirTaxas(t *TaxasService) { s.taxas = t }
 
 // DefinirAfiliados liga a atribuição por link de divulgador.
 func (s *CheckoutService) DefinirAfiliados(a *repository.AfiliadoRepository) { s.afiliados = a }

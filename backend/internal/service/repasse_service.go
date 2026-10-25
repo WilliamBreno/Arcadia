@@ -20,6 +20,7 @@ var (
 type Financeiro struct {
 	BrutoCentavos           int64
 	TaxaProcessadorCentavos int64
+	TaxaAbsorvidaCentavos   int64 // taxas da plataforma pagas pelo organizador (item 5.1)
 	LiquidoCentavos         int64
 }
 
@@ -87,8 +88,11 @@ func (s *RepasseService) calcular(eventoID int64) (Financeiro, error) {
 	for _, it := range itens {
 		f.BrutoCentavos += it.PrecoCentavos
 		f.TaxaProcessadorCentavos += alocarTaxaProcessador(it.PagamentoTaxaProcCentavos, it.TotalCentavos, it.PagamentoValorCentavos)
+		if it.TaxaAbsorvida {
+			f.TaxaAbsorvidaCentavos += it.TaxaPlataformaCentavos
+		}
 	}
-	f.LiquidoCentavos = f.BrutoCentavos - f.TaxaProcessadorCentavos
+	f.LiquidoCentavos = f.BrutoCentavos - f.TaxaProcessadorCentavos - f.TaxaAbsorvidaCentavos
 	return f, nil
 }
 
@@ -112,7 +116,7 @@ func (s *RepasseService) FinanceiroDoEvento(organizadorID, eventoID int64) (*Fin
 	res := &FinanceiroEvento{}
 	if rep, err := s.repasses.BuscarAtivoPorEvento(eventoID); err == nil {
 		res.Repasse = rep
-		res.Financeiro = Financeiro{rep.ValorBrutoCentavos, rep.TaxaProcessadorCentavos, rep.ValorLiquidoCentavos}
+		res.Financeiro = Financeiro{rep.ValorBrutoCentavos, rep.TaxaProcessadorCentavos, rep.TaxaAbsorvidaCentavos, rep.ValorLiquidoCentavos}
 		res.LiberarEm = &rep.LiberarEm
 		return res, nil
 	}
@@ -165,7 +169,8 @@ func (s *RepasseService) GerarRepasses() (int, error) {
 			rep := &domain.Repasse{
 				EventoID: e.ID, OrganizadorID: e.OrganizadorID,
 				ValorBrutoCentavos: f.BrutoCentavos, TaxaProcessadorCentavos: f.TaxaProcessadorCentavos,
-				ValorLiquidoCentavos: f.LiquidoCentavos, Status: domain.StatusRepassePendente,
+				TaxaAbsorvidaCentavos: f.TaxaAbsorvidaCentavos,
+				ValorLiquidoCentavos:  f.LiquidoCentavos, Status: domain.StatusRepassePendente,
 				LiberarEm: liberarEm, CriadoEm: agora,
 			}
 			if err := s.repasses.Criar(tx, rep); err != nil {

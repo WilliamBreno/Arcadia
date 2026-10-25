@@ -17,6 +17,7 @@ type Repasse struct {
 	OrganizadorID           int64
 	ValorBrutoCentavos      int64
 	TaxaProcessadorCentavos int64
+	TaxaAbsorvidaCentavos   int64 // taxas que o organizador escolheu pagar (item 5.1)
 	ValorLiquidoCentavos    int64
 	Status                  StatusRepasse
 	LiberarEm               time.Time

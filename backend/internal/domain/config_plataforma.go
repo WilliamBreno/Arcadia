@@ -18,9 +18,11 @@ func (ConfigPlataforma) TableName() string {
 
 // Chaves conhecidas de config_plataforma (seção 2.1 e 7.6 do plano).
 const (
-	ChaveTaxaIngressoCentavos = "TAXA_INGRESSO_CENTAVOS"
-	ChaveTaxaCadastroCentavos = "TAXA_CADASTRO_CENTAVOS"
-	ChaveGarantiaCentavos     = "GARANTIA_CENTAVOS"
+	// Taxa por faixa de preço: "limite:taxa,...,*:taxa" em centavos (item 5.1).
+	ChaveTaxaFaixas           = "TAXA_FAIXAS"
+	ChaveGarantiaPercentualBP = "GARANTIA_PERCENTUAL_BP" // 500 = 5%
+	ChaveGarantiaMinCentavos  = "GARANTIA_MIN_CENTAVOS"
+	ChaveGarantiaMaxCentavos  = "GARANTIA_MAX_CENTAVOS"
 	ChaveRepasseDiasUteis     = "REPASSE_DIAS_UTEIS"
 	ChaveReservaMinutos       = "RESERVA_MINUTOS"
 	ChaveCDCReembolsaTaxa     = "CDC_REEMBOLSA_TAXA"

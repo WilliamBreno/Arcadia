@@ -6,6 +6,7 @@ import { api, ApiError } from '@/lib/api'
 import type { Pedido } from '@/lib/checkout'
 import { formatarCentavos } from '@/lib/evento'
 import { estiloTema } from '@/lib/tema'
+import { calcularItem } from '@/lib/taxas'
 import type { EventoDetalhe as EventoDetalheTipo } from '@/lib/publico'
 import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
@@ -94,14 +95,28 @@ export default function EventoDetalhe() {
   }
 
   const totalUnidades = Object.values(quantidades).reduce((a, b) => a + b, 0)
-  const totalSelecionado = ingressos.reduce((soma, i) => {
-    const qtd = quantidades[i.id] ?? 0
-    const desconto = !cupom
-      ? 0
-      : Math.min(i.preco_centavos, cupom.tipo === 'percentual' ? Math.floor((i.preco_centavos * cupom.valor) / 100) : cupom.valor)
-    const porUnidade = i.preco_centavos - desconto + data.taxa_plataforma_centavos + (garantia ? data.garantia_centavos : 0)
-    return soma + qtd * porUnidade
-  }, 0)
+  // Prévia com a mesma regra do servidor (item 5.1): taxa pela faixa do
+  // preço com desconto, garantia de 5% (mín./teto); quem cobra é o servidor.
+  const resumo = ingressos.reduce(
+    (acc, i) => {
+      const qtd = quantidades[i.id] ?? 0
+      if (qtd === 0) return acc
+      const desconto = !cupom
+        ? 0
+        : Math.min(i.preco_centavos, cupom.tipo === 'percentual' ? Math.floor((i.preco_centavos * cupom.valor) / 100) : cupom.valor)
+      const v = calcularItem(data.taxas, i.preco_centavos - desconto, garantia)
+      return {
+        preco: acc.preco + qtd * (i.preco_centavos - desconto),
+        taxa: acc.taxa + qtd * v.taxa,
+        garantia: acc.garantia + qtd * v.garantia,
+        garantiaSeMarcar: acc.garantiaSeMarcar + qtd * calcularItem(data.taxas, i.preco_centavos - desconto, true).garantia,
+        total: acc.total + qtd * v.total,
+        temPago: acc.temPago || i.preco_centavos - desconto > 0,
+      }
+    },
+    { preco: 0, taxa: 0, garantia: 0, garantiaSeMarcar: 0, total: 0, temPago: false },
+  )
+  const taxaAbsorvida = data.taxas.taxa_paga_por === 'organizador'
 
   const aplicarCupom = async () => {
     setErroCupom(null)
@@ -230,8 +245,14 @@ export default function EventoDetalhe() {
                   )}
                   {i.descricao && <p className="text-sm text-muted-foreground">{i.descricao}</p>}
                   <p className="text-sm font-medium text-foreground">
-                    {i.preco_centavos === 0 ? 'Gratuito' : formatarCentavos(i.preco_centavos)}
-                    <span className="text-xs font-normal text-muted-foreground"> + taxa</span>
+                    {i.preco_centavos === 0 ? 'Gratuito, sem taxa' : formatarCentavos(i.preco_centavos)}
+                    {i.preco_centavos > 0 && (
+                      <span className="text-xs font-normal text-muted-foreground">
+                        {taxaAbsorvida
+                          ? ' · sem taxa para você'
+                          : ` + ${formatarCentavos(calcularItem(data.taxas, i.preco_centavos, false).taxa)} de taxa`}
+                      </span>
+                    )}
                   </p>
                 </div>
                 <div className={`flex items-center gap-2 ${precisaAprovacao ? 'hidden' : ''}`}>
@@ -260,7 +281,7 @@ export default function EventoDetalhe() {
 
         {totalUnidades > 0 && (
           <div className="mt-4 flex flex-col gap-3 rounded-lg border border-border p-4">
-            {evento.garantia_habilitada && (
+            {evento.garantia_habilitada && resumo.temPago && (
               <label className="flex items-start gap-2 text-sm text-foreground">
                 <input
                   type="checkbox"
@@ -269,7 +290,8 @@ export default function EventoDetalhe() {
                   onChange={(e) => setGarantia(e.target.checked)}
                 />
                 <span>
-                  Quero <strong>garantia de vaga</strong> (+{formatarCentavos(data.garantia_centavos)} por item) — cancele a
+                  Quero <strong>garantia de vaga</strong> (+{formatarCentavos(resumo.garantiaSeMarcar)}: {data.taxas.garantia_percentual_bp / 100}% do preço, mín.{' '}
+                  {formatarCentavos(data.taxas.garantia_min_centavos)} por item) — cancele a
                   qualquer momento até o início do evento e receba tudo de volta.
                 </span>
               </label>
@@ -290,10 +312,12 @@ export default function EventoDetalhe() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">
-                  {totalUnidades} item(ns) · preço + {formatarCentavos(data.taxa_plataforma_centavos)} de taxa
-                  {garantia && ` + ${formatarCentavos(data.garantia_centavos)} de garantia`}
+                  {totalUnidades} item(ns) · {formatarCentavos(resumo.preco)}
+                  {resumo.taxa > 0 && ` + ${formatarCentavos(resumo.taxa)} de taxa`}
+                  {resumo.garantia > 0 && ` + ${formatarCentavos(resumo.garantia)} de garantia`}
+                  {taxaAbsorvida && resumo.preco > 0 && ' · taxa paga pelo organizador'}
                 </p>
-                <p className="font-medium text-foreground">Total: {formatarCentavos(totalSelecionado)}</p>
+                <p className="font-medium text-foreground">Total: {formatarCentavos(resumo.total)}</p>
               </div>
               <Button onClick={comprar} disabled={comprando}>
                 {comprando ? 'Processando…' : 'Continuar'}

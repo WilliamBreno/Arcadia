@@ -118,6 +118,10 @@ func main() {
 	apiPublicaHandler := handler.NovoAPIPublicaHandler(organizadorHandler, apiKeyRepo, eventoRepo, tipoIngressoRepo, itemPedidoRepo)
 	sessaoHandler := handler.NovoSessaoHandler(organizadorHandler, service.NovoSessaoService(eventoService, eventoRepo, sessaoRepo, cancelamentoService, mailCliente, cfg.NomePlataforma))
 	checkoutService.DefinirPlateia(plateiaService)
+	// Item 5.1: taxa por faixa, garantia percentual e taxa absorvida.
+	taxasService := service.NovoTaxasService(configPlataformaRepo, localRepo, regraRegionalRepo)
+	checkoutService.DefinirTaxas(taxasService)
+	publicoHandler.DefinirTaxas(taxasService)
 	checkoutService.DefinirAfiliados(afiliadoRepo)
 	afiliadoHandler := handler.NovoAfiliadoHandler(organizadorHandler, service.NovoAfiliadoService(eventoService, afiliadoRepo))
 	cancelamentoService.DefinirPromotor(plateiaService)

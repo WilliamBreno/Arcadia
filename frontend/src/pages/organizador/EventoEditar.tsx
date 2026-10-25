@@ -53,6 +53,7 @@ const schemaBasico = z.object({
   fim_em: z.string(),
   aprovacao_manual: z.boolean(),
   qr_rotativo: z.boolean(),
+  taxa_paga_por: z.enum(['comprador', 'organizador']),
   cor_tema: z.string(),
 })
 
@@ -226,6 +227,22 @@ export default function EventoEditar() {
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="cor_tema">Cor do tema da página do evento (formato #RRGGBB, vazio = padrão)</Label>
               <Input id="cor_tema" placeholder="#7c3aed" maxLength={7} {...register('cor_tema')} />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="taxa_paga_por">Quem paga a taxa da plataforma</Label>
+              <select
+                id="taxa_paga_por"
+                className="h-8 rounded-lg border border-border bg-background px-2.5 text-sm"
+                {...register('taxa_paga_por')}
+              >
+                <option value="comprador">O comprador (somada ao preço do ingresso)</option>
+                <option value="organizador">Eu, organizador (descontada do meu repasse; o comprador vê só o preço)</option>
+              </select>
+              <p className="text-xs text-muted-foreground">
+                Taxa fixa por ingresso: R$ 0,99 até R$ 30 · R$ 1,99 até R$ 80 · R$ 3,99 até R$ 200 · R$ 6,99 acima. Ingresso
+                gratuito não paga taxa. A mudança vale para as próximas vendas.
+              </p>
             </div>
 
             <label className="flex items-center gap-2 text-sm text-foreground">
@@ -546,6 +563,12 @@ function FinanceiroCard({ eventoId }: { eventoId: number }) {
               <span className="text-muted-foreground">Taxa do processador de pagamento</span>
               <span className="text-foreground">− {formatarCentavos(data.taxa_processador_centavos)}</span>
             </div>
+            {data.taxa_absorvida_centavos > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Taxa da plataforma paga por você</span>
+                <span className="text-foreground">− {formatarCentavos(data.taxa_absorvida_centavos)}</span>
+              </div>
+            )}
             <div className="flex justify-between border-t border-border pt-2 font-medium">
               <span className="text-foreground">Líquido a receber</span>
               <span className="text-foreground">{formatarCentavos(data.liquido_centavos)}</span>

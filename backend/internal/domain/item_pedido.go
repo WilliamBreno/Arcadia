@@ -24,6 +24,7 @@ type ItemPedido struct {
 	TitularEmail           string
 	PrecoCentavos          int64
 	TaxaPlataformaCentavos int64
+	TaxaAbsorvida          bool // organizador pagou a taxa: não está em TotalCentavos
 	GarantiaContratada     bool
 	GarantiaCentavos       int64
 	CupomID                *int64

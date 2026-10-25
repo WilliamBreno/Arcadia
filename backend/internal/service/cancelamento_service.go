@@ -87,7 +87,8 @@ func (s *CancelamentoService) carregarContexto(itemID, usuarioID int64) (*contex
 
 	ctx := &contextoCancelamento{item: item, pedido: pedido, evento: evento}
 
-	if item.Status == domain.StatusItemPago {
+	// Item de valor zero (gratuito ou cortesia) não tem pagamento.
+	if item.Status == domain.StatusItemPago && item.TotalCentavos > 0 {
 		pagamento, err := s.pagamentos.BuscarAprovadoPorPedido(pedido.ID)
 		if err != nil {
 			return nil, ErrPagamentoNaoEncontrado
@@ -118,6 +119,25 @@ func calcularValorArrependimento(precoCentavos, taxaPlataformaCentavos int64, re
 	return precoCentavos
 }
 
+// taxaPagaPeloComprador: com a taxa absorvida pelo organizador (item 5.1)
+// o comprador não pagou taxa nenhuma, então não há taxa a devolver a ele.
+func taxaPagaPeloComprador(item *domain.ItemPedido) int64 {
+	if item.TaxaAbsorvida {
+		return 0
+	}
+	return item.TaxaPlataformaCentavos
+}
+
+// decomporReembolso separa o valor devolvido ao comprador em preço, taxa
+// e garantia, nessa ordem, para o ledger. Função pura, testada.
+func decomporReembolso(item *domain.ItemPedido, valor int64) (preco, taxa, garantia int64) {
+	preco = min(valor, item.PrecoCentavos)
+	resto := valor - preco
+	taxa = min(resto, taxaPagaPeloComprador(item))
+	garantia = resto - taxa
+	return preco, taxa, garantia
+}
+
 // avaliar aplica as regras da seção 7.4, nesta ordem:
 //  1. item utilizado -> negado
 //  2. item não pago -> negado (nada a reembolsar)
@@ -136,6 +156,18 @@ func (s *CancelamentoService) avaliar(ctx *contextoCancelamento) DecisaoCancelam
 	}
 
 	agora := time.Now()
+
+	// Item de valor zero (evento gratuito, item 5.1): cancela sem
+	// reembolso até o início do evento e a vaga volta ao estoque.
+	if item.TotalCentavos == 0 {
+		if item.Cortesia {
+			return DecisaoCancelamento{Pode: false, Motivo: "cortesia só pode ser revogada pelo organizador"}
+		}
+		if ctx.evento.InicioEm != nil && !agora.Before(*ctx.evento.InicioEm) {
+			return DecisaoCancelamento{Pode: false, Motivo: "o evento já começou"}
+		}
+		return DecisaoCancelamento{Pode: true, Motivo: "inscrição gratuita cancelada pelo participante"}
+	}
 
 	if item.GarantiaContratada && ctx.evento.InicioEm != nil && agora.Before(*ctx.evento.InicioEm) {
 		return DecisaoCancelamento{
@@ -158,7 +190,7 @@ func (s *CancelamentoService) avaliar(ctx *contextoCancelamento) DecisaoCancelam
 		}
 		return DecisaoCancelamento{
 			Pode: true, Motivo: "direito de arrependimento (CDC art. 49)", Tipo: domain.TipoReembolsoArrependimento,
-			ValorReembolsoCentavos: calcularValorArrependimento(item.PrecoCentavos, item.TaxaPlataformaCentavos, reembolsaTaxa),
+			ValorReembolsoCentavos: calcularValorArrependimento(item.PrecoCentavos, taxaPagaPeloComprador(item), reembolsaTaxa),
 		}
 	}
 
@@ -193,7 +225,12 @@ func (s *CancelamentoService) Cancelar(itemID, usuarioID int64) (*domain.ItemPed
 		return nil, fmt.Errorf("%w: %s", ErrCancelamentoNaoPermitido, decisao.Motivo)
 	}
 
-	itemCancelado, err := s.executarReembolso(ctx, decisao, usuarioID, nil)
+	var itemCancelado *domain.ItemPedido
+	if decisao.ValorReembolsoCentavos == 0 {
+		itemCancelado, err = s.cancelarSemReembolso(ctx.item, ctx.evento, decisao)
+	} else {
+		itemCancelado, err = s.executarReembolso(ctx, decisao, usuarioID, nil)
+	}
 	if err == nil && s.promotor != nil {
 		s.promotor.PromoverListaEspera(ctx.evento.ID)
 	}
@@ -255,32 +292,51 @@ func (s *CancelamentoService) executarReembolso(ctx *contextoCancelamento, decis
 		return nil, err
 	}
 
-	lancamentos := []domain.Lancamento{{
-		Tipo: domain.LancamentoReembolsoPreco, ValorCentavos: item.PrecoCentavos, Sinal: "-",
-		EventoID: &evento.ID, OrganizadorID: &evento.OrganizadorID, PedidoID: &pedido.ID, ItemID: &item.ID, CriadoEm: agora,
-	}}
-	if decisao.ValorReembolsoCentavos > item.PrecoCentavos {
-		valorTaxa := decisao.ValorReembolsoCentavos - item.PrecoCentavos
-		if decisao.Tipo == domain.TipoReembolsoGarantia {
-			valorTaxa = item.TaxaPlataformaCentavos
-		}
-		lancamentos = append(lancamentos, domain.Lancamento{
-			Tipo: domain.LancamentoReembolsoTaxa, ValorCentavos: valorTaxa, Sinal: "-",
-			EventoID: &evento.ID, OrganizadorID: &evento.OrganizadorID, PedidoID: &pedido.ID, ItemID: &item.ID, CriadoEm: agora,
-		})
-		if decisao.Tipo == domain.TipoReembolsoGarantia && item.GarantiaCentavos > 0 {
-			lancamentos = append(lancamentos, domain.Lancamento{
-				Tipo: domain.LancamentoReembolsoGarantia, ValorCentavos: item.GarantiaCentavos, Sinal: "-",
-				EventoID: &evento.ID, OrganizadorID: &evento.OrganizadorID, PedidoID: &pedido.ID, ItemID: &item.ID, CriadoEm: agora,
-			})
-		}
-	}
-	if err := s.lancamentos.CriarEmLote(lancamentos); err != nil {
+	if err := s.lancamentos.CriarEmLote(lancamentosDoReembolso(item, evento, pedido.ID, decisao.ValorReembolsoCentavos, agora)); err != nil {
 		return nil, err
 	}
 
 	s.enviarEmailCancelamento(item, evento, decisao)
 
+	return item, nil
+}
+
+// lancamentosDoReembolso é o ledger de um item cancelado com estorno.
+// Com taxa absorvida, a taxa deixa de ser receita da plataforma e deixa
+// de ser cobrada do organizador (decisão do dono, seção 2.1).
+func lancamentosDoReembolso(item *domain.ItemPedido, evento *domain.Evento, pedidoID int64, valor int64, agora time.Time) []domain.Lancamento {
+	var ls []domain.Lancamento
+	add := func(tipo domain.TipoLancamento, v int64, sinal string) {
+		if v <= 0 {
+			return
+		}
+		ls = append(ls, domain.Lancamento{
+			Tipo: tipo, ValorCentavos: v, Sinal: sinal,
+			EventoID: &evento.ID, OrganizadorID: &evento.OrganizadorID, PedidoID: &pedidoID, ItemID: &item.ID, CriadoEm: agora,
+		})
+	}
+	preco, taxa, garantia := decomporReembolso(item, valor)
+	add(domain.LancamentoReembolsoPreco, preco, "-")
+	add(domain.LancamentoReembolsoTaxa, taxa, "-")
+	add(domain.LancamentoReembolsoGarantia, garantia, "-")
+	if item.TaxaAbsorvida {
+		add(domain.LancamentoReembolsoTaxa, item.TaxaPlataformaCentavos, "-")
+		add(domain.LancamentoEstornoTaxaAbsorvida, item.TaxaPlataformaCentavos, "+")
+	}
+	return ls
+}
+
+// cancelarSemReembolso cancela item de valor zero (gratuito ou cortesia):
+// não há dinheiro a devolver nem lançamento a fazer.
+func (s *CancelamentoService) cancelarSemReembolso(item *domain.ItemPedido, evento *domain.Evento, decisao DecisaoCancelamento) (*domain.ItemPedido, error) {
+	agora := time.Now()
+	item.Status = domain.StatusItemCancelado
+	item.CanceladoEm = &agora
+	item.MotivoCancelamento = decisao.Motivo
+	if err := s.itensPedido.Salvar(item); err != nil {
+		return nil, err
+	}
+	s.enviarEmailCancelamento(item, evento, decisao)
 	return item, nil
 }
 
@@ -292,6 +348,12 @@ func (s *CancelamentoService) enviarEmailCancelamento(item *domain.ItemPedido, e
 		`<p>Olá!</p><p>Seu ingresso (código <strong>%s</strong>) para <strong>%s</strong> foi cancelado.</p><p>Valor reembolsado: R$ %.2f — o dinheiro volta pelo mesmo meio de pagamento em alguns dias úteis.</p>`,
 		item.Codigo, evento.Titulo, float64(decisao.ValorReembolsoCentavos)/100,
 	)
+	if decisao.ValorReembolsoCentavos == 0 {
+		corpo = fmt.Sprintf(
+			`<p>Olá!</p><p>Sua inscrição gratuita (código <strong>%s</strong>) para <strong>%s</strong> foi cancelada.</p>`,
+			item.Codigo, evento.Titulo,
+		)
+	}
 	_ = s.mailCliente.Enviar(item.TitularEmail, "Cancelamento confirmado — "+s.nomePlataforma, corpo)
 }
 
@@ -335,6 +397,16 @@ func (s *CancelamentoService) reembolsarItens(evento *domain.Evento, itens []dom
 
 	for i := range itens {
 		item := &itens[i]
+
+		if item.TotalCentavos == 0 {
+			decisao := DecisaoCancelamento{Pode: true, Motivo: motivo}
+			if _, err := s.cancelarSemReembolso(item, evento, decisao); err != nil {
+				falhas = append(falhas, item.ID)
+				continue
+			}
+			sucessos++
+			continue
+		}
 
 		pedido, ok := pedidosCache[item.PedidoID]
 		if !ok {

@@ -3,6 +3,7 @@ import { api } from '@/lib/api'
 export type FinanceiroEvento = {
   bruto_centavos: number
   taxa_processador_centavos: number
+  taxa_absorvida_centavos: number
   liquido_centavos: number
   liberar_em: string | null
   repasse_status: 'calculado' | 'pendente' | 'pago' | 'cancelado' | null
@@ -17,6 +18,7 @@ export type Repasse = {
   tipo_chave_pix?: string
   valor_bruto_centavos: number
   taxa_processador_centavos: number
+  taxa_absorvida_centavos: number
   valor_liquido_centavos: number
   status: 'calculado' | 'pendente' | 'pago' | 'cancelado'
   liberar_em: string

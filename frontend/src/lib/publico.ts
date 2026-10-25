@@ -1,3 +1,5 @@
+import type { RegraTaxas } from '@/lib/taxas'
+
 export type EventoPublicoItem = {
   slug: string
   titulo: string
@@ -61,8 +63,7 @@ export type EventoDetalhe = {
     meia_entrada: boolean
     sessao_ids: number[]
   }[]
-  taxa_plataforma_centavos: number
-  garantia_centavos: number
+  taxas: RegraTaxas
   sessoes: { id: number; titulo: string; inicio_em: string; fim_em: string | null; status: 'ativa' | 'cancelada' }[]
   cronograma: { id: number; titulo: string; descricao: string; local: string; inicio_em: string; fim_em: string | null }[]
 }

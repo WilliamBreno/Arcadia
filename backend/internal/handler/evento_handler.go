@@ -41,6 +41,7 @@ type eventoResposta struct {
 	InscricaoTalentosFim      *time.Time `json:"inscricao_talentos_fim"`
 	CapacidadeTotal           *int       `json:"capacidade_total"`
 	GarantiaHabilitada        bool       `json:"garantia_habilitada"`
+	TaxaPagaPor               string     `json:"taxa_paga_por"`
 	AprovacaoManual           bool       `json:"aprovacao_manual"`
 	QRRotativo                bool       `json:"qr_rotativo"`
 	CorTema                   string     `json:"cor_tema"`
@@ -70,6 +71,7 @@ func paraEventoResposta(e *domain.Evento) eventoResposta {
 		InscricaoTalentosFim:      e.InscricaoTalentosFim,
 		CapacidadeTotal:           e.CapacidadeTotal,
 		GarantiaHabilitada:        e.GarantiaHabilitada,
+		TaxaPagaPor:               e.TaxaPagaPor,
 		AprovacaoManual:           e.AprovacaoManual,
 		QRRotativo:                e.QRRotativo,
 		CorTema:                   e.CorTema,
@@ -96,6 +98,7 @@ type eventoRequest struct {
 	InscricaoTalentosFim      *time.Time `json:"inscricao_talentos_fim"`
 	CapacidadeTotal           *int       `json:"capacidade_total"`
 	GarantiaHabilitada        *bool      `json:"garantia_habilitada"`
+	TaxaPagaPor               *string    `json:"taxa_paga_por"`
 	AprovacaoManual           *bool      `json:"aprovacao_manual"`
 	QRRotativo                *bool      `json:"qr_rotativo"`
 	CorTema                   *string    `json:"cor_tema"`
@@ -121,6 +124,7 @@ func (req eventoRequest) paraDados() service.EventoDados {
 		InscricaoTalentosFim:      req.InscricaoTalentosFim,
 		CapacidadeTotal:           req.CapacidadeTotal,
 		GarantiaHabilitada:        req.GarantiaHabilitada,
+		TaxaPagaPor:               req.TaxaPagaPor,
 		AprovacaoManual:           req.AprovacaoManual,
 		QRRotativo:                req.QRRotativo,
 		CorTema:                   req.CorTema,
