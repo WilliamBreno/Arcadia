@@ -80,6 +80,9 @@ export default function EventoDetalhe() {
   const { evento, local, organizador, ingressos } = data
 
   const precisaAprovacao = evento.aprovacao_manual && solicitacao?.status !== 'aprovada'
+  // Item 5.5: depois do fim do evento não vende; depois do início não há garantia.
+  const vendasEncerradas = data.vendas_encerradas
+  const eventoComecou = !!evento.inicio_em && new Date(evento.inicio_em) <= new Date()
 
   const solicitar = async () => {
     if (!usuario) {
@@ -205,6 +208,11 @@ export default function EventoDetalhe() {
 
       <section className="mt-8">
         <h2 className="mb-3 text-xl font-semibold text-foreground">Ingressos</h2>
+        {vendasEncerradas && (
+          <p className="mb-3 rounded-lg border border-border p-4 text-sm text-muted-foreground">
+            Vendas encerradas: este evento já terminou.
+          </p>
+        )}
         {precisaAprovacao && (
           <div className="mb-3 rounded-lg border border-border p-4 text-sm">
             <p className="font-medium text-foreground">Este evento tem aprovação manual</p>
@@ -259,7 +267,7 @@ export default function EventoDetalhe() {
                     )}
                   </p>
                 </div>
-                <div className={`flex items-center gap-2 ${precisaAprovacao ? 'hidden' : ''}`}>
+                <div className={`flex items-center gap-2 ${precisaAprovacao || vendasEncerradas ? 'hidden' : ''}`}>
                   <Button
                     variant="outline"
                     size="icon-sm"
@@ -285,7 +293,7 @@ export default function EventoDetalhe() {
 
         {totalUnidades > 0 && (
           <div className="mt-4 flex flex-col gap-3 rounded-lg border border-border p-4">
-            {evento.garantia_habilitada && resumo.temPago && (
+            {evento.garantia_habilitada && resumo.temPago && !eventoComecou && (
               <label className="flex items-start gap-2 text-sm text-foreground">
                 <input
                   type="checkbox"
@@ -332,7 +340,7 @@ export default function EventoDetalhe() {
         {erro && <p className="mt-2 text-sm text-destructive">{erro}</p>}
       </section>
 
-      {evento.garantia_habilitada && (
+      {evento.garantia_habilitada && !eventoComecou && (
         <p className="mt-6 text-sm text-muted-foreground">
           Este evento oferece <strong>garantia de vaga</strong>: cancele até o início do evento e receba tudo de volta.
         </p>

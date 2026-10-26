@@ -11,6 +11,7 @@ type Relatorios = {
   receita: { itens: number; taxa_centavos: number; garantia_centavos: number; total_centavos: number }
   reembolsos: { tipo: string; status: string; quantidade: number; valor_centavos: number }[]
   reembolsos_falhos: number
+  emails_falhos: number
 }
 
 type Contestacao = {
@@ -113,6 +114,13 @@ export default function AdminRelatorios() {
           ))}
         </CardContent>
       </Card>
+
+      {(rel?.emails_falhos ?? 0) > 0 && (
+        <p className="mb-6 rounded-lg border border-destructive/40 p-3 text-sm text-destructive">
+          {rel?.emails_falhos} e-mail(s) não foram entregues depois de 8 tentativas (tabela emails_fila, status "falhou"). Confira o
+          provedor de e-mail (Resend).
+        </p>
+      )}
 
       <Card>
         <CardHeader>

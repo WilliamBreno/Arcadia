@@ -7,7 +7,7 @@ func configProducaoValida() Config {
 		AmbienteApp: "production", JWTSecret: "0123456789abcdef0123456789abcdef", CronSecret: "cron-secret-bem-grande",
 		FrontendURL: "https://evve.app", BackendURL: "https://api.evve.app", DatabaseURL: "postgres://u:p@db.exemplo.com/evve",
 		StorageDriver: "s3", MercadoPagoAccessToken: "APP_USR-x", MercadoPagoWebhookSecret: "w", ResendAPIKey: "re_x",
-		EmailRemetente: "Evve <no-reply@evve.app>",
+		EmailRemetente: "Evve <no-reply@evve.app>", AlertaWebhookURL: "https://discord.example/webhook",
 	}
 }
 

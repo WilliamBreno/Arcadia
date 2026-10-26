@@ -6,6 +6,7 @@ on:
     - cron: "*/5 * * * *"   # expirar reservas
     - cron: "0 9 * * *"     # gerar repasses (06h BRT)
     - cron: "17 * * * *"    # reprocessar reembolsos
+    - cron: "2-59/10 * * * *" # enviar e-mails da fila (cobre instância dormindo)
   workflow_dispatch:
 
 jobs:
@@ -19,6 +20,7 @@ jobs:
             "*/5 * * * *") echo "nome=expirar-reservas" >> "$GITHUB_OUTPUT" ;;
             "0 9 * * *") echo "nome=gerar-repasses" >> "$GITHUB_OUTPUT" ;;
             "17 * * * *") echo "nome=reprocessar-reembolsos" >> "$GITHUB_OUTPUT" ;;
+            "2-59/10 * * * *") echo "nome=enviar-emails" >> "$GITHUB_OUTPUT" ;;
             *) echo "nome=expirar-reservas" >> "$GITHUB_OUTPUT" ;;
           esac
       - name: Chamar API

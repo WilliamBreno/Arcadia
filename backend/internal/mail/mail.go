@@ -8,6 +8,8 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // Cliente envia e-mails transacionais via Resend (seção 4 do plano).
@@ -17,6 +19,7 @@ type Cliente struct {
 	apiKey    string
 	remetente string
 	http      *http.Client
+	db        *gorm.DB // fila de e-mails (item 5.5); nil = envio direto
 }
 
 func NovoCliente(apiKey, remetente string) *Cliente {
@@ -50,7 +53,19 @@ func (c *Cliente) Enviar(destinatario, assunto, htmlCorpo string) error {
 	return c.EnviarComImagens(destinatario, assunto, htmlCorpo, nil)
 }
 
+// EnviarComImagens põe o e-mail na fila (se ligada) ou envia na hora.
 func (c *Cliente) EnviarComImagens(destinatario, assunto, htmlCorpo string, imagens []ImagemInline) error {
+	if c.db != nil {
+		if err := c.enfileirar(destinatario, assunto, htmlCorpo, imagens); err == nil {
+			return nil
+		} else {
+			slog.Error("fila de e-mail indisponível, enviando direto", "erro", err)
+		}
+	}
+	return c.enviarAgora(destinatario, assunto, htmlCorpo, imagens)
+}
+
+func (c *Cliente) enviarAgora(destinatario, assunto, htmlCorpo string, imagens []ImagemInline) error {
 	if c.apiKey == "" {
 		slog.Info("e-mail não enviado (RESEND_API_KEY ausente, modo dev)", "para", destinatario, "assunto", assunto, "imagens", len(imagens), "corpo", htmlCorpo)
 		return nil

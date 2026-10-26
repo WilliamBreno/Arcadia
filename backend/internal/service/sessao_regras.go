@@ -80,3 +80,35 @@ func tipoValeNaSessao(sessaoIDs []int64, sessaoID int64) bool {
 	}
 	return false
 }
+
+// VendaAberta diz se ainda dá para vender um tipo de ingresso (item 5.5:
+// antes, evento já encerrado continuava vendendo). Vende até o fim do
+// evento — compra na porta durante o evento continua possível:
+//   - com sessões: enquanto alguma sessão ativa válida para o tipo não
+//     terminou (fim, ou 12h após o início se não houver fim);
+//   - sem sessões: até fim_em, ou 12h após inicio_em se não houver fim.
+//
+// O prazo de vendas do lote (vendas_fim) continua valendo por cima disso.
+func VendaAberta(evento *domain.Evento, tipoSessaoIDs []int64, sessoes []domain.Sessao, agora time.Time) bool {
+	temSessaoAtiva := false
+	for i := range sessoes {
+		s := &sessoes[i]
+		if s.Status != domain.SessaoAtiva {
+			continue
+		}
+		temSessaoAtiva = true
+		if tipoValeNaSessao(tipoSessaoIDs, s.ID) && agora.Before(fimEfetivoSessao(s)) {
+			return true
+		}
+	}
+	if temSessaoAtiva {
+		return false
+	}
+	switch {
+	case evento.FimEm != nil:
+		return agora.Before(*evento.FimEm)
+	case evento.InicioEm != nil:
+		return agora.Before(evento.InicioEm.Add(duracaoPadraoSessao))
+	}
+	return true
+}

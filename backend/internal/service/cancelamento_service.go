@@ -263,18 +263,22 @@ func (s *CancelamentoService) executarReembolso(ctx *contextoCancelamento, decis
 	salvarReembolso := s.reembolsos.Salvar
 	if reembolso == nil {
 		reembolso = &domain.Reembolso{
-			PagamentoID:   pagamento.ID,
-			ItemID:        item.ID,
-			ValorCentavos: decisao.ValorReembolsoCentavos,
-			Tipo:          decisao.Tipo,
-			Motivo:        decisao.Motivo,
-			SolicitadoPor: solicitadoPor,
-			CriadoEm:      time.Now(),
+			PagamentoID:        pagamento.ID,
+			ItemID:             item.ID,
+			ValorCentavos:      decisao.ValorReembolsoCentavos,
+			Tipo:               decisao.Tipo,
+			Motivo:             decisao.Motivo,
+			SolicitadoPor:      solicitadoPor,
+			CriadoEm:           time.Now(),
+			ProximaTentativaEm: time.Now(),
 		}
 		salvarReembolso = s.reembolsos.Criar
 	}
 	if erroMP != nil {
 		reembolso.Status = domain.StatusReembolsoFalhou
+		reembolso.Tentativas++
+		reembolso.UltimoErro = erroMP.Error()
+		reembolso.ProximaTentativaEm = time.Now().Add(intervaloReembolso(reembolso.Tentativas))
 		_ = salvarReembolso(reembolso)
 		return nil, fmt.Errorf("erro ao processar reembolso no Mercado Pago: %w", erroMP)
 	}

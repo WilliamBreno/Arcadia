@@ -33,6 +33,10 @@ type Reembolso struct {
 	Motivo        string
 	SolicitadoPor int64
 	CriadoEm      time.Time
+	// Novas tentativas automáticas (item 5.5).
+	Tentativas         int
+	ProximaTentativaEm time.Time
+	UltimoErro         string
 }
 
 func (Reembolso) TableName() string {

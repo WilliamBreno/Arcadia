@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"os"
 	"time"
@@ -36,7 +37,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	db, err := repository.Conectar(cfg.DatabaseURL)
+	db, err := repository.Conectar(cfg.DatabaseURL, cfg.DBMaxConexoes)
 	if err != nil {
 		slog.Error("erro ao conectar no banco", "erro", err)
 		os.Exit(1)
@@ -71,7 +72,10 @@ func main() {
 	jwtService := service.NovoJWTService(cfg.JWTSecret, cfg.AccessTokenTTLMin)
 	authService := service.NovoAuthService(usuarioRepo, refreshTokenRepo, jwtService, cfg.RefreshTokenTTLDias)
 	googleAuthService := service.NovoGoogleAuthService(cfg.GoogleClientID)
-	mailCliente := mail.NovoCliente(cfg.ResendAPIKey, cfg.EmailRemetente)
+	// Item 5.5: e-mails vão para uma fila no banco e são enviados em segundo
+	// plano, com novas tentativas.
+	mailCliente := mail.NovoCliente(cfg.ResendAPIKey, cfg.EmailRemetente).UsarFila(db)
+	mailCliente.IniciarProcessador(context.Background(), 5*time.Second)
 	organizadorService := service.NovoOrganizadorService(organizadorRepo)
 	localService := service.NovoLocalService(localRepo)
 	eventoService := service.NovoEventoService(eventoRepo, tipoIngressoRepo, organizadorRepo, localRepo, regraRegionalRepo, configPlataformaRepo)
@@ -162,12 +166,23 @@ func main() {
 	adminHandler.DefinirOrganizadores(organizadorRepo)
 	repasseService.DefinirOrganizadores(organizadorRepo)
 
+	// Item 5.5: venda bloqueada depois do fim do evento ou do dia do ingresso.
+	checkoutService.DefinirSessoes(sessaoRepo)
+	adminHandler.DefinirMail(mailCliente)
+	jobHandler.DefinirMail(mailCliente)
+	// Item 5.5: limite de tentativas no Postgres (vale para todas as
+	// instâncias) e alertas de erro 500.
+	limiteRepo := repository.NovoLimiteTaxaRepository(db)
+	authHandler.DefinirLimite(limiteRepo)
+	alertador := middleware.NovoAlertador(cfg.AlertaWebhookURL)
+
 	router := gin.New()
-	router.Use(middleware.LogRequisicoes(), middleware.TratadorDeErros(), middleware.CabecalhosSeguranca())
+	router.Use(middleware.IDRequisicao(), middleware.LogRequisicoes(), middleware.AlertarErros(alertador), middleware.TratadorDeErros(), middleware.CabecalhosSeguranca())
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{cfg.FrontendURL},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Authorization", "Content-Type", "X-Organizador-ID"},
+		AllowHeaders:     []string{"Authorization", "Content-Type", "X-Organizador-ID", "X-Request-ID"},
+		ExposeHeaders:    []string{"X-Request-ID"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
@@ -177,7 +192,7 @@ func main() {
 		router.Static("/uploads", cfg.UploadsDir)
 	}
 
-	limiteAuth := middleware.LimitarTaxaPorIP(1, 10)
+	limiteAuth := middleware.LimitarPorJanela(limiteRepo, "auth", 60, time.Minute)
 
 	v1 := router.Group("/api/v1")
 	{
@@ -191,7 +206,7 @@ func main() {
 		v1.GET("/convites/:token", conviteHandler.Consultar)
 		v1.POST("/webhooks/mercadopago", webhookHandler.MercadoPago)
 
-		api := router.Group("/api/public/v1", middleware.LimitarTaxaPorIP(5, 20), middleware.ExigirAPIKey(apiKeyRepo))
+		api := router.Group("/api/public/v1", middleware.LimitarPorJanela(limiteRepo, "api", 300, time.Minute), middleware.ExigirAPIKey(apiKeyRepo))
 		api.GET("/eventos", apiPublicaHandler.Eventos)
 		api.GET("/eventos/:id", apiPublicaHandler.Evento)
 		api.GET("/eventos/:id/ingressos", apiPublicaHandler.Ingressos)
@@ -317,6 +332,7 @@ func main() {
 		jobs.POST("/expirar-reservas", jobHandler.ExpirarReservas)
 		jobs.POST("/gerar-repasses", repasseHandler.GerarRepasses)
 		jobs.POST("/reprocessar-reembolsos", adminHandler.ReprocessarFalhas)
+		jobs.POST("/enviar-emails", jobHandler.EnviarEmails)
 
 		admin := v1.Group("/admin", middleware.ExigirAutenticacao(jwtService), middleware.ExigirAdminPlataforma())
 		admin.GET("/repasses", repasseHandler.ListarAdmin)

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -22,6 +23,22 @@ type AuthHandler struct {
 	google   *service.GoogleAuthService
 	mail     *mail.Cliente
 	cfg      config.Config
+	limite   middleware.Contador // limite por e-mail (item 5.5); nil = desligado
+}
+
+// DefinirLimite liga o limite de tentativas por e-mail no login e na
+// recuperação de senha (item 5.5). Diferente do limite por IP, não dá para
+// contornar trocando de IP.
+func (h *AuthHandler) DefinirLimite(c middleware.Contador) { h.limite = c }
+
+// excedeuPorEmail registra a tentativa e diz se passou do limite. Se o
+// contador falhar, deixa passar (não pode travar o login de todo mundo).
+func (h *AuthHandler) excedeuPorEmail(acao, email string, limite int, janela time.Duration) bool {
+	if h.limite == nil {
+		return false
+	}
+	n, err := h.limite.Registrar(acao+":email:"+strings.ToLower(strings.TrimSpace(email)), janela, time.Now())
+	return err == nil && n > limite
 }
 
 func NovoAuthHandler(usuarios *repository.UsuarioRepository, auth *service.AuthService, google *service.GoogleAuthService, mailCliente *mail.Cliente, cfg config.Config) *AuthHandler {
@@ -132,6 +149,11 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	var req loginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"erro": "dados inválidos"})
+		return
+	}
+
+	if h.excedeuPorEmail("login", req.Email, 10, 15*time.Minute) {
+		c.JSON(http.StatusTooManyRequests, gin.H{"erro": "muitas tentativas para este e-mail, tente de novo em 15 minutos"})
 		return
 	}
 
@@ -252,6 +274,13 @@ func (h *AuthHandler) EsqueciSenha(c *gin.Context) {
 	var req esqueciSenhaRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"erro": "dados inválidos"})
+		return
+	}
+
+	// Até 3 e-mails de redefinição por hora para o mesmo endereço; acima
+	// disso responde igual (não revela nada) mas não envia.
+	if h.excedeuPorEmail("esqueci-senha", req.Email, 3, time.Hour) {
+		c.JSON(http.StatusOK, gin.H{"ok": true})
 		return
 	}
 

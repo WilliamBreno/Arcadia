@@ -16,11 +16,16 @@ func LogRequisicoes() gin.HandlerFunc {
 
 		c.Next()
 
-		slog.Info("requisicao",
+		nivel := slog.LevelInfo
+		if c.Writer.Status() >= 500 {
+			nivel = slog.LevelError
+		}
+		slog.Log(c.Request.Context(), nivel, "requisicao",
 			"metodo", c.Request.Method,
 			"caminho", caminho,
 			"status", c.Writer.Status(),
 			"duracao_ms", time.Since(inicio).Milliseconds(),
+			"request_id", c.GetString(ChaveContextoRequestID),
 		)
 	}
 }

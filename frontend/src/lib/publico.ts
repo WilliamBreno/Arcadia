@@ -65,6 +65,7 @@ export type EventoDetalhe = {
     sessao_ids: number[]
   }[]
   taxas: RegraTaxas
+  vendas_encerradas: boolean
   sessoes: { id: number; titulo: string; inicio_em: string; fim_em: string | null; status: 'ativa' | 'cancelada' }[]
   cronograma: { id: number; titulo: string; descricao: string; local: string; inicio_em: string; fim_em: string | null }[]
 }

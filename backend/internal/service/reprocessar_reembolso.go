@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"time"
 
 	"github.com/WilliamBreno/Arcadia/backend/internal/domain"
 )
@@ -49,7 +50,14 @@ func (s *CancelamentoService) ReprocessarFalhas() (sucessos, falhas int, err err
 	if err != nil {
 		return 0, 0, err
 	}
+	agora := time.Now()
 	for _, r := range lista {
+		// Item 5.5: respeita o intervalo crescente e desiste depois de
+		// maxTentativasReembolso (fica na lista de falhas do admin, que
+		// ainda pode reprocessar na mão).
+		if !deveTentarReembolso(r.Tentativas, r.ProximaTentativaEm, agora) {
+			continue
+		}
 		if err := s.ReprocessarReembolso(r.ID, r.SolicitadoPor); err != nil {
 			falhas++
 			continue
@@ -57,4 +65,20 @@ func (s *CancelamentoService) ReprocessarFalhas() (sucessos, falhas int, err err
 		sucessos++
 	}
 	return sucessos, falhas, nil
+}
+
+// maxTentativasReembolso: depois disso o job automático para de tentar.
+const maxTentativasReembolso = 10
+
+// intervaloReembolso: 15 min, 30 min, 1 h... no máximo 24 h. Função pura.
+func intervaloReembolso(tentativas int) time.Duration {
+	d := 15 * time.Minute << max(tentativas-1, 0)
+	if d > 24*time.Hour || d <= 0 {
+		return 24 * time.Hour
+	}
+	return d
+}
+
+func deveTentarReembolso(tentativas int, proxima, agora time.Time) bool {
+	return tentativas < maxTentativasReembolso && !agora.Before(proxima)
 }

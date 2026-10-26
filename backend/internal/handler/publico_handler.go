@@ -282,13 +282,14 @@ func (h *PublicoHandler) ObterEvento(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"sessoes":     sessoesResp,
-		"cronograma":  cronogramaResp,
-		"evento":      paraEventoResposta(evento),
-		"local":       localResposta,
-		"organizador": organizadorResposta,
-		"ingressos":   tiposResposta,
-		"taxas":       regraTaxas,
+		"sessoes":           sessoesResp,
+		"cronograma":        cronogramaResp,
+		"evento":            paraEventoResposta(evento),
+		"local":             localResposta,
+		"organizador":       organizadorResposta,
+		"ingressos":         tiposResposta,
+		"taxas":             regraTaxas,
+		"vendas_encerradas": vendasEncerradas(evento, tipos, listaSessoes),
 	})
 }
 
@@ -320,4 +321,16 @@ func (h *PublicoHandler) ObterOrganizador(c *gin.Context) {
 		},
 		"eventos": eventosDoOrganizador,
 	})
+}
+
+// vendasEncerradas: nenhum tipo de ingresso pode mais ser vendido (o evento,
+// ou todos os dias dele, já terminou — item 5.5).
+func vendasEncerradas(evento *domain.Evento, tipos []domain.TipoIngresso, sessoes []domain.Sessao) bool {
+	agora := time.Now()
+	for i := range tipos {
+		if service.VendaAberta(evento, tipos[i].SessaoIDs, sessoes, agora) {
+			return false
+		}
+	}
+	return len(tipos) > 0 || !service.VendaAberta(evento, nil, sessoes, agora)
 }

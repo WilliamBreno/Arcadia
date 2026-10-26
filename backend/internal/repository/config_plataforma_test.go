@@ -12,7 +12,7 @@ import (
 // conseguir conectar, pula em vez de falhar (não há Postgres no CI ainda).
 func TestConfigPlataformaBuscarInt64(t *testing.T) {
 	cfg := config.Carregar()
-	db, err := repository.Conectar(cfg.DatabaseURL)
+	db, err := repository.Conectar(cfg.DatabaseURL, 5)
 	if err != nil {
 		t.Skipf("postgres local indisponível, pulando teste de integração: %v", err)
 	}

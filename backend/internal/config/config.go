@@ -43,6 +43,12 @@ type Config struct {
 	// MercadoPagoBaseURL troca a API do MP por um servidor falso local
 	// (só testes de desenvolvimento; proibido em produção).
 	MercadoPagoBaseURL string
+	// AlertaWebhookURL recebe avisos de erro 500 (webhook do Discord ou
+	// Slack, item 5.5). Opcional.
+	AlertaWebhookURL string
+	// DBMaxConexoes limita o pool de conexões com o Postgres (item 5.5).
+	// Ajuste ao limite do plano do banco (o Neon gratuito aceita poucas).
+	DBMaxConexoes int
 
 	CronSecret string
 }
@@ -108,6 +114,8 @@ func Carregar() Config {
 		MercadoPagoAccessToken:   getEnv("MERCADOPAGO_ACCESS_TOKEN", ""),
 		MercadoPagoWebhookSecret: getEnv("MERCADOPAGO_WEBHOOK_SECRET", ""),
 		MercadoPagoBaseURL:       getEnv("MERCADOPAGO_BASE_URL", ""),
+		AlertaWebhookURL:         getEnv("ALERTA_WEBHOOK_URL", ""),
+		DBMaxConexoes:            getEnvInt("DB_MAX_CONEXOES", 20),
 
 		CronSecret: getEnv("CRON_SECRET", ""),
 	}
@@ -149,6 +157,9 @@ func (c Config) ValidarProducao() (erros []error, avisos []string) {
 	}
 	if c.MercadoPagoWebhookSecret == "" {
 		avisos = append(avisos, "MERCADOPAGO_WEBHOOK_SECRET vazio: webhook sem validação de assinatura (segue seguro por reconsultar o MP, mas configure)")
+	}
+	if c.AlertaWebhookURL == "" {
+		avisos = append(avisos, "ALERTA_WEBHOOK_URL vazio: erros 500 só aparecem no log (configure um webhook do Discord/Slack)")
 	}
 	if c.ResendAPIKey == "" {
 		avisos = append(avisos, "RESEND_API_KEY vazio: e-mails (verificação, ingressos) só serão logados")

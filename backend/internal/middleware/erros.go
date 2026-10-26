@@ -18,7 +18,7 @@ func TratadorDeErros() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
 			if r := recover(); r != nil {
-				slog.Error("panic recuperado", "erro", r, "caminho", c.Request.URL.Path)
+				slog.Error("panic recuperado", "erro", r, "caminho", c.Request.URL.Path, "request_id", c.GetString(ChaveContextoRequestID))
 				c.AbortWithStatusJSON(http.StatusInternalServerError, ErroAPI{Erro: "erro interno do servidor"})
 			}
 		}()
@@ -27,7 +27,7 @@ func TratadorDeErros() gin.HandlerFunc {
 
 		if len(c.Errors) > 0 {
 			ultimoErro := c.Errors.Last()
-			slog.Error("erro no handler", "erro", ultimoErro.Err, "caminho", c.Request.URL.Path)
+			slog.Error("erro no handler", "erro", ultimoErro.Err, "caminho", c.Request.URL.Path, "request_id", c.GetString(ChaveContextoRequestID))
 			if !c.Writer.Written() {
 				c.JSON(http.StatusInternalServerError, ErroAPI{Erro: "erro interno do servidor"})
 			}

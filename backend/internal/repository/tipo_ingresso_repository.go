@@ -102,6 +102,13 @@ func (r *TipoIngressoRepository) PrecoMinimoPorEvento(eventoIDs []int64) (map[in
 
 // PreencherSessoes carrega, em lote, as sessões de cada tipo (vazio = todas).
 func (r *TipoIngressoRepository) PreencherSessoes(tipos []domain.TipoIngresso) error {
+	return r.PreencherSessoesCom(r.db, tipos)
+}
+
+// PreencherSessoesCom faz o mesmo usando a conexão dada — dentro de uma
+// transação, passe o tx: pedir outra conexão do pool no meio da transação
+// trava a API quando o pool esgota (achado no teste de carga, item 5.5).
+func (r *TipoIngressoRepository) PreencherSessoesCom(db *gorm.DB, tipos []domain.TipoIngresso) error {
 	if len(tipos) == 0 {
 		return nil
 	}
@@ -113,7 +120,7 @@ func (r *TipoIngressoRepository) PreencherSessoes(tipos []domain.TipoIngresso) e
 		TipoIngressoID int64
 		SessaoID       int64
 	}
-	if err := r.db.Table("tipo_ingresso_sessoes").Where("tipo_ingresso_id IN ?", ids).Order("sessao_id").Scan(&linhas).Error; err != nil {
+	if err := db.Table("tipo_ingresso_sessoes").Where("tipo_ingresso_id IN ?", ids).Order("sessao_id").Scan(&linhas).Error; err != nil {
 		return err
 	}
 	porTipo := map[int64][]int64{}

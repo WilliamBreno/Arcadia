@@ -35,6 +35,7 @@ var (
 	ErrReservaExpirada                  = errors.New("reserva expirada")
 	ErrMercadoPagoNaoConfigurado        = errors.New("Mercado Pago não configurado")
 	ErrGarantiaNaoDisponivel            = errors.New("este evento não oferece garantia de vaga")
+	ErrGarantiaAposInicio               = errors.New("a garantia de vaga só pode ser contratada antes do início do evento")
 	ErrLoteIndisponivel                 = errors.New("este lote não está disponível no momento")
 )
 
@@ -57,6 +58,7 @@ type CheckoutService struct {
 	plateia        *PlateiaService
 	taxas          *TaxasService
 	usuarios       *repository.UsuarioRepository
+	sessoes        *repository.SessaoRepository
 	contestacoes   *repository.ContestacaoRepository
 	afiliados      *repository.AfiliadoRepository
 	mp             pagamento.Processador
@@ -151,9 +153,21 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 	if err != nil {
 		return nil, nil, fmt.Errorf("config de reserva ausente: %w", err)
 	}
+	agoraReserva := time.Now()
 	for _, ir := range itensReq {
 		if ir.GarantiaContratada && !evento.GarantiaHabilitada {
 			return nil, nil, ErrGarantiaNaoDisponivel
+		}
+		// A garantia vale "até o início do evento": depois disso não há o
+		// que garantir (item 5.5).
+		if ir.GarantiaContratada && evento.InicioEm != nil && !agoraReserva.Before(*evento.InicioEm) {
+			return nil, nil, ErrGarantiaAposInicio
+		}
+	}
+	var sessoesEvento []domain.Sessao
+	if s.sessoes != nil {
+		if sessoesEvento, err = s.sessoes.ListarPorEvento(evento.ID); err != nil {
+			return nil, nil, err
 		}
 	}
 
@@ -209,6 +223,15 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 			}
 			if tipo.VendasFim != nil && agora.After(*tipo.VendasFim) {
 				return fmt.Errorf("%w: %s", ErrVendasEncerradas, tipo.Nome)
+			}
+			if s.sessoes != nil {
+				comSessoes := []domain.TipoIngresso{*tipo}
+				if err := s.tipos.PreencherSessoesCom(tx, comSessoes); err != nil {
+					return err
+				}
+				if !VendaAberta(evento, comSessoes[0].SessaoIDs, sessoesEvento, agora) {
+					return fmt.Errorf("%w: %s (o evento ou o dia deste ingresso já terminou)", ErrVendasEncerradas, tipo.Nome)
+				}
 			}
 			if ir.Quantidade < tipo.MinPorPedido || (tipo.MaxPorPedido > 0 && ir.Quantidade > tipo.MaxPorPedido) {
 				return fmt.Errorf("%w para %s", ErrQuantidadeInvalida, tipo.Nome)
@@ -584,6 +607,10 @@ func (s *CheckoutService) ExpirarReservas() (int, error) {
 
 // DefinirPlateia liga a exigência de aprovação e a promoção da lista de espera (item 3.2).
 func (s *CheckoutService) DefinirPlateia(p *PlateiaService) { s.plateia = p }
+
+// DefinirSessoes liga o bloqueio de venda depois do fim do evento ou das
+// sessões do ingresso (item 5.5).
+func (s *CheckoutService) DefinirSessoes(r *repository.SessaoRepository) { s.sessoes = r }
 
 // DefinirTaxas liga o cálculo de taxas por faixa (item 5.1). Obrigatório.
 func (s *CheckoutService) DefinirTaxas(t *TaxasService) { s.taxas = t }

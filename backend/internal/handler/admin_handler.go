@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"github.com/WilliamBreno/Arcadia/backend/internal/mail"
 	"net/http"
 	"time"
 
@@ -19,7 +20,11 @@ type AdminHandler struct {
 	cancelamento  *service.CancelamentoService
 	contestacoes  *repository.ContestacaoRepository
 	organizadores *repository.OrganizadorRepository
+	mail          *mail.Cliente
 }
+
+// DefinirMail mostra no relatório os e-mails que falharam de vez (item 5.5).
+func (h *AdminHandler) DefinirMail(m *mail.Cliente) { h.mail = m }
 
 func NovoAdminHandler(r *repository.ReembolsoRepository, i *repository.ItemPedidoRepository, c *service.CancelamentoService) *AdminHandler {
 	return &AdminHandler{reembolsos: r, itensPedido: i, cancelamento: c}
@@ -60,7 +65,7 @@ func (h *AdminHandler) Relatorios(c *gin.Context) {
 			"itens": receita.Itens, "taxa_centavos": receita.TaxaCentavos,
 			"garantia_centavos": receita.GarantiaCentavos, "total_centavos": receita.TaxaCentavos + receita.GarantiaCentavos,
 		},
-		"reembolsos": reembolsos, "reembolsos_falhos": falhas,
+		"reembolsos": reembolsos, "reembolsos_falhos": falhas, "emails_falhos": h.emailsFalhos(),
 	})
 }
 
@@ -119,4 +124,11 @@ func (h *AdminHandler) ReprocessarFalhas(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"sucessos": sucessos, "falhas": falhas})
+}
+
+func (h *AdminHandler) emailsFalhos() int64 {
+	if h.mail == nil {
+		return 0
+	}
+	return h.mail.ContarFalhos()
 }
