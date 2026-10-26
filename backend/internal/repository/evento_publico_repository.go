@@ -111,3 +111,33 @@ func (r *EventoRepository) ListarCategorias() ([]string, error) {
 		Pluck("categoria", &categorias).Error
 	return categorias, err
 }
+
+// ItemSitemap é uma página pública para o sitemap.xml (item 6.1).
+type ItemSitemap struct {
+	Slug         string
+	AtualizadoEm time.Time
+}
+
+// ListarParaSitemap: eventos publicados e públicos (não_listado e privado
+// nunca entram), mais recentes primeiro, até `limite`.
+func (r *EventoRepository) ListarParaSitemap(limite int) ([]ItemSitemap, error) {
+	var itens []ItemSitemap
+	err := r.db.Model(&domain.Evento{}).
+		Select("slug, COALESCE(publicado_em, criado_em) as atualizado_em").
+		Where("status = ? AND visibilidade = ?", domain.StatusEventoPublicado, domain.VisibilidadePublico).
+		Order("inicio_em DESC NULLS LAST").Limit(limite).
+		Scan(&itens).Error
+	return itens, err
+}
+
+// ListarOrganizadoresParaSitemap: organizadores com ao menos um evento público.
+func (r *EventoRepository) ListarOrganizadoresParaSitemap(limite int) ([]ItemSitemap, error) {
+	var itens []ItemSitemap
+	err := r.db.Table("organizadores").
+		Select("organizadores.slug, MAX(COALESCE(eventos.publicado_em, eventos.criado_em)) as atualizado_em").
+		Joins("JOIN eventos ON eventos.organizador_id = organizadores.id").
+		Where("eventos.status = ? AND eventos.visibilidade = ?", domain.StatusEventoPublicado, domain.VisibilidadePublico).
+		Group("organizadores.slug").Order("atualizado_em DESC").Limit(limite).
+		Scan(&itens).Error
+	return itens, err
+}

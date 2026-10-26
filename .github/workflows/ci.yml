@@ -49,3 +49,6 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Testes de SEO (item 6.1)
+        run: npm run test:seo

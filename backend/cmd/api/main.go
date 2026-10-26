@@ -200,6 +200,10 @@ func main() {
 		v1.GET("/eventos/:slug", publicoHandler.ObterEvento)
 		v1.GET("/organizadores/:slug", publicoHandler.ObterOrganizador)
 		v1.GET("/categorias", publicoHandler.Categorias)
+		// Item 6.1: sitemap e robots (a Vercel reescreve /sitemap.xml e /robots.txt para cá).
+		seoHandler := handler.NovoSEOHandler(eventoRepo, cfg.FrontendURL)
+		v1.GET("/seo/sitemap.xml", seoHandler.Sitemap)
+		v1.GET("/seo/robots.txt", seoHandler.Robots)
 		v1.GET("/eventos/:slug/resultado", avaliacaoHandler.ResultadoPublico)
 		v1.GET("/ingressos/:codigo/:token", cortesiaHandler.IngressoPublico)
 		v1.GET("/ingressos/:codigo/:token/qr", qrHandler.PorLink)
