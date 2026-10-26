@@ -12,6 +12,23 @@ type Relatorios = {
   reembolsos_falhos: number
 }
 
+type Contestacao = {
+  id: number
+  pedido_id: number
+  evento_titulo: string
+  usuario_email: string
+  pagamento_externo: string
+  valor_centavos: number
+  status: 'em_disputa' | 'perdida' | 'resolvida'
+  criado_em: string
+}
+
+const rotuloContestacao: Record<Contestacao['status'], string> = {
+  em_disputa: 'Em disputa',
+  perdida: 'Perdida',
+  resolvida: 'Resolvida',
+}
+
 type Reembolso = {
   id: number
   evento_titulo: string
@@ -30,6 +47,11 @@ export default function AdminRelatorios() {
   const { data: falhos } = useQuery({
     queryKey: ['admin-reembolsos-falhos'],
     queryFn: () => api<Reembolso[]>('/admin/reembolsos?status=falhou'),
+  })
+
+  const { data: contestacoes } = useQuery({
+    queryKey: ['admin-contestacoes'],
+    queryFn: () => api<Contestacao[]>('/admin/contestacoes'),
   })
 
   const reprocessar = async (id: number) => {
@@ -109,6 +131,36 @@ export default function AdminRelatorios() {
               <Button size="sm" onClick={() => reprocessar(f.id)}>
                 Reprocessar
               </Button>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Contestações de cartão (chargeback)</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-2 text-sm">
+          <p className="text-xs text-muted-foreground">
+            Quem contesta fica sem cartão (só Pix). Nada é descontado do organizador automaticamente: decida caso a caso.
+          </p>
+          {contestacoes?.length === 0 && <p className="text-muted-foreground">Nenhuma contestação.</p>}
+          {contestacoes?.map((c) => (
+            <div key={c.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+              <div>
+                <p className="text-foreground">
+                  {c.evento_titulo} · pedido #{c.pedido_id}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {c.usuario_email} · pagamento {c.pagamento_externo} · {new Date(c.criado_em).toLocaleDateString('pt-BR')}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="font-medium text-foreground">{formatarCentavos(c.valor_centavos)}</p>
+                <p className={`text-xs ${c.status === 'perdida' ? 'text-destructive' : 'text-muted-foreground'}`}>
+                  {rotuloContestacao[c.status]}
+                </p>
+              </div>
             </div>
           ))}
         </CardContent>

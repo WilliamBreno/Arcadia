@@ -22,6 +22,7 @@ export type Evento = {
   cor_tema: string
   politica_cancelamento_texto: string
   max_itens_por_pedido: number
+  max_ingressos_por_conta: number
   publicado_em: string | null
 }
 

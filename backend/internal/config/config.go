@@ -40,6 +40,9 @@ type Config struct {
 
 	MercadoPagoAccessToken   string
 	MercadoPagoWebhookSecret string
+	// MercadoPagoBaseURL troca a API do MP por um servidor falso local
+	// (só testes de desenvolvimento; proibido em produção).
+	MercadoPagoBaseURL string
 
 	CronSecret string
 }
@@ -104,6 +107,7 @@ func Carregar() Config {
 
 		MercadoPagoAccessToken:   getEnv("MERCADOPAGO_ACCESS_TOKEN", ""),
 		MercadoPagoWebhookSecret: getEnv("MERCADOPAGO_WEBHOOK_SECRET", ""),
+		MercadoPagoBaseURL:       getEnv("MERCADOPAGO_BASE_URL", ""),
 
 		CronSecret: getEnv("CRON_SECRET", ""),
 	}
@@ -133,6 +137,9 @@ func (c Config) ValidarProducao() (erros []error, avisos []string) {
 	}
 	if c.StorageDriver != "s3" {
 		erros = append(erros, fmt.Errorf("STORAGE_DRIVER precisa ser s3 em produção (disco local some a cada deploy)"))
+	}
+	if c.MercadoPagoBaseURL != "" {
+		erros = append(erros, fmt.Errorf("MERCADOPAGO_BASE_URL é só para testes locais e não pode estar definida em produção"))
 	}
 	if strings.HasPrefix(c.MercadoPagoAccessToken, "TEST-") {
 		avisos = append(avisos, "MERCADOPAGO_ACCESS_TOKEN é de TESTE em produção: pagamentos não serão reais")

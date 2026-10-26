@@ -73,6 +73,7 @@ type Evento struct {
 	ResultadoLiberadoEm       *time.Time
 	PoliticaCancelamentoTexto string
 	MaxItensPorPedido         int
+	MaxIngressosPorConta      int // 0 = sem limite (item 5.3)
 	PublicadoEm               *time.Time
 	CanceladoEm               *time.Time
 	MotivoCancelamento        string

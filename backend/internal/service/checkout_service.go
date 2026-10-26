@@ -56,6 +56,8 @@ type CheckoutService struct {
 	tipos          *repository.TipoIngressoRepository
 	plateia        *PlateiaService
 	taxas          *TaxasService
+	usuarios       *repository.UsuarioRepository
+	contestacoes   *repository.ContestacaoRepository
 	afiliados      *repository.AfiliadoRepository
 	mp             pagamento.Processador
 	mailCliente    *mail.Cliente
@@ -173,6 +175,9 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 			if af, errAf := s.afiliados.BuscarAtivoPorCodigo(tx, eventoID, afiliadoCodigo); errAf == nil {
 				pedido.AfiliadoID = &af.ID
 			}
+		}
+		if err := s.checarLimitePorConta(tx, evento, usuarioID, totalUnidades); err != nil {
+			return err
 		}
 		if err := s.pedidos.Criar(tx, pedido); err != nil {
 			return err
@@ -331,6 +336,9 @@ func (s *CheckoutService) IniciarPagamento(usuarioID, pedidoID int64, metodo str
 	if metodo != pagamento.MetodoCartao {
 		metodo = pagamento.MetodoPix
 	}
+	if metodo == pagamento.MetodoCartao && s.cartaoBloqueado(usuarioID) {
+		return "", ErrCartaoBloqueado
+	}
 
 	pedido, itens, err := s.ObterPedido(usuarioID, pedidoID)
 	if err != nil {
@@ -389,13 +397,16 @@ func (s *CheckoutService) IniciarPagamento(usuarioID, pedidoID int64, metodo str
 // reconsulta o pagamento na API do MP — nunca confia em valor/status do
 // corpo da notificação recebida.
 func (s *CheckoutService) ProcessarWebhook(mpPaymentID string) error {
-	if _, err := s.pagamentos.BuscarPorMPPaymentID(mpPaymentID); err == nil {
-		return nil // já processado
-	}
-
 	pagamentoMP, err := s.mp.BuscarPagamento(mpPaymentID)
 	if err != nil {
 		return err
+	}
+
+	// Pagamento já registrado: a notificação é uma mudança de status
+	// (Pix pendente → aprovado, contestação aberta/perdida...). Antes do
+	// item 5.3 essas notificações eram ignoradas.
+	if existente, err := s.pagamentos.BuscarPorMPPaymentID(mpPaymentID); err == nil {
+		return s.atualizarPagamento(existente, pagamentoMP)
 	}
 
 	pedidoID, err := strconv.ParseInt(pagamentoMP.Referencia, 10, 64)
@@ -430,6 +441,9 @@ func (s *CheckoutService) ProcessarWebhook(mpPaymentID string) error {
 		return nil
 	}
 
+	if statusContestacao(pagamentoMP.Status) != "" {
+		return s.registrarContestacao(registro, pedido, pagamentoMP.Status)
+	}
 	if pagamentoMP.Status != pagamento.StatusAprovado {
 		return nil
 	}

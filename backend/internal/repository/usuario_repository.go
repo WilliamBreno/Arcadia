@@ -65,3 +65,26 @@ func (r *UsuarioRepository) BuscarPorTokenReset(hash string) (*domain.Usuario, e
 	}
 	return &u, nil
 }
+
+// BloquearCartao marca que o usuário contestou uma compra no cartão
+// (item 5.3). Idempotente: mantém a data do primeiro bloqueio.
+func (r *UsuarioRepository) BloquearCartao(tx *gorm.DB, usuarioID int64) error {
+	return tx.Model(&domain.Usuario{}).
+		Where("id = ? AND cartao_bloqueado_em IS NULL", usuarioID).
+		Update("cartao_bloqueado_em", time.Now()).Error
+}
+
+// TravarParaCompra trava a linha do usuário dentro da transação de
+// reserva, para o limite de ingressos por conta valer mesmo com duas
+// compras simultâneas da mesma pessoa.
+func (r *UsuarioRepository) TravarParaCompra(tx *gorm.DB, usuarioID int64) error {
+	var id int64
+	return tx.Raw("SELECT id FROM usuarios WHERE id = ? FOR UPDATE", usuarioID).Scan(&id).Error
+}
+
+// EmailsAdmins devolve os e-mails dos admins da plataforma (alertas).
+func (r *UsuarioRepository) EmailsAdmins() ([]string, error) {
+	var emails []string
+	err := r.db.Model(&domain.Usuario{}).Where("papel_plataforma = ?", domain.PapelAdminPlataforma).Pluck("email", &emails).Error
+	return emails, err
+}

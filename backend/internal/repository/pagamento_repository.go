@@ -58,3 +58,12 @@ func (r *PagamentoRepository) ResumoPorMetodo(eventoID int64) ([]ResumoMetodo, e
 		Scan(&linhas).Error
 	return linhas, err
 }
+
+// AtualizarStatusSe muda o status do pagamento só se ele ainda estiver em
+// `de` — é o que torna idempotente o processamento de notificações
+// repetidas (item 5.3). Devolve true se esta chamada fez a mudança.
+func (r *PagamentoRepository) AtualizarStatusSe(id int64, de, para string, valorCentavos, taxaCentavos int64) (bool, error) {
+	res := r.db.Model(&domain.Pagamento{}).Where("id = ? AND status = ?", id, de).
+		Updates(map[string]any{"status": para, "valor_centavos": valorCentavos, "taxa_processador_centavos": taxaCentavos})
+	return res.RowsAffected == 1, res.Error
+}

@@ -47,6 +47,7 @@ type eventoResposta struct {
 	CorTema                   string     `json:"cor_tema"`
 	PoliticaCancelamentoTexto string     `json:"politica_cancelamento_texto"`
 	MaxItensPorPedido         int        `json:"max_itens_por_pedido"`
+	MaxIngressosPorConta      int        `json:"max_ingressos_por_conta"`
 	PublicadoEm               *time.Time `json:"publicado_em"`
 }
 
@@ -77,6 +78,7 @@ func paraEventoResposta(e *domain.Evento) eventoResposta {
 		CorTema:                   e.CorTema,
 		PoliticaCancelamentoTexto: e.PoliticaCancelamentoTexto,
 		MaxItensPorPedido:         e.MaxItensPorPedido,
+		MaxIngressosPorConta:      e.MaxIngressosPorConta,
 		PublicadoEm:               e.PublicadoEm,
 	}
 }
@@ -104,6 +106,7 @@ type eventoRequest struct {
 	CorTema                   *string    `json:"cor_tema"`
 	PoliticaCancelamentoTexto string     `json:"politica_cancelamento_texto"`
 	MaxItensPorPedido         int        `json:"max_itens_por_pedido"`
+	MaxIngressosPorConta      *int       `json:"max_ingressos_por_conta"`
 }
 
 func (req eventoRequest) paraDados() service.EventoDados {
@@ -130,6 +133,7 @@ func (req eventoRequest) paraDados() service.EventoDados {
 		CorTema:                   req.CorTema,
 		PoliticaCancelamentoTexto: req.PoliticaCancelamentoTexto,
 		MaxItensPorPedido:         req.MaxItensPorPedido,
+		MaxIngressosPorConta:      req.MaxIngressosPorConta,
 	}
 }
 

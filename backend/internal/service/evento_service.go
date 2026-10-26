@@ -62,6 +62,7 @@ type EventoDados struct {
 	TaxaPagaPor               *string // nil = padrão (comprador) ao criar, manter ao atualizar
 	PoliticaCancelamentoTexto string
 	MaxItensPorPedido         int
+	MaxIngressosPorConta      *int // nil = padrão (10) ao criar, manter ao atualizar; 0 = sem limite
 }
 
 func (s *EventoService) Criar(organizadorID int64, dados EventoDados) (*domain.Evento, error) {
@@ -96,6 +97,7 @@ func (s *EventoService) Criar(organizadorID int64, dados EventoDados) (*domain.E
 		TaxaPagaPor:               taxaPagaPorOuPadrao(dados.TaxaPagaPor, domain.TaxaPagaPorComprador),
 		PoliticaCancelamentoTexto: dados.PoliticaCancelamentoTexto,
 		MaxItensPorPedido:         valorIntOuPadrao(dados.MaxItensPorPedido, 10),
+		MaxIngressosPorConta:      limiteContaOuPadrao(dados.MaxIngressosPorConta, 10),
 		CriadoEm:                  time.Now(),
 	}
 	if err := s.eventos.Criar(evento); err != nil {
@@ -132,6 +134,7 @@ func (s *EventoService) Atualizar(organizadorID, eventoID int64, dados EventoDad
 	evento.TaxaPagaPor = taxaPagaPorOuPadrao(dados.TaxaPagaPor, evento.TaxaPagaPor)
 	evento.PoliticaCancelamentoTexto = dados.PoliticaCancelamentoTexto
 	evento.MaxItensPorPedido = valorIntOuPadrao(dados.MaxItensPorPedido, 10)
+	evento.MaxIngressosPorConta = limiteContaOuPadrao(dados.MaxIngressosPorConta, evento.MaxIngressosPorConta)
 
 	if err := s.eventos.Salvar(evento); err != nil {
 		return nil, err
@@ -335,6 +338,15 @@ func taxaPagaPorOuPadrao(v *string, atual string) string {
 	}
 	if atual == "" {
 		return domain.TaxaPagaPorComprador
+	}
+	return atual
+}
+
+// limiteContaOuPadrao: limite de ingressos por conta (item 5.3). Aceita 0
+// (sem limite) até 1000; fora disso mantém o atual.
+func limiteContaOuPadrao(v *int, atual int) int {
+	if v != nil && *v >= 0 && *v <= 1000 {
+		return *v
 	}
 	return atual
 }

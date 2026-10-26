@@ -18,6 +18,8 @@ const (
 	// e volta (estorno) se o item for cancelado.
 	LancamentoTaxaAbsorvida        TipoLancamento = "taxa_absorvida"
 	LancamentoEstornoTaxaAbsorvida TipoLancamento = "estorno_taxa_absorvida"
+	// Contestação perdida (item 5.3): o banco devolveu o valor ao comprador.
+	LancamentoChargeback TipoLancamento = "chargeback"
 )
 
 // Lancamento é o ledger financeiro (seção 7.6/7.7): toda entrada e saída

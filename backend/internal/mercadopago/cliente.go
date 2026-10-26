@@ -25,6 +25,15 @@ func NovoCliente(accessToken string) *Cliente {
 	return &Cliente{accessToken: accessToken, httpClient: &http.Client{}, baseURL: baseURL}
 }
 
+// ComBaseURL aponta o cliente para outra API (servidor falso em testes
+// locais; a config de produção recusa essa opção).
+func (c *Cliente) ComBaseURL(url string) *Cliente {
+	if url != "" {
+		c.baseURL = url
+	}
+	return c
+}
+
 func (c *Cliente) Habilitado() bool {
 	return c.accessToken != ""
 }

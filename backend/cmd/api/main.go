@@ -80,7 +80,7 @@ func main() {
 	fichaService := service.NovoFichaService(fichaRepo, papelEventoRepo, eventoRepo, usuarioRepo, mailCliente)
 	// Item 5.2: os serviços falam com pagamento.Processador; o Mercado Pago
 	// é a implementação atual.
-	mpCliente := mercadopago.NovoProcessador(mercadopago.NovoCliente(cfg.MercadoPagoAccessToken))
+	mpCliente := mercadopago.NovoProcessador(mercadopago.NovoCliente(cfg.MercadoPagoAccessToken).ComBaseURL(cfg.MercadoPagoBaseURL))
 	checkoutService := service.NovoCheckoutService(
 		db, eventoRepo, itemPedidoRepo, pedidoRepo, pagamentoRepo, lancamentoRepo, configPlataformaRepo, cupomRepo, tipoIngressoRepo,
 		mpCliente, mailCliente, cfg.JWTSecret, cfg.FrontendURL, cfg.BackendURL, cfg.NomePlataforma,
@@ -154,6 +154,10 @@ func main() {
 	vendasHandler := handler.NovoVendasHandler(organizadorHandler, vendasService)
 	repasseHandler := handler.NovoRepasseHandler(organizadorHandler, repasseService)
 	adminHandler := handler.NovoAdminHandler(reembolsoRepo, itemPedidoRepo, cancelamentoService)
+	// Item 5.3: limite por conta, bloqueio de cartão e contestações.
+	contestacaoRepo := repository.NovoContestacaoRepository(db)
+	checkoutService.DefinirAntifraude(usuarioRepo, contestacaoRepo)
+	adminHandler.DefinirContestacoes(contestacaoRepo)
 
 	router := gin.New()
 	router.Use(middleware.LogRequisicoes(), middleware.TratadorDeErros(), middleware.CabecalhosSeguranca())
@@ -316,6 +320,7 @@ func main() {
 		admin.POST("/repasses/:id/pagar", repasseHandler.Pagar)
 		admin.GET("/relatorios", adminHandler.Relatorios)
 		admin.GET("/reembolsos", adminHandler.ListarReembolsos)
+		admin.GET("/contestacoes", adminHandler.ListarContestacoes)
 		admin.POST("/reembolsos/:id/reprocessar", adminHandler.ReprocessarReembolso)
 	}
 

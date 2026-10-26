@@ -21,6 +21,7 @@ type Usuario struct {
 	Telefone                  string
 	AvatarURL                 string
 	EmailVerificadoEm         *time.Time
+	CartaoBloqueadoEm         *time.Time // contestou compra no cartão: só Pix (item 5.3)
 	EmailVerificacaoTokenHash *string
 	EmailVerificacaoExpiraEm  *time.Time
 	SenhaResetTokenHash       *string

@@ -53,6 +53,7 @@ const schemaBasico = z.object({
   fim_em: z.string(),
   aprovacao_manual: z.boolean(),
   qr_rotativo: z.boolean(),
+  max_ingressos_por_conta: z.number().int().min(0).max(1000),
   taxa_paga_por: z.enum(['comprador', 'organizador']),
   cor_tema: z.string(),
 })
@@ -242,6 +243,21 @@ export default function EventoEditar() {
               <p className="text-xs text-muted-foreground">
                 Taxa fixa por ingresso: R$ 0,99 até R$ 30 · R$ 1,99 até R$ 80 · R$ 3,99 até R$ 200 · R$ 6,99 acima. Ingresso
                 gratuito não paga taxa. A mudança vale para as próximas vendas.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="max_ingressos_por_conta">Máximo de ingressos por conta neste evento</Label>
+              <Input
+                id="max_ingressos_por_conta"
+                type="number"
+                min={0}
+                max={1000}
+                className="w-32"
+                {...register('max_ingressos_por_conta', { valueAsNumber: true })}
+              />
+              <p className="text-xs text-muted-foreground">
+                Protege contra cambistas e cartão clonado: cada conta compra no máximo essa quantidade. Use 0 para não limitar.
               </p>
             </div>
 

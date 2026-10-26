@@ -49,3 +49,12 @@ func TestAvisosDeTokenTesteEEmailDev(t *testing.T) {
 		t.Errorf("esperava 3 avisos, veio %d: %v", len(avisos), avisos)
 	}
 }
+
+func TestValidarProducaoRecusaMercadoPagoFalso(t *testing.T) {
+	c := configProducaoValida()
+	c.MercadoPagoBaseURL = "http://localhost:9099"
+	erros, _ := c.ValidarProducao()
+	if len(erros) == 0 {
+		t.Error("MERCADOPAGO_BASE_URL definida em produção deveria ser erro")
+	}
+}

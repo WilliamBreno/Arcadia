@@ -237,3 +237,16 @@ func (r *ItemPedidoRepository) ListarAtivosComPagamento(eventoID int64) ([]ItemF
 		Scan(&linhas).Error
 	return linhas, err
 }
+
+// ContarDoUsuarioNoEvento conta os ingressos ativos (reservados, pagos ou
+// usados, sem cortesias) de um usuário num evento — base do limite por
+// conta (item 5.3).
+func (r *ItemPedidoRepository) ContarDoUsuarioNoEvento(tx *gorm.DB, usuarioID, eventoID int64) (int64, error) {
+	var n int64
+	err := tx.Table("itens_pedido").
+		Joins("JOIN pedidos ON pedidos.id = itens_pedido.pedido_id").
+		Where("pedidos.usuario_id = ? AND pedidos.evento_id = ? AND itens_pedido.cortesia = false AND itens_pedido.status IN ?",
+			usuarioID, eventoID, []domain.StatusItemPedido{domain.StatusItemReservado, domain.StatusItemPago, domain.StatusItemUtilizado}).
+		Count(&n).Error
+	return n, err
+}
