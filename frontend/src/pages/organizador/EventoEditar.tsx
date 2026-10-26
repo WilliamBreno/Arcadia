@@ -613,6 +613,12 @@ function FinanceiroCard({ eventoId }: { eventoId: number }) {
               <span className="text-foreground">Líquido a receber</span>
               <span className="text-foreground">{formatarCentavos(data.liquido_centavos)}</span>
             </div>
+            {data.reserva_centavos > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Deste líquido, {formatarCentavos(data.reserva_centavos)} ficam retidos 60 dias como reserva contra contestações no
+                cartão (organizador em verificação ou com menos de 3 repasses).
+              </p>
+            )}
             <p className="text-xs text-muted-foreground">
               {data.repasse_status
                 ? `Repasse: ${data.repasse_status}`

@@ -14,10 +14,11 @@ import (
 
 // AdminHandler agrupa relatórios e reembolsos do painel admin (item 2.3).
 type AdminHandler struct {
-	reembolsos   *repository.ReembolsoRepository
-	itensPedido  *repository.ItemPedidoRepository
-	cancelamento *service.CancelamentoService
-	contestacoes *repository.ContestacaoRepository
+	reembolsos    *repository.ReembolsoRepository
+	itensPedido   *repository.ItemPedidoRepository
+	cancelamento  *service.CancelamentoService
+	contestacoes  *repository.ContestacaoRepository
+	organizadores *repository.OrganizadorRepository
 }
 
 func NovoAdminHandler(r *repository.ReembolsoRepository, i *repository.ItemPedidoRepository, c *service.CancelamentoService) *AdminHandler {

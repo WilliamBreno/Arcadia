@@ -1,3 +1,4 @@
+import { SeloVerificado } from '@/components/selo-verificado'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
@@ -175,6 +176,15 @@ function FormularioEditar({
         <CardTitle>
           {organizador.nome_publico} <span className="text-sm font-normal text-muted-foreground">({organizador.status})</span>
         </CardTitle>
+        {organizador.verificado ? (
+          <SeloVerificado className="mt-1 self-start" />
+        ) : (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Aguardando verificação: a plataforma confere seu documento e se a chave Pix está no seu nome. Até lá, e nos seus 3
+            primeiros repasses, 10% das vendas no cartão ficam retidas por 60 dias como reserva contra contestações. Trocar a
+            chave Pix pede uma nova verificação.
+          </p>
+        )}
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(aoEnviar)} className="flex flex-col gap-4">

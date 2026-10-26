@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"time"
+
 	"gorm.io/gorm"
 
 	"github.com/WilliamBreno/Arcadia/backend/internal/domain"
@@ -52,4 +54,36 @@ func (r *OrganizadorRepository) SlugExiste(slug string) (bool, error) {
 		return false, err
 	}
 	return total > 0, nil
+}
+
+// OrganizadorAdmin é a linha da lista de verificação do painel admin (item 5.4).
+type OrganizadorAdmin struct {
+	domain.Organizador
+	UsuarioEmail  string
+	Eventos       int64
+	RepassesPagos int64
+}
+
+func (r *OrganizadorRepository) ListarAdmin(somentePendentes bool) ([]OrganizadorAdmin, error) {
+	var linhas []OrganizadorAdmin
+	q := r.db.Table("organizadores").
+		Select(`organizadores.*, usuarios.email as usuario_email,
+			(SELECT COUNT(*) FROM eventos WHERE eventos.organizador_id = organizadores.id) as eventos,
+			(SELECT COUNT(*) FROM repasses WHERE repasses.organizador_id = organizadores.id AND repasses.status = 'pago') as repasses_pagos`).
+		Joins("JOIN usuarios ON usuarios.id = organizadores.usuario_id").
+		Order("organizadores.criado_em DESC")
+	if somentePendentes {
+		q = q.Where("organizadores.verificado_em IS NULL")
+	}
+	return linhas, q.Scan(&linhas).Error
+}
+
+// DefinirVerificacao marca ou desmarca o organizador como verificado.
+func (r *OrganizadorRepository) DefinirVerificacao(id int64, adminID *int64, verificado bool) error {
+	campos := map[string]any{"verificado_em": nil, "verificado_por": nil}
+	if verificado {
+		campos["verificado_em"] = time.Now()
+		campos["verificado_por"] = adminID
+	}
+	return r.db.Model(&domain.Organizador{}).Where("id = ?", id).Updates(campos).Error
 }

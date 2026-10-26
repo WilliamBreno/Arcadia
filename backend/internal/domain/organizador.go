@@ -34,7 +34,10 @@ type Organizador struct {
 	Instagram    string
 	Site         string
 	Status       StatusOrganizador `gorm:"default:pendente"`
-	CriadoEm     time.Time
+	// Verificação (item 5.4): o admin conferiu documento e chave Pix.
+	VerificadoEm  *time.Time
+	VerificadoPor *int64
+	CriadoEm      time.Time
 }
 
 func (Organizador) TableName() string {

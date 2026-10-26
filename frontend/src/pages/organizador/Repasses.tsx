@@ -14,6 +14,9 @@ export default function Repasses() {
       <h1 className="mb-2 text-2xl font-semibold text-foreground">Repasses</h1>
       <p className="mb-6 text-sm text-muted-foreground">
         A receber: <strong className="text-foreground">{formatarCentavos(data?.a_receber_centavos ?? 0)}</strong>
+        {(data?.reserva_retida_centavos ?? 0) > 0 && (
+          <> · Reserva retida: <strong className="text-foreground">{formatarCentavos(data?.reserva_retida_centavos ?? 0)}</strong></>
+        )}
       </p>
       {data?.repasses.length === 0 && <p className="text-muted-foreground">Nenhum repasse gerado ainda.</p>}
       <div className="flex flex-col gap-3">
@@ -26,12 +29,22 @@ export default function Repasses() {
                   Bruto {formatarCentavos(r.valor_bruto_centavos)} − taxa do processador {formatarCentavos(r.taxa_processador_centavos)}
                   {r.taxa_absorvida_centavos > 0 && <> − taxa da plataforma paga por você {formatarCentavos(r.taxa_absorvida_centavos)}</>}
                 </p>
+                {r.reserva_centavos > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Reserva contra contestações: {formatarCentavos(r.reserva_centavos)}
+                    {r.reserva_status === 'retida' &&
+                      r.reserva_liberar_em &&
+                      ` · liberada a partir de ${new Date(r.reserva_liberar_em).toLocaleDateString('pt-BR')}`}
+                    {r.reserva_status === 'paga' && ' · paga'}
+                    {r.reserva_status === 'usada' && ` · usada para cobrir contestação${r.reserva_observacao ? ` (${r.reserva_observacao})` : ''}`}
+                  </p>
+                )}
                 <p className="text-xs text-muted-foreground">
                   {r.pago_em ? `Pago em ${new Date(r.pago_em).toLocaleDateString('pt-BR')}` : `Liberado em ${new Date(r.liberar_em).toLocaleDateString('pt-BR')}`}
                 </p>
               </div>
               <div className="text-right">
-                <p className="font-semibold text-foreground">{formatarCentavos(r.valor_liquido_centavos)}</p>
+                <p className="font-semibold text-foreground">{formatarCentavos(r.valor_a_pagar_agora_centavos)}</p>
                 <span className="text-xs text-muted-foreground">{rotulo[r.status]}</span>
               </div>
             </CardContent>

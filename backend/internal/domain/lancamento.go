@@ -20,6 +20,8 @@ const (
 	LancamentoEstornoTaxaAbsorvida TipoLancamento = "estorno_taxa_absorvida"
 	// Contestação perdida (item 5.3): o banco devolveu o valor ao comprador.
 	LancamentoChargeback TipoLancamento = "chargeback"
+	// Reserva de risco usada pelo admin para cobrir contestação (item 5.4).
+	LancamentoReservaUsada TipoLancamento = "reserva_usada"
 )
 
 // Lancamento é o ledger financeiro (seção 7.6/7.7): toda entrada e saída

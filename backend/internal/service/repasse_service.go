@@ -22,6 +22,8 @@ type Financeiro struct {
 	TaxaProcessadorCentavos int64
 	TaxaAbsorvidaCentavos   int64 // taxas da plataforma pagas pelo organizador (item 5.1)
 	LiquidoCentavos         int64
+	BrutoCartaoCentavos     int64 // parte do bruto vendida no cartão (base da reserva, item 5.4)
+	ReservaCentavos         int64 // reserva de risco segurada do líquido (item 5.4)
 }
 
 // alocarTaxaProcessador rateia a taxa real do pagamento pelo peso do item
@@ -62,12 +64,18 @@ func fimDoEvento(e *domain.Evento) (time.Time, bool) {
 // RepasseService concentra o arranjo de custódia (seção 2.3) num único
 // lugar, para poder migrar para outro modelo depois.
 type RepasseService struct {
-	db          *gorm.DB
-	eventos     *repository.EventoRepository
-	itensPedido *repository.ItemPedidoRepository
-	repasses    *repository.RepasseRepository
-	config      *repository.ConfigPlataformaRepository
-	pagamentos  *repository.PagamentoRepository
+	db            *gorm.DB
+	eventos       *repository.EventoRepository
+	itensPedido   *repository.ItemPedidoRepository
+	repasses      *repository.RepasseRepository
+	config        *repository.ConfigPlataformaRepository
+	pagamentos    *repository.PagamentoRepository
+	organizadores *repository.OrganizadorRepository
+}
+
+// DefinirOrganizadores liga a reserva de risco (item 5.4).
+func (s *RepasseService) DefinirOrganizadores(o *repository.OrganizadorRepository) {
+	s.organizadores = o
 }
 
 func NovoRepasseService(
@@ -91,6 +99,9 @@ func (s *RepasseService) calcular(eventoID int64) (Financeiro, error) {
 		f.TaxaProcessadorCentavos += alocarTaxaProcessador(it.PagamentoTaxaProcCentavos, it.TotalCentavos, it.PagamentoValorCentavos)
 		if it.TaxaAbsorvida {
 			f.TaxaAbsorvidaCentavos += it.TaxaPlataformaCentavos
+		}
+		if it.PagamentoMetodo == "cartao" {
+			f.BrutoCartaoCentavos += it.PrecoCentavos
 		}
 	}
 	f.LiquidoCentavos = f.BrutoCentavos - f.TaxaProcessadorCentavos - f.TaxaAbsorvidaCentavos
@@ -121,7 +132,11 @@ func (s *RepasseService) FinanceiroDoEvento(organizadorID, eventoID int64) (*Fin
 	}
 	if rep, err := s.repasses.BuscarAtivoPorEvento(eventoID); err == nil {
 		res.Repasse = rep
-		res.Financeiro = Financeiro{rep.ValorBrutoCentavos, rep.TaxaProcessadorCentavos, rep.TaxaAbsorvidaCentavos, rep.ValorLiquidoCentavos}
+		res.Financeiro = Financeiro{
+			BrutoCentavos: rep.ValorBrutoCentavos, TaxaProcessadorCentavos: rep.TaxaProcessadorCentavos,
+			TaxaAbsorvidaCentavos: rep.TaxaAbsorvidaCentavos, LiquidoCentavos: rep.ValorLiquidoCentavos,
+			ReservaCentavos: rep.ReservaCentavos,
+		}
 		res.LiberarEm = &rep.LiberarEm
 		return res, nil
 	}
@@ -169,13 +184,22 @@ func (s *RepasseService) GerarRepasses() (int, error) {
 		if f.BrutoCentavos == 0 {
 			continue
 		}
+		reserva, reservaAte, err := s.reservaDoEvento(e, f, liberarEm)
+		if err != nil {
+			return criados, err
+		}
+		reservaStatus := domain.ReservaNenhuma
+		if reserva > 0 {
+			reservaStatus = domain.ReservaRetida
+		}
 
 		err = s.db.Transaction(func(tx *gorm.DB) error {
 			rep := &domain.Repasse{
 				EventoID: e.ID, OrganizadorID: e.OrganizadorID,
 				ValorBrutoCentavos: f.BrutoCentavos, TaxaProcessadorCentavos: f.TaxaProcessadorCentavos,
 				TaxaAbsorvidaCentavos: f.TaxaAbsorvidaCentavos,
-				ValorLiquidoCentavos:  f.LiquidoCentavos, Status: domain.StatusRepassePendente,
+				ReservaCentavos:       reserva, ReservaLiberarEm: reservaAte, ReservaStatus: reservaStatus,
+				ValorLiquidoCentavos: f.LiquidoCentavos, Status: domain.StatusRepassePendente,
 				LiberarEm: liberarEm, CriadoEm: agora,
 			}
 			if err := s.repasses.Criar(tx, rep); err != nil {
@@ -222,8 +246,9 @@ func (s *RepasseService) MarcarPago(id int64, comprovanteURL, observacao string)
 		if !ok {
 			return ErrRepasseNaoPendente
 		}
+		// Paga agora o líquido menos a reserva de risco (item 5.4).
 		return tx.Create(&domain.Lancamento{
-			Tipo: domain.LancamentoRepasse, ValorCentavos: rep.ValorLiquidoCentavos, Sinal: "-",
+			Tipo: domain.LancamentoRepasse, ValorCentavos: ValorAPagarAgora(rep), Sinal: "-",
 			EventoID: &rep.EventoID, OrganizadorID: &rep.OrganizadorID, CriadoEm: time.Now(),
 		}).Error
 	})

@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/WilliamBreno/Arcadia/backend/internal/domain"
 	"github.com/WilliamBreno/Arcadia/backend/internal/repository"
 	"github.com/WilliamBreno/Arcadia/backend/internal/service"
 )
@@ -21,21 +22,28 @@ func NovoRepasseHandler(o *OrganizadorHandler, s *service.RepasseService) *Repas
 }
 
 type repasseResposta struct {
-	ID                      int64      `json:"id"`
-	EventoID                int64      `json:"evento_id"`
-	EventoTitulo            string     `json:"evento_titulo,omitempty"`
-	OrganizadorNome         string     `json:"organizador_nome,omitempty"`
-	ChavePix                string     `json:"chave_pix,omitempty"`
-	TipoChavePix            string     `json:"tipo_chave_pix,omitempty"`
-	ValorBrutoCentavos      int64      `json:"valor_bruto_centavos"`
-	TaxaProcessadorCentavos int64      `json:"taxa_processador_centavos"`
-	TaxaAbsorvidaCentavos   int64      `json:"taxa_absorvida_centavos"`
-	ValorLiquidoCentavos    int64      `json:"valor_liquido_centavos"`
-	Status                  string     `json:"status"`
-	LiberarEm               time.Time  `json:"liberar_em"`
-	PagoEm                  *time.Time `json:"pago_em"`
-	ComprovanteURL          string     `json:"comprovante_url"`
-	Observacao              string     `json:"observacao"`
+	ID                      int64  `json:"id"`
+	EventoID                int64  `json:"evento_id"`
+	EventoTitulo            string `json:"evento_titulo,omitempty"`
+	OrganizadorNome         string `json:"organizador_nome,omitempty"`
+	ChavePix                string `json:"chave_pix,omitempty"`
+	TipoChavePix            string `json:"tipo_chave_pix,omitempty"`
+	ValorBrutoCentavos      int64  `json:"valor_bruto_centavos"`
+	TaxaProcessadorCentavos int64  `json:"taxa_processador_centavos"`
+	TaxaAbsorvidaCentavos   int64  `json:"taxa_absorvida_centavos"`
+	ValorLiquidoCentavos    int64  `json:"valor_liquido_centavos"`
+	// Reserva de risco (item 5.4): o repasse paga agora líquido − reserva.
+	ValorAPagarAgora  int64      `json:"valor_a_pagar_agora_centavos"`
+	ReservaCentavos   int64      `json:"reserva_centavos"`
+	ReservaStatus     string     `json:"reserva_status"`
+	ReservaLiberarEm  *time.Time `json:"reserva_liberar_em"`
+	ReservaPagoEm     *time.Time `json:"reserva_pago_em"`
+	ReservaObservacao string     `json:"reserva_observacao"`
+	Status            string     `json:"status"`
+	LiberarEm         time.Time  `json:"liberar_em"`
+	PagoEm            *time.Time `json:"pago_em"`
+	ComprovanteURL    string     `json:"comprovante_url"`
+	Observacao        string     `json:"observacao"`
 }
 
 func paraRepasseResposta(r *repository.RepasseDetalhado, comPix bool) repasseResposta {
@@ -44,6 +52,9 @@ func paraRepasseResposta(r *repository.RepasseDetalhado, comPix bool) repasseRes
 		ValorBrutoCentavos: r.ValorBrutoCentavos, TaxaProcessadorCentavos: r.TaxaProcessadorCentavos, TaxaAbsorvidaCentavos: r.TaxaAbsorvidaCentavos,
 		ValorLiquidoCentavos: r.ValorLiquidoCentavos, Status: string(r.Status), LiberarEm: r.LiberarEm,
 		PagoEm: r.PagoEm, ComprovanteURL: r.ComprovanteURL, Observacao: r.Observacao,
+		ValorAPagarAgora: service.ValorAPagarAgora(&r.Repasse), ReservaCentavos: r.ReservaCentavos,
+		ReservaStatus: r.ReservaStatus, ReservaLiberarEm: r.ReservaLiberarEm, ReservaPagoEm: r.ReservaPagoEm,
+		ReservaObservacao: r.ReservaObservacao,
 	}
 	if comPix {
 		resp.OrganizadorNome, resp.ChavePix, resp.TipoChavePix = r.OrganizadorNome, r.ChavePix, r.TipoChavePix
@@ -71,7 +82,7 @@ func (h *RepasseHandler) FinanceiroEvento(c *gin.Context) {
 		return
 	}
 	resp := gin.H{
-		"bruto_centavos": f.BrutoCentavos, "taxa_processador_centavos": f.TaxaProcessadorCentavos, "taxa_absorvida_centavos": f.TaxaAbsorvidaCentavos,
+		"bruto_centavos": f.BrutoCentavos, "taxa_processador_centavos": f.TaxaProcessadorCentavos, "taxa_absorvida_centavos": f.TaxaAbsorvidaCentavos, "reserva_centavos": f.ReservaCentavos,
 		"liquido_centavos": f.LiquidoCentavos, "liberar_em": f.LiberarEm, "repasse_status": nil,
 		"metodos": f.Metodos,
 	}
@@ -92,15 +103,18 @@ func (h *RepasseHandler) Extrato(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao listar repasses"})
 		return
 	}
-	var aReceber int64
+	var aReceber, reservaRetida int64
 	itens := make([]repasseResposta, 0, len(lista))
 	for i := range lista {
 		if lista[i].Status == "pendente" {
-			aReceber += lista[i].ValorLiquidoCentavos
+			aReceber += service.ValorAPagarAgora(&lista[i].Repasse)
+		}
+		if lista[i].ReservaStatus == domain.ReservaRetida {
+			reservaRetida += lista[i].ReservaCentavos
 		}
 		itens = append(itens, paraRepasseResposta(&lista[i], false))
 	}
-	c.JSON(http.StatusOK, gin.H{"a_receber_centavos": aReceber, "repasses": itens})
+	c.JSON(http.StatusOK, gin.H{"a_receber_centavos": aReceber, "reserva_retida_centavos": reservaRetida, "repasses": itens})
 }
 
 // ListarAdmin é GET /admin/repasses?status=.

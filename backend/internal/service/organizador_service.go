@@ -74,6 +74,11 @@ func (s *OrganizadorService) AtualizarPerfil(usuarioID int64, dados AtualizarPer
 	organizador.NomePublico = dados.NomePublico
 	organizador.Descricao = dados.Descricao
 	organizador.LogoURL = dados.LogoURL
+	// Trocar a chave Pix tira a verificação (item 5.4): é para onde vai o
+	// dinheiro, então o admin confere de novo.
+	if organizador.ChavePix != dados.ChavePix || organizador.TipoChavePix != dados.TipoChavePix {
+		organizador.VerificadoEm, organizador.VerificadoPor = nil, nil
+	}
 	organizador.ChavePix = dados.ChavePix
 	organizador.TipoChavePix = dados.TipoChavePix
 	organizador.Instagram = dados.Instagram

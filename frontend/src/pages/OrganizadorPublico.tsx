@@ -1,3 +1,4 @@
+import { SeloVerificado } from '@/components/selo-verificado'
 import { useQuery } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 
@@ -26,6 +27,7 @@ export default function OrganizadorPublico() {
           <img src={data.organizador.logo_url} alt="" className="mb-4 size-20 rounded-full object-cover" />
         )}
         <h1 className="text-2xl font-semibold text-foreground">{data.organizador.nome_publico}</h1>
+        {data.organizador.verificado && <SeloVerificado className="mt-2" />}
         {data.organizador.descricao && (
           <p className="mt-2 max-w-lg text-muted-foreground">{data.organizador.descricao}</p>
         )}

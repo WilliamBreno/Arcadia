@@ -158,6 +158,9 @@ func main() {
 	contestacaoRepo := repository.NovoContestacaoRepository(db)
 	checkoutService.DefinirAntifraude(usuarioRepo, contestacaoRepo)
 	adminHandler.DefinirContestacoes(contestacaoRepo)
+	// Item 5.4: verificação do organizador e reserva de risco.
+	adminHandler.DefinirOrganizadores(organizadorRepo)
+	repasseService.DefinirOrganizadores(organizadorRepo)
 
 	router := gin.New()
 	router.Use(middleware.LogRequisicoes(), middleware.TratadorDeErros(), middleware.CabecalhosSeguranca())
@@ -318,6 +321,10 @@ func main() {
 		admin := v1.Group("/admin", middleware.ExigirAutenticacao(jwtService), middleware.ExigirAdminPlataforma())
 		admin.GET("/repasses", repasseHandler.ListarAdmin)
 		admin.POST("/repasses/:id/pagar", repasseHandler.Pagar)
+		admin.POST("/repasses/:id/reserva/pagar", repasseHandler.PagarReserva)
+		admin.POST("/repasses/:id/reserva/usar", repasseHandler.UsarReserva)
+		admin.GET("/organizadores", adminHandler.ListarOrganizadores)
+		admin.POST("/organizadores/:id/verificacao", adminHandler.DefinirVerificacao)
 		admin.GET("/relatorios", adminHandler.Relatorios)
 		admin.GET("/reembolsos", adminHandler.ListarReembolsos)
 		admin.GET("/contestacoes", adminHandler.ListarContestacoes)

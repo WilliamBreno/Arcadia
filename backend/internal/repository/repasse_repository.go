@@ -72,9 +72,32 @@ func (r *RepasseRepository) ListarPorOrganizador(organizadorID int64) ([]Repasse
 func (r *RepasseRepository) ListarPorStatus(status string) ([]RepasseDetalhado, error) {
 	var linhas []RepasseDetalhado
 	q := r.base()
-	if status != "" {
+	switch status {
+	case "":
+	case "reservas": // reservas de risco ainda retidas (item 5.4)
+		q = q.Where("repasses.reserva_status = ?", domain.ReservaRetida)
+	default:
 		q = q.Where("repasses.status = ?", status)
 	}
 	err := q.Order("repasses.liberar_em").Scan(&linhas).Error
 	return linhas, err
+}
+
+// ContarPagosDoOrganizador conta repasses já pagos (base do "organizador
+// novo" da reserva de risco, item 5.4).
+func (r *RepasseRepository) ContarPagosDoOrganizador(organizadorID int64) (int64, error) {
+	var n int64
+	err := r.db.Model(&domain.Repasse{}).Where("organizador_id = ? AND status = ?", organizadorID, domain.StatusRepassePago).Count(&n).Error
+	return n, err
+}
+
+// FinalizarReservaAtomico só vence se a reserva ainda estava retida.
+func (r *RepasseRepository) FinalizarReservaAtomico(tx *gorm.DB, id int64, destino, comprovante, observacao string) (bool, error) {
+	campos := map[string]any{"reserva_status": destino, "reserva_observacao": observacao}
+	if destino == domain.ReservaPaga {
+		campos["reserva_pago_em"] = time.Now()
+		campos["reserva_comprovante_url"] = comprovante
+	}
+	res := tx.Model(&domain.Repasse{}).Where("id = ? AND reserva_status = ?", id, domain.ReservaRetida).Updates(campos)
+	return res.RowsAffected > 0, res.Error
 }

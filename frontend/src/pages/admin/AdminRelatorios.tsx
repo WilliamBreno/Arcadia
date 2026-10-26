@@ -3,6 +3,7 @@ import { useState } from 'react'
 
 import { api, ApiError } from '@/lib/api'
 import { formatarCentavos } from '@/lib/evento'
+import { AdminNav } from '@/components/admin-nav'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
@@ -71,6 +72,7 @@ export default function AdminRelatorios() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
+      <AdminNav />
       <h1 className="mb-6 text-2xl font-semibold text-foreground">Relatórios</h1>
 
       <Card className="mb-6">

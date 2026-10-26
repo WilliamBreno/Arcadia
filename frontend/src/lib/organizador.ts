@@ -11,6 +11,7 @@ export type Organizador = {
   instagram: string
   site: string
   status: 'pendente' | 'ativo' | 'suspenso'
+  verificado: boolean
 }
 
 export type Local = {

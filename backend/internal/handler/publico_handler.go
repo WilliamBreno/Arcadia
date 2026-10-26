@@ -200,6 +200,7 @@ type organizadorPublico struct {
 	LogoURL     string `json:"logo_url"`
 	Instagram   string `json:"instagram"`
 	Site        string `json:"site"`
+	Verificado  bool   `json:"verificado"` // selo "Verificado" (item 5.4)
 }
 
 func (h *PublicoHandler) ObterEvento(c *gin.Context) {
@@ -246,6 +247,7 @@ func (h *PublicoHandler) ObterEvento(c *gin.Context) {
 			NomePublico: organizador.NomePublico, Slug: organizador.Slug,
 			Descricao: organizador.Descricao, LogoURL: organizador.LogoURL,
 			Instagram: organizador.Instagram, Site: organizador.Site,
+			Verificado: organizador.VerificadoEm != nil,
 		}
 	}
 
@@ -314,6 +316,7 @@ func (h *PublicoHandler) ObterOrganizador(c *gin.Context) {
 			NomePublico: organizador.NomePublico, Slug: organizador.Slug,
 			Descricao: organizador.Descricao, LogoURL: organizador.LogoURL,
 			Instagram: organizador.Instagram, Site: organizador.Site,
+			Verificado: organizador.VerificadoEm != nil,
 		},
 		"eventos": eventosDoOrganizador,
 	})

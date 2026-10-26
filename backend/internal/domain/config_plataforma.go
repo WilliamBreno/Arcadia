@@ -24,6 +24,9 @@ const (
 	ChaveGarantiaMinCentavos    = "GARANTIA_MIN_CENTAVOS"
 	ChaveGarantiaMaxCentavos    = "GARANTIA_MAX_CENTAVOS"
 	ChaveRepasseDiasUteis       = "REPASSE_DIAS_UTEIS"
+	ChaveReservaRiscoBP         = "RESERVA_RISCO_BP"
+	ChaveReservaRiscoDias       = "RESERVA_RISCO_DIAS"
+	ChaveReservaRiscoEventosMin = "RESERVA_RISCO_EVENTOS_MIN"
 	ChaveTaxaReferenciaCartaoBP = "TAXA_REFERENCIA_CARTAO_BP" // só para estimativa no painel
 	ChaveReservaMinutos         = "RESERVA_MINUTOS"
 	ChaveCDCReembolsaTaxa       = "CDC_REEMBOLSA_TAXA"

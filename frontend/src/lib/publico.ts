@@ -52,6 +52,7 @@ export type EventoDetalhe = {
     logo_url: string
     instagram: string
     site: string
+    verificado: boolean
   } | null
   ingressos: {
     id: number
@@ -76,6 +77,7 @@ export type OrganizadorDetalhe = {
     logo_url: string
     instagram: string
     site: string
+    verificado: boolean
   }
   eventos: EventoPublicoItem[]
 }

@@ -7,6 +7,7 @@ import type { Pedido } from '@/lib/checkout'
 import { formatarCentavos } from '@/lib/evento'
 import { estiloTema } from '@/lib/tema'
 import { calcularItem } from '@/lib/taxas'
+import { SeloVerificado } from '@/components/selo-verificado'
 import type { EventoDetalhe as EventoDetalheTipo } from '@/lib/publico'
 import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
@@ -180,9 +181,12 @@ export default function EventoDetalhe() {
       <h1 className="mt-1 text-3xl font-semibold text-foreground">{evento.titulo}</h1>
 
       {organizador && (
-        <Link to={`/o/${organizador.slug}`} className="mt-2 inline-block text-sm text-muted-foreground hover:text-foreground">
-          por {organizador.nome_publico}
-        </Link>
+        <p className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+          <Link to={`/o/${organizador.slug}`} className="text-muted-foreground hover:text-foreground">
+            por {organizador.nome_publico}
+          </Link>
+          {organizador.verificado && <SeloVerificado />}
+        </p>
       )}
 
       {evento.descricao && <p className="mt-6 whitespace-pre-wrap text-foreground">{evento.descricao}</p>}

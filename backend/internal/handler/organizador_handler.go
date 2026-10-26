@@ -36,6 +36,7 @@ type organizadorResposta struct {
 	Instagram    string `json:"instagram"`
 	Site         string `json:"site"`
 	Status       string `json:"status"`
+	Verificado   bool   `json:"verificado"`
 }
 
 func paraOrganizadorResposta(o *domain.Organizador) organizadorResposta {
@@ -52,6 +53,7 @@ func paraOrganizadorResposta(o *domain.Organizador) organizadorResposta {
 		Instagram:    o.Instagram,
 		Site:         o.Site,
 		Status:       string(o.Status),
+		Verificado:   o.VerificadoEm != nil,
 	}
 }
 
