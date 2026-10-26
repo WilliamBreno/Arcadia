@@ -404,7 +404,7 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - [x] 5.3 💰 Antifraude e chargeback (D1): limite de ingressos por conta por evento, bloqueio de cartão de quem já contestou, contestação do MP gravando no ledger e alertando o admin.
 - [x] 5.4 💰 Verificação do organizador com selo "Verificado" (C18) e **reserva de risco** no repasse de vendas no cartão de organizador novo (4.2.3).
 - [x] 5.5 Escala técnica mínima (D4): rate limit e controle de sessão fora da memória, fila para e-mails e reembolsos, monitoramento de erros, teste de carga na abertura de lote.
-- [ ] 5.6 **Fechar a fase:** commit, push e `git tag fase-5` + `git push --tags`
+- [x] 5.6 **Fechar a fase:** commit, push e `git tag fase-5` + `git push --tags`
 
 ### Fase 6 — Tráfego e descoberta
 - [ ] 6.1 SEO das páginas públicas (A1, A2): HTML completo para buscadores em evento, organizador, cidade e categoria; JSON-LD `schema.org/Event`; `sitemap.xml` e `robots.txt`.
