@@ -412,7 +412,7 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - [x] 6.3 Página "Quanto custa" com simulador (C1), selo "Evve Garante" (B12) e preço final em destaque (B3).
 - [x] 6.4 Seguir organizador e categoria com aviso de novo evento (A4); lembretes automáticos e "adicionar ao calendário" (A12).
 - [x] 6.5 Avaliação do evento e do organizador por quem fez check-in (A15).
-- [ ] 6.6 **Fechar a fase:** commit, push e `git tag fase-6` + `git push --tags`
+- [x] 6.6 **Fechar a fase:** commit, push e `git tag fase-6` + `git push --tags`
 
 ### Fase 7 — Conversão no checkout
 - [ ] 7.1 💰 Pagamento dentro da página do Evve: QR do Pix na tela e cartão sem redirecionar (B1), com 3DS.
