@@ -159,7 +159,8 @@ func (s *RecuperacaoCarrinhoService) itensAindaAVenda(pedidoID int64, agora time
 	err := s.db.Raw(`
 		SELECT t.id AS tipo_id, t.nome, COUNT(i.id) AS quantidade, t.preco_centavos AS preco, t.ativo,
 		       t.quantidade AS estoque, t.vendas_inicio, t.vendas_fim,
-		       (SELECT COUNT(*) FROM itens_pedido o WHERE o.tipo_ingresso_id = t.id AND o.status IN ('reservado','pago','utilizado')) AS ocupados
+		       (SELECT COUNT(*) FROM itens_pedido o WHERE o.tipo_ingresso_id = t.id AND o.status IN ('reservado','pago','utilizado'))
+		       + (SELECT COALESCE(SUM(f.quantidade),0) FROM fila_espera f WHERE f.tipo_ingresso_id = t.id AND f.status = 'convidado' AND f.prazo_em > now()) AS ocupados
 		FROM itens_pedido i JOIN tipos_ingresso t ON t.id = i.tipo_ingresso_id
 		WHERE i.pedido_id = ?
 		GROUP BY t.id ORDER BY t.id`, pedidoID).Scan(&linhas).Error

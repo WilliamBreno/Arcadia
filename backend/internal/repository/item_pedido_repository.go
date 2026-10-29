@@ -251,3 +251,6 @@ func (r *ItemPedidoRepository) ContarDoUsuarioNoEvento(tx *gorm.DB, usuarioID, e
 		Count(&n).Error
 	return n, err
 }
+
+// DB expõe a conexão para consultas auxiliares de leitura (item 7.3).
+func (r *ItemPedidoRepository) DB() *gorm.DB { return r.db }

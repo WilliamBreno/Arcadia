@@ -411,7 +411,11 @@ func (s *CheckoutService) reabrirReserva(tx *gorm.DB, pedido *domain.Pedido) (bo
 		if err != nil {
 			return false, err
 		}
-		if int64(tipo.Quantidade)-ativos < precisa {
+		guardadas, err := VagasGuardadas(tx, tipoID, pedido.UsuarioID)
+		if err != nil {
+			return false, err
+		}
+		if int64(tipo.Quantidade)-ativos-guardadas < precisa {
 			return false, nil
 		}
 	}

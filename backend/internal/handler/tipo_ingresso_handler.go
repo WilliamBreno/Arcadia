@@ -36,6 +36,9 @@ type tipoIngressoResposta struct {
 	MeiaEntrada   bool       `json:"meia_entrada"`
 	SessaoIDs     []int64    `json:"sessao_ids"`
 	Ativo         bool       `json:"ativo"`
+	// Só na página pública (item 7.3): sem vaga para comprar agora, já
+	// descontadas as vagas guardadas para a lista de espera.
+	Esgotado *bool `json:"esgotado,omitempty"`
 }
 
 func paraTipoIngressoResposta(t *domain.TipoIngresso) tipoIngressoResposta {

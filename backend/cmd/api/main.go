@@ -127,13 +127,17 @@ func main() {
 	apiPublicaHandler := handler.NovoAPIPublicaHandler(organizadorHandler, apiKeyRepo, eventoRepo, tipoIngressoRepo, itemPedidoRepo)
 	sessaoHandler := handler.NovoSessaoHandler(organizadorHandler, service.NovoSessaoService(eventoService, eventoRepo, sessaoRepo, cancelamentoService, mailCliente, cfg.NomePlataforma))
 	checkoutService.DefinirPlateia(plateiaService)
+	// Item 7.3: lista de espera de ingresso esgotado.
+	filaService := service.NovoFilaEsperaService(db, itemPedidoRepo, mailCliente, cfg.FrontendURL, cfg.NomePlataforma)
+	checkoutService.DefinirFila(filaService)
+	promotores := service.Promotores{plateiaService, filaService}
 	// Item 5.1: taxa por faixa, garantia percentual e taxa absorvida.
 	taxasService := service.NovoTaxasService(configPlataformaRepo, localRepo, regraRegionalRepo)
 	checkoutService.DefinirTaxas(taxasService)
 	publicoHandler.DefinirTaxas(taxasService)
 	checkoutService.DefinirAfiliados(afiliadoRepo)
 	afiliadoHandler := handler.NovoAfiliadoHandler(organizadorHandler, service.NovoAfiliadoService(eventoService, afiliadoRepo))
-	cancelamentoService.DefinirPromotor(plateiaService)
+	cancelamentoService.DefinirPromotor(promotores)
 	equipeHandler := handler.NovoEquipeHandler(organizadorHandler, membroRepo, usuarioRepo, itemPedidoRepo, mailCliente, cfg.NomePlataforma, cfg.FrontendURL)
 	cronogramaService := service.NovoCronogramaService(eventoService, cronogramaRepo)
 	cronogramaHandler := handler.NovoCronogramaHandler(organizadorHandler, cronogramaService, fichaService)
@@ -144,7 +148,7 @@ func main() {
 	transferenciaHandler := handler.NovoTransferenciaHandler(transferenciaService)
 	qrHandler := handler.NovoQRHandler(service.NovoQRService(itemPedidoRepo, pedidoRepo, tipoIngressoRepo, eventoRepo, cfg.JWTSecret))
 	cortesiaService := service.NovoCortesiaService(db, eventoService, itemPedidoRepo, pedidoRepo, mailCliente, cfg.JWTSecret, cfg.FrontendURL, cfg.NomePlataforma)
-	cortesiaService.DefinirPromotor(plateiaService)
+	cortesiaService.DefinirPromotor(promotores)
 	cortesiaHandler := handler.NovoCortesiaHandler(organizadorHandler, cortesiaService, fichaService, itemPedidoRepo, tipoIngressoRepo, eventoRepo)
 	cupomHandler := handler.NovoCupomHandler(organizadorHandler, eventoRepo, cupomService)
 	conviteHandler := handler.NovoConviteHandler(organizadorHandler, eventoRepo, conviteService)
@@ -191,6 +195,8 @@ func main() {
 	publicoHandler.DefinirAvaliacoes(avaliacaoPublicoService)
 	seguirHandler.DefinirConvites(avaliacaoPublicoService)
 	// Item 7.2: e-mail de carrinho para quem reservou e não pagou.
+	jobHandler.DefinirFila(filaService)
+	filaHandler := handler.NovoFilaEsperaHandler(filaService, eventoRepo, organizadorHandler)
 	jobHandler.DefinirRecuperacao(service.NovoRecuperacaoCarrinhoService(db, mailCliente, seguirService, cfg.FrontendURL, cfg.NomePlataforma))
 
 	router := gin.New()
@@ -263,6 +269,9 @@ func main() {
 		autenticado.GET("/me", authHandler.Me)
 		autenticado.GET("/me/eventos", contaHandler.MeusEventos)
 		autenticado.GET("/me/seguindo", seguirHandler.Meus)
+		autenticado.GET("/eventos/:slug/fila", filaHandler.Minhas)
+		autenticado.POST("/eventos/:slug/fila", filaHandler.Entrar)
+		autenticado.DELETE("/eventos/:slug/fila/:tipo", filaHandler.Sair)
 		autenticado.GET("/eventos/:slug/minha-avaliacao", avaliacaoPublicoHandler.Minha)
 		autenticado.PUT("/eventos/:slug/minha-avaliacao", avaliacaoPublicoHandler.Salvar)
 		autenticado.POST("/seguindo", seguirHandler.Seguir)
@@ -353,6 +362,7 @@ func main() {
 		org.GET("/eventos/:id/solicitacoes", plateiaHandler.Listar)
 		org.POST("/eventos/:id/solicitacoes/:solicitacaoId", plateiaHandler.Decidir)
 		org.GET("/eventos/:id/cupons", cupomHandler.Listar)
+		org.GET("/eventos/:id/fila", filaHandler.Resumo)
 		org.POST("/eventos/:id/cupons", cupomHandler.Criar)
 		org.DELETE("/eventos/:id/cupons/:cupomId", cupomHandler.Desativar)
 

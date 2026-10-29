@@ -57,6 +57,7 @@ type CheckoutService struct {
 	cupons         *repository.CupomRepository
 	tipos          *repository.TipoIngressoRepository
 	plateia        *PlateiaService
+	fila           *FilaEsperaService
 	taxas          *TaxasService
 	usuarios       *repository.UsuarioRepository
 	sessoes        *repository.SessaoRepository
@@ -260,7 +261,16 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 			if err != nil {
 				return err
 			}
-			disponivel := int64(tipo.Quantidade) - ativos
+			// Item 7.3: vagas guardadas para a lista de espera não estão à
+			// venda (menos para a própria pessoa convidada).
+			guardadas, err := VagasGuardadas(tx, tipo.ID, usuarioID)
+			if err != nil {
+				return err
+			}
+			disponivel := int64(tipo.Quantidade) - ativos - guardadas
+			if disponivel < 0 {
+				disponivel = 0
+			}
 			if int64(ir.Quantidade) > disponivel {
 				return fmt.Errorf("%w: %s (restam %d)", ErrEstoqueInsuficiente, tipo.Nome, disponivel)
 			}
@@ -303,6 +313,9 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 				}
 				totalPedido += item.TotalCentavos
 				itensCriados = append(itensCriados, item)
+			}
+			if err := consumirConvite(tx, usuarioID, tipo.ID, pedido.ID); err != nil {
+				return err
 			}
 		}
 
@@ -591,13 +604,19 @@ func (s *CheckoutService) ExpirarReservas() (int, error) {
 			total++
 		}
 	}
-	if s.plateia != nil {
-		for eventoID := range eventosLiberados {
+	for eventoID := range eventosLiberados {
+		if s.plateia != nil {
 			s.plateia.PromoverListaEspera(eventoID)
+		}
+		if s.fila != nil {
+			s.fila.PromoverListaEspera(eventoID) // item 7.3
 		}
 	}
 	return total, nil
 }
+
+// DefinirFila liga a lista de espera de esgotado (item 7.3).
+func (s *CheckoutService) DefinirFila(f *FilaEsperaService) { s.fila = f }
 
 // DefinirPlateia liga a exigência de aprovação e a promoção da lista de espera (item 3.2).
 func (s *CheckoutService) DefinirPlateia(p *PlateiaService) { s.plateia = p }

@@ -69,6 +69,9 @@ export type EventoDetalhe = {
     ativo: boolean
     meia_entrada: boolean
     sessao_ids: number[]
+    max_por_pedido: number
+    // Item 7.3: sem vaga à venda agora (já contando as guardadas para a fila).
+    esgotado?: boolean
   }[]
   taxas: RegraTaxas
   vendas_encerradas: boolean

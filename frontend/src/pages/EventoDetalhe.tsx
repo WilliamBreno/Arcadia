@@ -21,6 +21,8 @@ import { ListaRanking } from '@/components/resultado-cards'
 import { Card, CardContent } from '@/components/ui/card'
 import { Carregando } from '@/components/carregando'
 import { EntrarComCodigo } from '@/components/entrar-com-codigo'
+import { ControleFila } from '@/components/controle-fila'
+import { horaPrazo, minhaFila, type EntradaFila } from '@/lib/fila'
 
 export default function EventoDetalhe() {
   const { slug } = useParams()
@@ -36,7 +38,7 @@ export default function EventoDetalhe() {
   const [comprando, setComprando] = useState(false)
   // Item 7.2: quem não está logado entra com código aqui mesmo e a compra
   // continua sozinha, sem perder os ingressos escolhidos.
-  const [pedirLogin, setPedirLogin] = useState<'comprar' | 'cupom' | null>(null)
+  const [pedirLogin, setPedirLogin] = useState<'comprar' | 'cupom' | 'fila' | null>(null)
   const [continuarAposLogin, setContinuarAposLogin] = useState(false)
   const comprarRef = useRef<(() => void) | null>(null)
   const retomado = useRef(false)
@@ -72,7 +74,10 @@ export default function EventoDetalhe() {
     retry: false,
     queryFn: async () => {
       try {
-        return await api<{ ranking: Record<string, { posicao: number; nome: string; nota_final: number }[]> }>(`/eventos/${slug}/resultado`, { semAuth: true })
+        return await api<{ ranking: Record<string, { posicao: number; nome: string; nota_final: number }[]> }>(
+          `/eventos/${slug}/resultado`,
+          { semAuth: true },
+        )
       } catch (e) {
         if (e instanceof ApiError && e.status === 404) return null
         throw e
@@ -106,6 +111,23 @@ export default function EventoDetalhe() {
     }
     if (Object.keys(escolha).length > 0) setQuantidades(escolha)
   }, [data, searchParams])
+
+  // Item 7.3: onde a pessoa está na lista de espera dos ingressos esgotados.
+  const fila = useQuery({
+    queryKey: ['fila', slug, usuario?.id],
+    enabled: !!usuario && !!data?.ingressos.some((i) => i.esgotado),
+    queryFn: () => minhaFila(slug ?? ''),
+  })
+  const atualizarFila = (lista: EntradaFila[]) => queryClient.setQueryData(['fila', slug, usuario?.id], lista)
+  // Convidado da fila: já deixa escolhida a quantidade guardada (uma vez).
+  const convitesAplicados = useRef(new Set<number>())
+  useEffect(() => {
+    for (const f of fila.data ?? []) {
+      if (f.status !== 'convidado' || convitesAplicados.current.has(f.tipo_ingresso_id)) continue
+      convitesAplicados.current.add(f.tipo_ingresso_id)
+      setQuantidades((q) => (q[f.tipo_ingresso_id] ? q : { ...q, [f.tipo_ingresso_id]: f.quantidade }))
+    }
+  }, [fila.data])
 
   if (isLoading) return <Carregando />
   if (error instanceof ApiError && error.status === 404) {
@@ -143,7 +165,10 @@ export default function EventoDetalhe() {
       if (qtd === 0) return acc
       const desconto = !cupom
         ? 0
-        : Math.min(i.preco_centavos, cupom.tipo === 'percentual' ? Math.floor((i.preco_centavos * cupom.valor) / 100) : cupom.valor)
+        : Math.min(
+            i.preco_centavos,
+            cupom.tipo === 'percentual' ? Math.floor((i.preco_centavos * cupom.valor) / 100) : cupom.valor,
+          )
       const v = calcularItem(data.taxas, i.preco_centavos - desconto, garantia)
       return {
         preco: acc.preco + qtd * (i.preco_centavos - desconto),
@@ -211,9 +236,7 @@ export default function EventoDetalhe() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12" style={estiloTema(evento.cor_tema)}>
-      {evento.capa_url && (
-        <img src={evento.capa_url} alt="" className="mb-6 aspect-video w-full rounded-xl object-cover" />
-      )}
+      {evento.capa_url && <img src={evento.capa_url} alt="" className="mb-6 aspect-video w-full rounded-xl object-cover" />}
 
       <p className="text-sm font-medium text-primary">
         {evento.inicio_em && new Date(evento.inicio_em).toLocaleString('pt-BR', { dateStyle: 'full', timeStyle: 'short' })}
@@ -234,14 +257,25 @@ export default function EventoDetalhe() {
           <CalendarPlus className="size-4 text-muted-foreground" aria-hidden="true" />
           <span className="text-muted-foreground">Adicionar ao calendário:</span>
           <a
-            href={linkGoogleAgenda(evento.titulo, evento.inicio_em, evento.fim_em, local ? `${local.nome} · ${local.cidade}/${local.uf}` : 'Online', window.location.origin + '/e/' + evento.slug) ?? '#'}
+            href={
+              linkGoogleAgenda(
+                evento.titulo,
+                evento.inicio_em,
+                evento.fim_em,
+                local ? `${local.nome} · ${local.cidade}/${local.uf}` : 'Online',
+                window.location.origin + '/e/' + evento.slug,
+              ) ?? '#'
+            }
             target="_blank"
             rel="noopener noreferrer"
             className="font-medium text-foreground underline underline-offset-4"
           >
             Google Agenda
           </a>
-          <a href={`/api/v1/eventos/${evento.slug}/calendario.ics`} className="font-medium text-foreground underline underline-offset-4">
+          <a
+            href={`/api/v1/eventos/${evento.slug}/calendario.ics`}
+            className="font-medium text-foreground underline underline-offset-4"
+          >
             Apple / Outlook
           </a>
         </p>
@@ -273,24 +307,45 @@ export default function EventoDetalhe() {
             <p className="font-medium text-foreground">Este evento tem aprovação manual</p>
             {!solicitacao && (
               <>
-                <p className="mt-1 text-muted-foreground">Solicite sua participação; depois da aprovação do organizador você poderá comprar.</p>
+                <p className="mt-1 text-muted-foreground">
+                  Solicite sua participação; depois da aprovação do organizador você poderá comprar.
+                </p>
                 <Button className="mt-3" size="sm" onClick={solicitar}>
                   Solicitar participação
                 </Button>
               </>
             )}
-            {solicitacao?.status === 'pendente' && <p className="mt-1 text-muted-foreground">Solicitação enviada — aguardando o organizador.</p>}
+            {solicitacao?.status === 'pendente' && (
+              <p className="mt-1 text-muted-foreground">Solicitação enviada — aguardando o organizador.</p>
+            )}
             {solicitacao?.status === 'lista_espera' && (
-              <p className="mt-1 text-muted-foreground">Você foi aprovado, mas as vagas acabaram. Está na lista de espera e será avisado por e-mail se abrir uma vaga.</p>
+              <p className="mt-1 text-muted-foreground">
+                Você foi aprovado, mas as vagas acabaram. Está na lista de espera e será avisado por e-mail se abrir uma vaga.
+              </p>
             )}
             {solicitacao?.status === 'rejeitada' && <p className="mt-1 text-destructive">Sua solicitação não foi aprovada.</p>}
           </div>
         )}
         <div className="flex flex-col gap-3">
+          {(fila.data ?? [])
+            .filter((f) => f.status === 'convidado' && f.prazo_em)
+            .map((f) => (
+              <div
+                key={f.tipo_ingresso_id}
+                role="status"
+                className="rounded-xl border border-foreground bg-muted p-4 text-sm text-foreground"
+              >
+                <p className="font-semibold">Abriu vaga para você!</p>
+                <p className="mt-1">
+                  Guardamos {f.quantidade} × {ingressos.find((i) => i.id === f.tipo_ingresso_id)?.nome ?? 'ingresso'} só para você
+                  até <strong>{horaPrazo(f.prazo_em!)}</strong>. Escolha abaixo e finalize a compra.
+                </p>
+              </div>
+            ))}
           {ingressos.length === 0 && <p className="text-sm text-muted-foreground">Nenhum ingresso disponível no momento.</p>}
           {ingressos.map((i) => (
             <Card key={i.id}>
-              <CardContent className="flex items-center justify-between py-4">
+              <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
                 <div>
                   <p className="font-medium text-foreground">{i.nome}</p>
                   {data.sessoes.length > 1 && (
@@ -326,25 +381,40 @@ export default function EventoDetalhe() {
                     </>
                   )}
                 </div>
-                <div className={`flex items-center gap-2 ${precisaAprovacao || vendasEncerradas ? 'hidden' : ''}`}>
-                  <Button
-                    variant="outline"
-                    size="icon-sm"
-                    type="button"
-                    onClick={() => setQuantidades((q) => ({ ...q, [i.id]: Math.max(0, (q[i.id] ?? 0) - 1) }))}
-                  >
-                    −
-                  </Button>
-                  <span className="w-6 text-center text-sm text-foreground">{quantidades[i.id] ?? 0}</span>
-                  <Button
-                    variant="outline"
-                    size="icon-sm"
-                    type="button"
-                    onClick={() => setQuantidades((q) => ({ ...q, [i.id]: (q[i.id] ?? 0) + 1 }))}
-                  >
-                    +
-                  </Button>
-                </div>
+                {i.esgotado &&
+                !precisaAprovacao &&
+                !vendasEncerradas &&
+                fila.data?.find((f) => f.tipo_ingresso_id === i.id)?.status !== 'convidado' ? (
+                  <ControleFila
+                    slug={evento.slug}
+                    tipoId={i.id}
+                    max={i.max_por_pedido}
+                    entrada={fila.data?.find((f) => f.tipo_ingresso_id === i.id)}
+                    logado={!!usuario}
+                    aoMudar={atualizarFila}
+                    pedirLogin={() => setPedirLogin('fila')}
+                  />
+                ) : (
+                  <div className={`flex items-center gap-2 ${precisaAprovacao || vendasEncerradas ? 'hidden' : ''}`}>
+                    <Button
+                      variant="outline"
+                      size="icon-sm"
+                      type="button"
+                      onClick={() => setQuantidades((q) => ({ ...q, [i.id]: Math.max(0, (q[i.id] ?? 0) - 1) }))}
+                    >
+                      −
+                    </Button>
+                    <span className="w-6 text-center text-sm text-foreground">{quantidades[i.id] ?? 0}</span>
+                    <Button
+                      variant="outline"
+                      size="icon-sm"
+                      type="button"
+                      onClick={() => setQuantidades((q) => ({ ...q, [i.id]: (q[i.id] ?? 0) + 1 }))}
+                    >
+                      +
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -354,16 +424,11 @@ export default function EventoDetalhe() {
           <div className="mt-4 flex flex-col gap-3 rounded-lg border border-border p-4">
             {evento.garantia_habilitada && resumo.temPago && !eventoComecou && (
               <label className="flex items-start gap-2 text-sm text-foreground">
-                <input
-                  type="checkbox"
-                  className="mt-0.5"
-                  checked={garantia}
-                  onChange={(e) => setGarantia(e.target.checked)}
-                />
+                <input type="checkbox" className="mt-0.5" checked={garantia} onChange={(e) => setGarantia(e.target.checked)} />
                 <span>
-                  Quero <strong>garantia de vaga</strong> (+{formatarCentavos(resumo.garantiaSeMarcar)}: {data.taxas.garantia_percentual_bp / 100}% do preço, mín.{' '}
-                  {formatarCentavos(data.taxas.garantia_min_centavos)} por item) — cancele a
-                  qualquer momento até o início do evento e receba tudo de volta.
+                  Quero <strong>garantia de vaga</strong> (+{formatarCentavos(resumo.garantiaSeMarcar)}:{' '}
+                  {data.taxas.garantia_percentual_bp / 100}% do preço, mín. {formatarCentavos(data.taxas.garantia_min_centavos)}{' '}
+                  por item) — cancele a qualquer momento até o início do evento e receba tudo de volta.
                 </span>
               </label>
             )}
@@ -400,7 +465,13 @@ export default function EventoDetalhe() {
         {pedirLogin && !usuario && (
           <div id="entrar-para-comprar" className="mt-4">
             <EntrarComCodigo
-              titulo={pedirLogin === 'cupom' ? 'Entre para usar o cupom' : 'Entre para finalizar a compra'}
+              titulo={
+                pedirLogin === 'cupom'
+                  ? 'Entre para usar o cupom'
+                  : pedirLogin === 'fila'
+                    ? 'Entre para entrar na lista de espera'
+                    : 'Entre para finalizar a compra'
+              }
               voltarPara={location.pathname + location.search}
               aoEntrar={() => {
                 // Depois do cupom, a pessoa aplica e confere o total antes de comprar.
@@ -460,7 +531,10 @@ export default function EventoDetalhe() {
       {(evento.modo_participantes === 'inscricao_aberta' || evento.modo_participantes === 'ambos') && (
         <div className="mt-6 flex items-center justify-between rounded-lg border border-border p-4">
           <p className="text-sm text-foreground">Quer participar do concurso deste evento?</p>
-          <Link to={`/e/${evento.slug}/inscricao`} className="text-sm font-medium text-primary underline-offset-4 hover:underline">
+          <Link
+            to={`/e/${evento.slug}/inscricao`}
+            className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+          >
             Inscrever-se
           </Link>
         </div>

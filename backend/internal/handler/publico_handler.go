@@ -271,9 +271,13 @@ func (h *PublicoHandler) ObterEvento(c *gin.Context) {
 		return
 	}
 	tipos = service.FiltrarLotes(tipos, vendidos, time.Now())
+	guardadas, _ := service.VagasGuardadasPorTipos(h.itensPedido.DB(), ids)
 	tiposResposta := make([]tipoIngressoResposta, 0, len(tipos))
 	for i := range tipos {
-		tiposResposta = append(tiposResposta, paraTipoIngressoResposta(&tipos[i]))
+		r := paraTipoIngressoResposta(&tipos[i])
+		esgotado := int64(tipos[i].Quantidade)-vendidos[tipos[i].ID]-guardadas[tipos[i].ID] <= 0
+		r.Esgotado = &esgotado
+		tiposResposta = append(tiposResposta, r)
 	}
 
 	var localResposta *localPublico

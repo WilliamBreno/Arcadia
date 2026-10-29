@@ -648,6 +648,11 @@ function VendasCard({ eventoId }: { eventoId: number }) {
     queryKey: ['org-evento-vendas', eventoId],
     queryFn: () => obterVendas(eventoId),
   })
+  // Item 7.3: quantas pessoas esperam vaga em cada ingresso esgotado.
+  const { data: fila } = useQuery({
+    queryKey: ['org-evento-fila', eventoId],
+    queryFn: () => api<{ tipo_ingresso_id: number; pessoas: number; ingressos: number }[]>(`/org/eventos/${eventoId}/fila`),
+  })
 
   return (
     <Card className="mt-6">
@@ -670,14 +675,18 @@ function VendasCard({ eventoId }: { eventoId: number }) {
 
         {vendas && vendas.por_tipo.length > 0 && (
           <div className="flex flex-col gap-2">
-            {vendas.por_tipo.map((t) => (
-              <div key={t.tipo_ingresso_id} className="flex items-center justify-between text-sm">
-                <span className="text-foreground">{t.tipo_ingresso_nome}</span>
-                <span className="text-muted-foreground">
-                  {t.quantidade} · {formatarCentavos(t.receita_centavos)}
-                </span>
-              </div>
-            ))}
+            {vendas.por_tipo.map((t) => {
+              const espera = fila?.find((f) => f.tipo_ingresso_id === t.tipo_ingresso_id)
+              return (
+                <div key={t.tipo_ingresso_id} className="flex flex-wrap items-center justify-between gap-x-3 text-sm">
+                  <span className="text-foreground">{t.tipo_ingresso_nome}</span>
+                  <span className="text-muted-foreground">
+                    {t.quantidade} · {formatarCentavos(t.receita_centavos)}
+                    {espera && ` · ${espera.pessoas} ${espera.pessoas === 1 ? 'pessoa' : 'pessoas'} na lista de espera (${espera.ingressos} ingressos)`}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         )}
 
