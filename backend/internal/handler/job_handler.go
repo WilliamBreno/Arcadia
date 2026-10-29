@@ -26,7 +26,9 @@ func (h *JobHandler) ExpirarReservas(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao expirar reservas"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"expirados": total})
+	// Item 7.1: tenta de novo os estornos automáticos que o MP não confirmou.
+	devolucoes := h.checkout.ReprocessarDevolucoes()
+	c.JSON(http.StatusOK, gin.H{"expirados": total, "devolucoes_tentadas": devolucoes})
 }
 
 // EnviarEmails é o job POST /jobs/enviar-emails (item 5.5): esvazia a fila

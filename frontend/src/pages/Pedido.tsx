@@ -8,6 +8,7 @@ import { formatarCentavos } from '@/lib/evento'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Carregando } from '@/components/carregando'
+import { PagamentoNaPagina } from '@/components/pagamento-na-pagina'
 
 type DecisaoCancelamento = { pode: boolean; motivo: string; valor_reembolso_centavos: number }
 
@@ -31,26 +32,12 @@ export default function Pedido() {
   const { id } = useParams()
   const [searchParams] = useSearchParams()
   const statusRetorno = searchParams.get('status')
-  const [erro, setErro] = useState<string | null>(null)
-  const [pagando, setPagando] = useState<'pix' | 'cartao' | null>(null)
 
   const { data: pedido, isLoading, refetch } = useQuery({
     queryKey: ['pedido', id],
     queryFn: () => api<PedidoTipo>(`/pedidos/${id}`),
     refetchInterval: (query) => (query.state.data?.status === 'aguardando_pagamento' ? 5000 : false),
   })
-
-  const pagar = async (metodo: 'pix' | 'cartao') => {
-    setErro(null)
-    setPagando(metodo)
-    try {
-      const resp = await api<{ checkout_url: string }>(`/pedidos/${id}/pagar`, { method: 'POST', body: { metodo } })
-      window.location.href = resp.checkout_url
-    } catch (e) {
-      setErro(e instanceof ApiError ? e.message : 'Erro ao iniciar pagamento')
-      setPagando(null)
-    }
-  }
 
   if (isLoading) return <Carregando />
   if (!pedido) return null
@@ -93,19 +80,7 @@ export default function Pedido() {
                   Reserva válida até {new Date(pedido.expira_em).toLocaleTimeString('pt-BR')}.
                 </p>
               )}
-              {erro && <p className="text-sm text-destructive">{erro}</p>}
-              <div className="flex flex-col gap-2">
-                <Button size="lg" onClick={() => pagar('pix')} disabled={pagando !== null}>
-                  {pagando === 'pix' ? 'Gerando o Pix…' : 'Pagar com Pix'}
-                </Button>
-                <p className="text-center text-xs text-muted-foreground">
-                  Recomendado: confirma na hora e o ingresso chega em segundos.
-                </p>
-                <Button variant="outline" onClick={() => pagar('cartao')} disabled={pagando !== null}>
-                  {pagando === 'cartao' ? 'Abrindo o pagamento…' : 'Pagar com cartão'}
-                </Button>
-                <p className="text-center text-xs text-muted-foreground">Pagamento processado com segurança pelo Mercado Pago.</p>
-              </div>
+              <PagamentoNaPagina pedidoId={pedido.id} totalCentavos={pedido.total_centavos} aoConfirmar={() => refetch()} />
             </>
           )}
 

@@ -40,6 +40,9 @@ type Config struct {
 
 	MercadoPagoAccessToken   string
 	MercadoPagoWebhookSecret string
+	// MercadoPagoPublicKey é a chave pública do formulário de cartão na
+	// página (item 7.1). Não é segredo: vai para o navegador.
+	MercadoPagoPublicKey string
 	// MercadoPagoBaseURL troca a API do MP por um servidor falso local
 	// (só testes de desenvolvimento; proibido em produção).
 	MercadoPagoBaseURL string
@@ -113,6 +116,7 @@ func Carregar() Config {
 
 		MercadoPagoAccessToken:   getEnv("MERCADOPAGO_ACCESS_TOKEN", ""),
 		MercadoPagoWebhookSecret: getEnv("MERCADOPAGO_WEBHOOK_SECRET", ""),
+		MercadoPagoPublicKey:     getEnv("MERCADOPAGO_PUBLIC_KEY", ""),
 		MercadoPagoBaseURL:       getEnv("MERCADOPAGO_BASE_URL", ""),
 		AlertaWebhookURL:         getEnv("ALERTA_WEBHOOK_URL", ""),
 		DBMaxConexoes:            getEnvInt("DB_MAX_CONEXOES", 20),
@@ -154,6 +158,11 @@ func (c Config) ValidarProducao() (erros []error, avisos []string) {
 	}
 	if c.MercadoPagoAccessToken == "" {
 		avisos = append(avisos, "MERCADOPAGO_ACCESS_TOKEN vazio: checkout indisponível")
+	}
+	if c.MercadoPagoPublicKey == "" {
+		avisos = append(avisos, "MERCADOPAGO_PUBLIC_KEY vazio: o cartão abre no site do Mercado Pago (o Pix continua na página)")
+	} else if strings.HasPrefix(c.MercadoPagoPublicKey, "TEST-") {
+		avisos = append(avisos, "MERCADOPAGO_PUBLIC_KEY é de TESTE em produção")
 	}
 	if c.MercadoPagoWebhookSecret == "" {
 		avisos = append(avisos, "MERCADOPAGO_WEBHOOK_SECRET vazio: webhook sem validação de assinatura (segue seguro por reconsultar o MP, mas configure)")

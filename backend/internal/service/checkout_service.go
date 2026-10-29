@@ -13,6 +13,7 @@ import (
 
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/WilliamBreno/Arcadia/backend/internal/domain"
 	"github.com/WilliamBreno/Arcadia/backend/internal/mail"
@@ -401,6 +402,11 @@ func (s *CheckoutService) IniciarPagamento(usuarioID, pedidoID int64, metodo str
 		URLPendente:    s.frontendURL + "/pedidos/" + pedidoIDStr + "?status=pendente",
 		URLNotificacao: s.backendURL + "/api/v1/webhooks/mercadopago",
 	}
+	if metodo == pagamento.MetodoPix && pedido.ExpiraEm != nil && time.Until(*pedido.ExpiraEm) < ValidadePix {
+		// O Pix vale no mínimo 30 minutos no MP: a reserva acompanha (7.1).
+		novo := time.Now().Add(ValidadePix)
+		pedido.ExpiraEm = &novo
+	}
 	if pedido.ExpiraEm != nil {
 		nova.ExpiraEm = *pedido.ExpiraEm
 	}
@@ -471,43 +477,19 @@ func (s *CheckoutService) ProcessarWebhook(mpPaymentID string) error {
 		return nil
 	}
 
-	return s.aprovarPedido(pedido)
+	return s.confirmarPagamento(pedido.ID, registro)
 }
 
+// aprovarPedido confirma o pedido de valor zero (sem processador).
 func (s *CheckoutService) aprovarPedido(pedido *domain.Pedido) error {
-	itens, err := s.itensPedido.ListarPorPedido(pedido.ID)
+	if err := s.confirmarPagamento(pedido.ID, nil); err != nil {
+		return err
+	}
+	atual, err := s.pedidos.BuscarPorID(pedido.ID)
 	if err != nil {
 		return err
 	}
-	evento, err := s.eventos.BuscarPorID(pedido.EventoID)
-	if err != nil {
-		return err
-	}
-
-	agora := time.Now()
-	var lancamentos []domain.Lancamento
-	for i := range itens {
-		item := &itens[i]
-		if item.Status != domain.StatusItemReservado {
-			continue // idempotência extra: já processado antes
-		}
-		item.Status = domain.StatusItemPago
-		if err := s.itensPedido.Salvar(item); err != nil {
-			return err
-		}
-
-		lancamentos = append(lancamentos, lancamentosDaVenda(item, evento, pedido.ID, agora)...)
-	}
-	if err := s.lancamentos.CriarEmLote(lancamentos); err != nil {
-		return err
-	}
-
-	pedido.Status = domain.StatusPedidoPago
-	if err := s.pedidos.Salvar(pedido); err != nil {
-		return err
-	}
-
-	s.enviarEmailConfirmacao(pedido, itens, evento)
+	*pedido = *atual
 	return nil
 }
 
@@ -571,31 +553,43 @@ func (s *CheckoutService) ExpirarReservas() (int, error) {
 	total := 0
 	eventosLiberados := map[int64]bool{}
 	for i := range pedidosExpirados {
-		pedido := &pedidosExpirados[i]
-		itens, err := s.itensPedido.ListarPorPedido(pedido.ID)
-		if err != nil {
-			return total, err
-		}
-		for j := range itens {
-			item := &itens[j]
-			if item.Status == domain.StatusItemReservado {
-				item.Status = domain.StatusItemExpirado
-				if err := s.itensPedido.Salvar(item); err != nil {
-					return total, err
+		expirou := false
+		// Trava o pedido e confere de novo: um pagamento pode ter sido
+		// aprovado entre a listagem e aqui (confirmarPagamento também trava).
+		err := s.db.Transaction(func(tx *gorm.DB) error {
+			var pedido domain.Pedido
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&pedido, pedidosExpirados[i].ID).Error; err != nil {
+				return err
+			}
+			if pedido.Status != domain.StatusPedidoAguardandoPagamento || pedido.ExpiraEm == nil || pedido.ExpiraEm.After(time.Now()) {
+				return nil
+			}
+			var itens []domain.ItemPedido
+			if err := tx.Where("pedido_id = ? AND status = ?", pedido.ID, domain.StatusItemReservado).Find(&itens).Error; err != nil {
+				return err
+			}
+			for j := range itens {
+				itens[j].Status = domain.StatusItemExpirado
+				if err := tx.Save(&itens[j]).Error; err != nil {
+					return err
 				}
-				if item.CupomID != nil {
-					if err := s.cupons.AjustarUsos(nil, *item.CupomID, -1); err != nil {
-						return total, err
+				if itens[j].CupomID != nil {
+					if err := s.cupons.AjustarUsos(tx, *itens[j].CupomID, -1); err != nil {
+						return err
 					}
 				}
 			}
-		}
-		pedido.Status = domain.StatusPedidoExpirado
-		if err := s.pedidos.Salvar(pedido); err != nil {
+			pedido.Status = domain.StatusPedidoExpirado
+			expirou = true
+			return tx.Save(&pedido).Error
+		})
+		if err != nil {
 			return total, err
 		}
-		eventosLiberados[pedido.EventoID] = true
-		total++
+		if expirou {
+			eventosLiberados[pedidosExpirados[i].EventoID] = true
+			total++
+		}
 	}
 	if s.plateia != nil {
 		for eventoID := range eventosLiberados {

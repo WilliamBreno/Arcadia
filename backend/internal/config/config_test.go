@@ -1,12 +1,15 @@
 package config
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func configProducaoValida() Config {
 	return Config{
 		AmbienteApp: "production", JWTSecret: "0123456789abcdef0123456789abcdef", CronSecret: "cron-secret-bem-grande",
 		FrontendURL: "https://evve.app", BackendURL: "https://api.evve.app", DatabaseURL: "postgres://u:p@db.exemplo.com/evve",
-		StorageDriver: "s3", MercadoPagoAccessToken: "APP_USR-x", MercadoPagoWebhookSecret: "w", ResendAPIKey: "re_x",
+		StorageDriver: "s3", MercadoPagoAccessToken: "APP_USR-x", MercadoPagoWebhookSecret: "w", MercadoPagoPublicKey: "APP_USR-pub", ResendAPIKey: "re_x",
 		EmailRemetente: "Evve <no-reply@evve.app>", AlertaWebhookURL: "https://discord.example/webhook",
 	}
 }
@@ -56,5 +59,17 @@ func TestValidarProducaoRecusaMercadoPagoFalso(t *testing.T) {
 	erros, _ := c.ValidarProducao()
 	if len(erros) == 0 {
 		t.Error("MERCADOPAGO_BASE_URL definida em produção deveria ser erro")
+	}
+}
+
+func TestAvisoChavePublicaDoCartao(t *testing.T) {
+	c := configProducaoValida()
+	c.MercadoPagoPublicKey = ""
+	if _, avisos := c.ValidarProducao(); len(avisos) != 1 || !strings.Contains(avisos[0], "MERCADOPAGO_PUBLIC_KEY") {
+		t.Errorf("sem chave pública: aviso (o cartão cai no plano B), veio %v", avisos)
+	}
+	c.MercadoPagoPublicKey = "TEST-pub"
+	if _, avisos := c.ValidarProducao(); len(avisos) != 1 {
+		t.Errorf("chave pública de teste em produção: aviso, veio %v", avisos)
 	}
 }

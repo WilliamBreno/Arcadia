@@ -25,6 +25,10 @@ type Pedido struct {
 	ExpiraEm       *time.Time
 	MPPreferenceID *string
 	AfiliadoID     *int64
+	// Pix gerado na página (item 7.1): um QR por pedido.
+	PixMPPaymentID *string
+	PixCopiaCola   *string
+	PixExpiraEm    *time.Time
 	CriadoEm       time.Time
 }
 

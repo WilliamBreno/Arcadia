@@ -106,7 +106,8 @@ func (s *CheckoutService) atualizarPagamento(registro *domain.Pagamento, p *paga
 	if err != nil || !mudou {
 		return err
 	}
-	return s.aprovarPedido(pedido)
+	registro.Status, registro.ValorCentavos, registro.TaxaProcessadorCentavos = pagamento.StatusAprovado, p.ValorCentavos, p.TaxaProcessadorCentavos
+	return s.confirmarPagamento(pedido.ID, registro)
 }
 
 // registrarContestacao é idempotente por pagamento: cria o registro na

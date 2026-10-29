@@ -3,6 +3,7 @@ package mercadopago
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/WilliamBreno/Arcadia/backend/internal/pagamento"
 )
@@ -100,6 +101,75 @@ func (p *Processador) BuscarPagamento(id string) (*pagamento.Pagamento, error) {
 
 func (p *Processador) Reembolsar(pagamentoID string, valorCentavos int64) (*pagamento.Reembolso, error) {
 	r, err := p.cliente.SolicitarReembolso(pagamentoID, &valorCentavos)
+	if err != nil {
+		return nil, err
+	}
+	return &pagamento.Reembolso{ID: fmt.Sprintf("%d", r.ID)}, nil
+}
+
+const formatoDataMP = "2006-01-02T15:04:05.000-07:00"
+
+// requisicaoPagamento monta o corpo de POST /v1/payments. Função pura,
+// testada: Pix só leva e-mail e validade; cartão leva token, 1 parcela e
+// 3DS no modo "optional" (o banco decide quando pedir confirmação).
+func requisicaoPagamento(n pagamento.NovoPagamento) CriarPagamentoRequest {
+	req := CriarPagamentoRequest{
+		TransactionAmount:   float64(n.ValorCentavos) / 100,
+		Description:         n.Descricao,
+		Payer:               pagador{Email: n.EmailPagador},
+		ExternalReference:   n.Referencia,
+		NotificationURL:     n.URLNotificacao,
+		StatementDescriptor: "EVVE",
+	}
+	if n.Metodo == pagamento.MetodoPix {
+		req.PaymentMethodID = "pix"
+		if !n.ExpiraEm.IsZero() {
+			req.DateOfExpiration = n.ExpiraEm.Format(formatoDataMP)
+		}
+		return req
+	}
+	req.PaymentMethodID = n.BandeiraID
+	req.Token = n.CartaoToken
+	req.IssuerID = n.EmissorID
+	req.Installments = 1
+	req.ThreeDSecureMode = "optional"
+	if n.DocumentoNumero != "" {
+		tipo := n.DocumentoTipo
+		if tipo == "" {
+			tipo = "CPF"
+		}
+		req.Payer.Identification = &identificacao{Type: tipo, Number: n.DocumentoNumero}
+	}
+	return req
+}
+
+func (p *Processador) CriarPagamento(n pagamento.NovoPagamento) (*pagamento.PagamentoCriado, error) {
+	mp, err := p.cliente.CriarPagamento(requisicaoPagamento(n), n.ChaveIdempotencia)
+	if err != nil {
+		return nil, err
+	}
+	criado := &pagamento.PagamentoCriado{
+		ID:            strconv.FormatInt(mp.ID, 10),
+		Status:        mp.Status,
+		StatusDetalhe: mp.StatusDetail,
+		PixCopiaCola:  mp.PointOfInteraction.TransactionData.QRCode,
+		PixQRBase64:   mp.PointOfInteraction.TransactionData.QRCodeBase64,
+		PixExpiraEm:   n.ExpiraEm,
+		DesafioURL:    mp.ThreeDSInfo.ExternalResourceURL,
+		DesafioCreq:   mp.ThreeDSInfo.Creq,
+	}
+	if t, err := time.Parse(formatoDataMP, mp.DateOfExpiration); err == nil {
+		criado.PixExpiraEm = t
+	}
+	return criado, nil
+}
+
+func (p *Processador) CancelarPagamento(id string) error {
+	return p.cliente.CancelarPagamento(id)
+}
+
+func (p *Processador) Devolver(pagamentoID, chave string) (*pagamento.Reembolso, error) {
+	r, err := p.cliente.SolicitarReembolsoCom(pagamentoID, nil, chave)
 	if err != nil {
 		return nil, err
 	}

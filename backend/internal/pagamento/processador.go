@@ -52,6 +52,48 @@ type Pagamento struct {
 	Bruto                   any // resposta original, guardada para auditoria
 }
 
+// NovoPagamento é o pagamento criado direto pela API, sem sair da página
+// do Evve (item 7.1). Pix: só e-mail e validade. Cartão: o token vem do
+// formulário seguro do processador (o número do cartão nunca passa pelo
+// Evve); o documento do titular vai direto ao processador e não é guardado.
+type NovoPagamento struct {
+	Referencia        string
+	Descricao         string
+	ValorCentavos     int64
+	Metodo            string
+	EmailPagador      string
+	ExpiraEm          time.Time // Pix: validade do QR
+	CartaoToken       string
+	BandeiraID        string // ex.: "visa", "master"
+	EmissorID         string
+	DocumentoTipo     string // "CPF"
+	DocumentoNumero   string
+	ChaveIdempotencia string
+	URLNotificacao    string
+}
+
+// Status de um pagamento direto.
+const (
+	StatusPendente  = "pending"
+	StatusRecusado  = "rejected"
+	StatusEmAnalise = "in_process"
+	// DetalheDesafio3DS: o banco pediu a confirmação do titular (3DS).
+	DetalheDesafio3DS = "pending_challenge"
+)
+
+// PagamentoCriado é a resposta do processador ao criar o pagamento.
+type PagamentoCriado struct {
+	ID            string
+	Status        string
+	StatusDetalhe string
+	PixCopiaCola  string
+	PixQRBase64   string
+	PixExpiraEm   time.Time
+	// Desafio 3DS: o frontend abre a tela do banco com estes dados.
+	DesafioURL  string
+	DesafioCreq string
+}
+
 // Reembolso é o estorno confirmado pelo processador.
 type Reembolso struct {
 	ID string
@@ -67,4 +109,11 @@ type Processador interface {
 	BuscarPagamento(id string) (*Pagamento, error)
 	// Reembolsar estorna valorCentavos (parcial) de um pagamento.
 	Reembolsar(pagamentoID string, valorCentavos int64) (*Reembolso, error)
+	// CriarPagamento cobra direto na API, com o comprador na página do Evve.
+	CriarPagamento(NovoPagamento) (*PagamentoCriado, error)
+	// CancelarPagamento invalida um Pix ainda não pago.
+	CancelarPagamento(id string) error
+	// Devolver estorna o pagamento inteiro uma única vez (a chave impede
+	// estorno em dobro quando o pedido é repetido).
+	Devolver(pagamentoID, chave string) (*Reembolso, error)
 }

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -161,6 +162,96 @@ func (h *PedidoHandler) Pagar(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"checkout_url": initPoint})
+}
+
+// Pix é POST /pedidos/:id/pix: gera (ou devolve) o QR do Pix na própria
+// página (item 7.1). A reserva passa a terminar junto com o QR.
+func (h *PedidoHandler) Pix(c *gin.Context) {
+	pedidoID, ok := idDaURL(c)
+	if !ok {
+		return
+	}
+	pix, err := h.service.GerarPix(c.GetInt64(middleware.ChaveContextoUsuarioID), pedidoID)
+	if err != nil {
+		h.responderErroPagamento(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, pix)
+}
+
+type cartaoRequest struct {
+	Token           string `json:"token" binding:"required"`
+	BandeiraID      string `json:"payment_method_id" binding:"required"`
+	EmissorID       string `json:"issuer_id"`
+	DocumentoTipo   string `json:"documento_tipo"`
+	DocumentoNumero string `json:"documento_numero"`
+}
+
+// Cartao é POST /pedidos/:id/cartao com o token do formulário do Mercado
+// Pago (o número do cartão nunca passa pelo Evve).
+func (h *PedidoHandler) Cartao(c *gin.Context) {
+	pedidoID, ok := idDaURL(c)
+	if !ok {
+		return
+	}
+	var req cartaoRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "dados do cartão incompletos"})
+		return
+	}
+	res, err := h.service.PagarCartao(c.GetInt64(middleware.ChaveContextoUsuarioID), pedidoID, service.DadosCartao{
+		Token: req.Token, BandeiraID: req.BandeiraID, EmissorID: req.EmissorID,
+		DocumentoTipo: req.DocumentoTipo, DocumentoNumero: req.DocumentoNumero,
+	})
+	if err != nil {
+		h.responderErroPagamento(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, res)
+}
+
+// Verificar é POST /pedidos/:id/verificar {"pagamento_id": "..."}: reconsulta
+// o pagamento no Mercado Pago (depois da confirmação do banco ou quando a
+// notificação atrasa). Sem pagamento_id, confere o Pix do pedido.
+func (h *PedidoHandler) Verificar(c *gin.Context) {
+	pedidoID, ok := idDaURL(c)
+	if !ok {
+		return
+	}
+	var req struct {
+		PagamentoID string `json:"pagamento_id"`
+	}
+	_ = c.ShouldBindJSON(&req)
+	usuarioID := c.GetInt64(middleware.ChaveContextoUsuarioID)
+	if _, err := h.service.VerificarPagamento(usuarioID, pedidoID, req.PagamentoID); err != nil {
+		h.responderErroPagamento(c, err)
+		return
+	}
+	pedido, itens, err := h.service.ObterPedido(usuarioID, pedidoID)
+	if err != nil {
+		h.responderErro(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, paraPedidoResposta(pedido, itens))
+}
+
+func (h *PedidoHandler) responderErroPagamento(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, service.ErrMercadoPagoNaoConfigurado):
+		c.JSON(http.StatusServiceUnavailable, gin.H{"erro": "pagamento não configurado"})
+	case errors.Is(err, service.ErrCartaoBloqueado):
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"erro": err.Error()})
+	case errors.Is(err, service.ErrReservaExpirada):
+		c.JSON(http.StatusGone, gin.H{"erro": "a reserva expirou. Volte ao evento para comprar de novo."})
+	case errors.Is(err, service.ErrPedidoNaoDisponivelParaPagamento), errors.Is(err, service.ErrDadosCartaoIncompletos),
+		errors.Is(err, service.ErrPagamentoNaoEncontradoNoPedido):
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"erro": err.Error()})
+	case errors.Is(err, service.ErrPedidoNaoPertenceAoUsuario), errors.Is(err, service.ErrPedidoNaoEncontrado):
+		h.responderErro(c, err)
+	default:
+		slog.Error("pagamento na página", "erro", err)
+		c.JSON(http.StatusBadGateway, gin.H{"erro": "não foi possível falar com o Mercado Pago agora. Tente de novo em instantes."})
+	}
 }
 
 func (h *PedidoHandler) responderErro(c *gin.Context, err error) {

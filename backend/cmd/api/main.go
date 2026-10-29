@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log/slog"
+	"net/http"
 	"os"
 	"time"
 	_ "time/tzdata" // fusos horários embutidos (imagem Docker mínima não tem)
@@ -221,6 +222,10 @@ func main() {
 		v1.GET("/destaques", publicoHandler.Destaques)
 		v1.GET("/colecoes", publicoHandler.Colecoes)
 		v1.GET("/eventos/:slug/avaliacoes", avaliacaoPublicoHandler.DoEvento)
+		// Item 7.1: chave pública do formulário de cartão (vazia = plano B).
+		v1.GET("/pagamento/config", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"public_key": cfg.MercadoPagoPublicKey})
+		})
 		v1.GET("/colecoes/:slug", publicoHandler.Colecao)
 		// Item 6.1: sitemap e robots (a Vercel reescreve /sitemap.xml e /robots.txt para cá).
 		seoHandler := handler.NovoSEOHandler(eventoRepo, cfg.FrontendURL)
@@ -275,6 +280,9 @@ func main() {
 		autenticado.POST("/eventos/:slug/solicitacao", plateiaHandler.Solicitar)
 		autenticado.GET("/pedidos/:id", pedidoHandler.Obter)
 		autenticado.POST("/pedidos/:id/pagar", pedidoHandler.Pagar)
+		autenticado.POST("/pedidos/:id/pix", pedidoHandler.Pix)
+		autenticado.POST("/pedidos/:id/cartao", pedidoHandler.Cartao)
+		autenticado.POST("/pedidos/:id/verificar", pedidoHandler.Verificar)
 		autenticado.GET("/itens/:id/cancelamento", cancelamentoHandler.Simular)
 		autenticado.POST("/itens/:id/cancelar", cancelamentoHandler.Cancelar)
 		autenticado.POST("/itens/:id/transferir", transferenciaHandler.Transferir)
