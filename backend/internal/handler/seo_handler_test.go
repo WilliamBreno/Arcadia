@@ -28,6 +28,7 @@ func TestMontarSitemap(t *testing.T) {
 		"<loc>https://evve.app/eventos/maceio-al/danca</loc>",
 		"<loc>https://evve.app/c/roles-geek</loc>",
 		"<loc>https://evve.app/mapa</loc>",
+		"<loc>https://evve.app/quanto-custa</loc>",
 	} {
 		if !strings.Contains(x, esperado) {
 			t.Errorf("sitemap sem %q:\n%s", esperado, x)

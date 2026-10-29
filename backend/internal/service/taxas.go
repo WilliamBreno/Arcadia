@@ -194,10 +194,16 @@ func (s *TaxasService) ParaEvento(evento *domain.Evento) (TaxasEvento, error) {
 	if err != nil {
 		return TaxasEvento{}, err
 	}
+	return s.ParaEventoComRegra(regra, evento), nil
+}
+
+// ParaEventoComRegra reaproveita a regra global já lida (listas de eventos:
+// uma leitura da config para a página inteira, não uma por evento).
+func (s *TaxasService) ParaEventoComRegra(regra RegraTaxas, evento *domain.Evento) TaxasEvento {
 	t := TaxasEvento{Regra: regra, Absorvida: evento.TaxaPagaPor == domain.TaxaPagaPorOrganizador}
 	if rr := s.RegraRegionalDoEvento(evento); rr != nil && rr.TaxaMaximaPercentual != nil {
 		bp := int64(math.Round(*rr.TaxaMaximaPercentual * 100))
 		t.LimiteBP = &bp
 	}
-	return t, nil
+	return t
 }

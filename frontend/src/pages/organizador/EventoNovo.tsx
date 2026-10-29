@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
 
 import { api, ApiError } from '@/lib/api'
@@ -26,6 +26,8 @@ type FormValues = z.infer<typeof schema>
 
 export default function EventoNovo() {
   const navigate = useNavigate()
+  // Título digitado na página "Quanto custa" (item 6.3) chega pela URL.
+  const [params] = useSearchParams()
   const [erro, setErro] = useState<string | null>(null)
 
   const { organizador, carregando } = useOrganizador()
@@ -35,7 +37,7 @@ export default function EventoNovo() {
     control,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { tipo_acesso: 'ingresso', categoria: '' } })
+  } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { titulo: params.get('titulo')?.slice(0, 200) ?? '', tipo_acesso: params.get('tipo') === 'cadastro' ? 'cadastro' : 'ingresso', categoria: '' } })
   const tipoAcesso = watch('tipo_acesso')
 
   const aoEnviar = async (dados: FormValues) => {

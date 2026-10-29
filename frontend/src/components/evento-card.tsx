@@ -42,12 +42,21 @@ export function EventoCard({ evento, etiqueta, detalhe }: Props) {
           </p>
         )}
         <p className="mt-auto flex items-baseline justify-between gap-2 pt-2 text-sm font-medium text-foreground">
-          <span>
-            {evento.gratuito
-              ? 'Gratuito'
-              : evento.preco_a_partir_centavos != null
-                ? `A partir de ${formatarCentavos(evento.preco_a_partir_centavos)}`
-                : ''}
+          <span className="flex flex-col">
+            {evento.gratuito ? (
+              'Gratuito'
+            ) : evento.preco_a_partir_centavos != null ? (
+              <>
+                <span>A partir de {formatarCentavos(evento.preco_final_a_partir_centavos ?? evento.preco_a_partir_centavos)}</span>
+                {evento.preco_final_a_partir_centavos != null && evento.preco_final_a_partir_centavos > evento.preco_a_partir_centavos && (
+                  <span className="text-xs font-normal text-muted-foreground">
+                    inclui {formatarCentavos(evento.preco_final_a_partir_centavos - evento.preco_a_partir_centavos)} de taxa
+                  </span>
+                )}
+              </>
+            ) : (
+              ''
+            )}
           </span>
           {detalhe && <span className="text-xs font-normal text-muted-foreground">{detalhe}</span>}
         </p>

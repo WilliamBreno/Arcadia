@@ -128,3 +128,13 @@
     @apply font-sans;
     }
 }
+/* Movimento (item 6.3): entrada dos blocos e troca do valor do simulador.
+   Só transform e opacidade; quem pede menos movimento vê tudo parado. */
+.surgir-oculto { opacity: 0; transform: translateY(24px); }
+.surgir-visivel { opacity: 1; transform: none; transition: opacity 600ms ease-out, transform 600ms cubic-bezier(0.2, 0.7, 0.2, 1); }
+@keyframes evve-valor { from { opacity: 0.35; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.animar-valor { animation: evve-valor 260ms ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .surgir-oculto, .surgir-visivel { opacity: 1; transform: none; transition: none; }
+  .animar-valor { animation: none; }
+}

@@ -62,6 +62,10 @@ type eventoPublicoItem struct {
 	InicioEm             *string `json:"inicio_em"`
 	PrecoAPartirCentavos *int64  `json:"preco_a_partir_centavos"`
 	Gratuito             bool    `json:"gratuito"`
+	// Preço final do ingresso mais barato, já com a taxa que o comprador paga
+	// (item 6.3: "preço final em destaque"). Igual ao preço quando o
+	// organizador absorve a taxa ou o ingresso é gratuito.
+	PrecoFinalAPartirCentavos *int64 `json:"preco_final_a_partir_centavos,omitempty"`
 	// Coordenadas do local (mapa "perto de mim", item 6.2).
 	Latitude  *float64 `json:"latitude,omitempty"`
 	Longitude *float64 `json:"longitude,omitempty"`
@@ -172,6 +176,12 @@ func (h *PublicoHandler) paraItensPublicos(eventos []domain.Evento, comLocal boo
 	if err != nil {
 		return nil, err
 	}
+	var regra *service.RegraTaxas
+	if h.taxas != nil {
+		if r, err := h.taxas.Regra(); err == nil {
+			regra = &r
+		}
+	}
 
 	itens := make([]eventoPublicoItem, 0, len(eventos))
 	for i := range eventos {
@@ -196,6 +206,10 @@ func (h *PublicoHandler) paraItensPublicos(eventos []domain.Evento, comLocal boo
 		if preco, ok := precos[e.ID]; ok {
 			item.PrecoAPartirCentavos = &preco
 			item.Gratuito = preco == 0
+			if regra != nil {
+				final := h.taxas.ParaEventoComRegra(*regra, e).Calcular(preco, false).TotalCentavos
+				item.PrecoFinalAPartirCentavos = &final
+			}
 		}
 		itens = append(itens, item)
 	}
@@ -362,4 +376,21 @@ func vendasEncerradas(evento *domain.Evento, tipos []domain.TipoIngresso, sessoe
 		}
 	}
 	return len(tipos) > 0 || !service.VendaAberta(evento, nil, sessoes, agora)
+}
+
+// Taxas é GET /api/v1/taxas: a tabela pública de taxas (página "Quanto
+// custa", item 6.3). Sem limites estaduais: esses aparecem no evento.
+func (h *PublicoHandler) Taxas(c *gin.Context) {
+	regra, err := h.taxas.Regra()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao ler as taxas"})
+		return
+	}
+	c.Header("Cache-Control", "public, max-age=600")
+	c.JSON(http.StatusOK, gin.H{
+		"faixas":                 regra.Faixas,
+		"garantia_percentual_bp": regra.GarantiaPercentualBP,
+		"garantia_min_centavos":  regra.GarantiaMinCentavos,
+		"garantia_max_centavos":  regra.GarantiaMaxCentavos,
+	})
 }

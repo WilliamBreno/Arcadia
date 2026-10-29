@@ -8,6 +8,7 @@ import { formatarCentavos } from '@/lib/evento'
 import { estiloTema } from '@/lib/tema'
 import { calcularItem } from '@/lib/taxas'
 import { SeloVerificado } from '@/components/selo-verificado'
+import { EvveGarante } from '@/components/evve-garante'
 import type { EventoDetalhe as EventoDetalheTipo } from '@/lib/publico'
 import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
@@ -256,16 +257,20 @@ export default function EventoDetalhe() {
                     </p>
                   )}
                   {i.descricao && <p className="text-sm text-muted-foreground">{i.descricao}</p>}
-                  <p className="text-sm font-medium text-foreground">
-                    {i.preco_centavos === 0 ? 'Gratuito, sem taxa' : formatarCentavos(i.preco_centavos)}
-                    {i.preco_centavos > 0 && (
-                      <span className="text-xs font-normal text-muted-foreground">
+                  {i.preco_centavos === 0 ? (
+                    <p className="text-lg font-semibold text-foreground">Gratuito, sem taxa</p>
+                  ) : (
+                    <>
+                      <p className="text-lg font-semibold tabular-nums text-foreground">
+                        {formatarCentavos(calcularItem(data.taxas, i.preco_centavos, false).total)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
                         {taxaAbsorvida
-                          ? ' · sem taxa para você'
-                          : ` + ${formatarCentavos(calcularItem(data.taxas, i.preco_centavos, false).taxa)} de taxa`}
-                      </span>
-                    )}
-                  </p>
+                          ? 'Sem taxa para você: o organizador paga a taxa'
+                          : `${formatarCentavos(i.preco_centavos)} + ${formatarCentavos(calcularItem(data.taxas, i.preco_centavos, false).taxa)} de taxa`}
+                      </p>
+                    </>
+                  )}
                 </div>
                 <div className={`flex items-center gap-2 ${precisaAprovacao || vendasEncerradas ? 'hidden' : ''}`}>
                   <Button
@@ -340,10 +345,12 @@ export default function EventoDetalhe() {
         {erro && <p className="mt-2 text-sm text-destructive">{erro}</p>}
       </section>
 
-      {evento.garantia_habilitada && !eventoComecou && (
-        <p className="mt-6 text-sm text-muted-foreground">
-          Este evento oferece <strong>garantia de vaga</strong>: cancele até o início do evento e receba tudo de volta.
-        </p>
+      {!vendasEncerradas && (
+        <EvveGarante
+          garantiaHabilitada={evento.garantia_habilitada}
+          organizadorVerificado={!!organizador?.verificado}
+          eventoComecou={eventoComecou}
+        />
       )}
 
       {data.sessoes.filter((s) => s.status === 'ativa').length > 1 && (

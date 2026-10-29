@@ -203,6 +203,7 @@ func main() {
 		v1.GET("/categorias", publicoHandler.Categorias)
 		// Item 6.2: descoberta (cidades, categorias, destaques e coleções).
 		v1.GET("/descoberta", publicoHandler.Descoberta)
+		v1.GET("/taxas", publicoHandler.Taxas) // item 6.3: página "Quanto custa"
 		v1.GET("/destaques", publicoHandler.Destaques)
 		v1.GET("/colecoes", publicoHandler.Colecoes)
 		v1.GET("/colecoes/:slug", publicoHandler.Colecao)

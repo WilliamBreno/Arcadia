@@ -42,7 +42,11 @@ const limiteSitemap = 45000
 // (cidade, cidade + categoria, coleções — item 6.2), eventos e organizadores.
 func montarSitemap(base string, descoberta []string, eventos, organizadores []repository.ItemSitemap) urlSet {
 	s := urlSet{XMLNS: "http://www.sitemaps.org/schemas/sitemap/0.9"}
-	s.URLs = append(s.URLs, urlSitemap{Loc: base + "/", ChangeFreq: "daily"}, urlSitemap{Loc: base + "/mapa", ChangeFreq: "daily"})
+	s.URLs = append(s.URLs,
+		urlSitemap{Loc: base + "/", ChangeFreq: "daily"},
+		urlSitemap{Loc: base + "/mapa", ChangeFreq: "daily"},
+		urlSitemap{Loc: base + "/quanto-custa", ChangeFreq: "monthly"},
+	)
 	for _, caminho := range descoberta {
 		s.URLs = append(s.URLs, urlSitemap{Loc: base + caminho, ChangeFreq: "daily"})
 	}

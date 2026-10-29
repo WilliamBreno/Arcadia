@@ -12,6 +12,8 @@ export type EventoPublicoItem = {
   gratuito: boolean
   latitude?: number
   longitude?: number
+  // Ingresso mais barato já com a taxa que o comprador paga (item 6.3).
+  preco_final_a_partir_centavos?: number
 }
 
 export type ListaEventosResposta = {
