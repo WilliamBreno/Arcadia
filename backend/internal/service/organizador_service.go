@@ -161,3 +161,6 @@ func documentoValido(tipo domain.TipoPessoa, documento string) bool {
 		return false
 	}
 }
+
+// Slugify é a versão pública (URLs de cidade, categoria e coleção, item 6.2).
+func Slugify(s string) string { return slugify(s) }

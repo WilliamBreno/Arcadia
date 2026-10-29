@@ -220,3 +220,60 @@ export function renderizarOrganizador(html: string, d: OrganizadorSEO, base: str
   ].join('')
   return aplicar(html, head, corpo)
 }
+
+// --- Páginas de lista: cidade, cidade + categoria e coleção (item 6.2) ---
+
+export type ListaSEO = {
+  titulo: string // "Eventos em Maceió"
+  descricao: string
+  caminho: string // "/eventos/maceio-al" (com ?quando= se houver)
+  eventos: { slug: string; titulo: string; inicio_em: string | null; cidade?: string; uf?: string }[]
+  semIndexar?: boolean // página vazia não deve ir para o Google
+}
+
+export function renderizarLista(html: string, d: ListaSEO, base: string): string {
+  const url = `${base}${d.caminho}`
+  const ld = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: d.titulo,
+    url,
+    numberOfItems: d.eventos.length,
+    itemListElement: d.eventos.slice(0, 50).map((e, i) => ({ '@type': 'ListItem', position: i + 1, url: `${base}/e/${e.slug}`, name: e.titulo })),
+  }
+  const head = [
+    `<title>${escapeHtml(`${d.titulo} | Evve`)}</title>`,
+    `<meta name="description" content="${escapeHtml(resumo(d.descricao))}" />`,
+    `<link rel="canonical" href="${escapeHtml(url)}" />`,
+    `<meta property="og:type" content="website" />`,
+    `<meta property="og:site_name" content="Evve" />`,
+    `<meta property="og:title" content="${escapeHtml(d.titulo)}" />`,
+    `<meta property="og:description" content="${escapeHtml(resumo(d.descricao))}" />`,
+    `<meta property="og:url" content="${escapeHtml(url)}" />`,
+    `<meta property="og:image" content="${escapeHtml(`${base}/brand/og.png`)}" />`,
+    `<meta name="twitter:card" content="summary_large_image" />`,
+    `<script type="application/ld+json">${jsonSeguro(ld)}</script>`,
+  ]
+  if (d.semIndexar) head.push(`<meta name="robots" content="noindex" />`)
+  const lista = d.eventos
+    .map((e) => {
+      const quando = e.inicio_em ? ` · ${dataPorExtenso(e.inicio_em, 'America/Maceio')}` : ''
+      return `<li><a href="/e/${escapeHtml(e.slug)}">${escapeHtml(e.titulo)}</a>${escapeHtml(quando)}</li>`
+    })
+    .join('')
+  const corpo = ['<main>', `<h1>${escapeHtml(d.titulo)}</h1>`, `<p>${escapeHtml(d.descricao)}</p>`, lista ? `<ul>${lista}</ul>` : '<p>Nenhum evento no momento.</p>', '</main>'].join('')
+  return aplicar(html, head, corpo)
+}
+
+const ROTULO_QUANDO: Record<string, string> = { hoje: 'hoje', amanha: 'amanhã', 'fim-de-semana': 'neste fim de semana' }
+
+// Monta o título e a descrição de uma página de cidade (igual à tela).
+export function textosCidade(cidade: string, uf: string, categoria: string | null, quando: string, total: number) {
+  const q = ROTULO_QUANDO[quando] ? ` ${ROTULO_QUANDO[quando]}` : ''
+  const titulo = `${categoria ? `${categoria} em` : 'Eventos em'} ${cidade}${q}`
+  const descricao =
+    total > 0
+      ? `${total} evento(s)${categoria ? ` de ${categoria}` : ''} em ${cidade}/${uf}${q}: datas, locais e ingressos no Evve.`
+      : `Eventos${categoria ? ` de ${categoria}` : ''} em ${cidade}/${uf}${q} no Evve.`
+  return { titulo, descricao }
+}

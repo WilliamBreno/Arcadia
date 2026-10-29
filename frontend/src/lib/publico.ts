@@ -10,6 +10,8 @@ export type EventoPublicoItem = {
   inicio_em: string | null
   preco_a_partir_centavos: number | null
   gratuito: boolean
+  latitude?: number
+  longitude?: number
 }
 
 export type ListaEventosResposta = {

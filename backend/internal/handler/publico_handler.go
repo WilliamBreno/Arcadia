@@ -62,27 +62,47 @@ type eventoPublicoItem struct {
 	InicioEm             *string `json:"inicio_em"`
 	PrecoAPartirCentavos *int64  `json:"preco_a_partir_centavos"`
 	Gratuito             bool    `json:"gratuito"`
+	// Coordenadas do local (mapa "perto de mim", item 6.2).
+	Latitude  *float64 `json:"latitude,omitempty"`
+	Longitude *float64 `json:"longitude,omitempty"`
 }
 
-// atalhoParaIntervalo converte hoje|amanha|fim-de-semana num intervalo de
-// datas. Usa o horário do servidor (UTC) — simplificação registrada na
-// seção 14; o ideal seria por fuso do evento/usuário.
+// fusoPadrao: fuso dos atalhos de data (o padrão dos eventos, seção 5).
+var fusoPadrao = func() *time.Location {
+	if l, err := time.LoadLocation("America/Maceio"); err == nil {
+		return l
+	}
+	return time.FixedZone("BRT", -3*3600)
+}()
+
+// atalhoParaIntervalo converte hoje|amanha|fim-de-semana num intervalo, no
+// fuso de Brasília/Maceió (item 6.2; antes usava UTC e "hoje" virava às 21h).
+// "fim-de-semana" é de sábado 00h a segunda 00h; no próprio domingo vale o
+// fim de semana corrente (antes pulava para o sábado seguinte).
 func atalhoParaIntervalo(atalho string) (de, ate *time.Time) {
-	agora := time.Now().UTC()
-	inicioHoje := time.Date(agora.Year(), agora.Month(), agora.Day(), 0, 0, 0, 0, time.UTC)
+	return intervaloDoAtalho(atalho, time.Now())
+}
+
+func intervaloDoAtalho(atalho string, agora time.Time) (de, ate *time.Time) {
+	local := agora.In(fusoPadrao)
+	inicioHoje := time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, fusoPadrao)
 
 	switch atalho {
 	case "hoje":
-		fim := inicioHoje.Add(24 * time.Hour)
+		fim := inicioHoje.AddDate(0, 0, 1)
 		return &inicioHoje, &fim
 	case "amanha":
-		inicio := inicioHoje.Add(24 * time.Hour)
-		fim := inicio.Add(24 * time.Hour)
+		inicio := inicioHoje.AddDate(0, 0, 1)
+		fim := inicio.AddDate(0, 0, 1)
 		return &inicio, &fim
 	case "fim-de-semana":
-		diasAteSabado := (6 - int(agora.Weekday()) + 7) % 7
-		sabado := inicioHoje.Add(time.Duration(diasAteSabado) * 24 * time.Hour)
-		segunda := sabado.Add(2 * 24 * time.Hour)
+		var sabado time.Time
+		if local.Weekday() == time.Sunday {
+			sabado = inicioHoje.AddDate(0, 0, -1)
+		} else {
+			sabado = inicioHoje.AddDate(0, 0, int(time.Saturday-local.Weekday()))
+		}
+		segunda := sabado.AddDate(0, 0, 2)
 		return &sabado, &segunda
 	default:
 		return nil, nil
@@ -114,6 +134,14 @@ func (h *PublicoHandler) ListarEventos(c *gin.Context) {
 		filtros.DataDe, filtros.DataAte = atalhoParaIntervalo(atalho)
 	}
 	filtros.SomenteGratuitos = c.Query("gratuito") == "true"
+	// Item 6.2: a listagem pública mostra só o que ainda não terminou.
+	filtros.SomenteFuturos = c.Query("passados") != "true"
+	if lat, errLat := strconv.ParseFloat(c.Query("lat"), 64); errLat == nil {
+		if lng, errLng := strconv.ParseFloat(c.Query("lng"), 64); errLng == nil && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180 {
+			filtros.Lat, filtros.Lng = &lat, &lng
+			filtros.RaioKm, _ = strconv.ParseFloat(c.Query("raio_km"), 64)
+		}
+	}
 	filtros.Pagina, _ = strconv.Atoi(c.DefaultQuery("pagina", "1"))
 	filtros.PorPagina, _ = strconv.Atoi(c.DefaultQuery("por_pagina", "20"))
 
@@ -162,6 +190,7 @@ func (h *PublicoHandler) paraItensPublicos(eventos []domain.Evento, comLocal boo
 			if local, err := h.locais.BuscarPorID(*e.LocalID); err == nil {
 				item.Cidade = local.Cidade
 				item.UF = local.UF
+				item.Latitude, item.Longitude = local.Latitude, local.Longitude
 			}
 		}
 		if preco, ok := precos[e.ID]; ok {

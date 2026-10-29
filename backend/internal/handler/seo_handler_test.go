@@ -11,7 +11,7 @@ import (
 
 func TestMontarSitemap(t *testing.T) {
 	d := time.Date(2026, 10, 26, 15, 0, 0, 0, time.UTC)
-	s := montarSitemap("https://evve.app",
+	s := montarSitemap("https://evve.app", []string{"/eventos/maceio-al", "/eventos/maceio-al/danca", "/c/roles-geek"},
 		[]repository.ItemSitemap{{Slug: "cosplay-maceio", AtualizadoEm: d}},
 		[]repository.ItemSitemap{{Slug: "org-geek", AtualizadoEm: d}})
 	b, err := xml.Marshal(s)
@@ -24,6 +24,10 @@ func TestMontarSitemap(t *testing.T) {
 		"<loc>https://evve.app/</loc>",
 		"<loc>https://evve.app/e/cosplay-maceio</loc><lastmod>2026-10-26</lastmod>",
 		"<loc>https://evve.app/o/org-geek</loc>",
+		"<loc>https://evve.app/eventos/maceio-al</loc>",
+		"<loc>https://evve.app/eventos/maceio-al/danca</loc>",
+		"<loc>https://evve.app/c/roles-geek</loc>",
+		"<loc>https://evve.app/mapa</loc>",
 	} {
 		if !strings.Contains(x, esperado) {
 			t.Errorf("sitemap sem %q:\n%s", esperado, x)

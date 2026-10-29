@@ -1,9 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
+import { MapPin } from 'lucide-react'
 import { useState } from 'react'
 
 import { api } from '@/lib/api'
 import type { ListaEventosResposta } from '@/lib/publico'
+import { listarColecoes, obterDescoberta, obterDestaques } from '@/lib/descoberta'
+import { ChipLink } from '@/components/chip'
 import { EventoCard } from '@/components/evento-card'
+import { TrilhoEventos } from '@/components/trilho-eventos'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
@@ -21,6 +25,12 @@ export default function Home() {
   const [buscaAplicada, setBuscaAplicada] = useState('')
   const [atalho, setAtalho] = useState('')
   const [gratuito, setGratuito] = useState(false)
+
+  // Item 6.2: vitrine (cidades, destaques e coleções). Some durante a busca.
+  const descoberta = useQuery({ queryKey: ['descoberta', ''], queryFn: () => obterDescoberta() })
+  const destaques = useQuery({ queryKey: ['destaques', ''], queryFn: () => obterDestaques() })
+  const colecoes = useQuery({ queryKey: ['colecoes'], queryFn: listarColecoes })
+  const vitrine = !buscaAplicada
 
   const { data, isLoading } = useQuery({
     queryKey: ['eventos-publicos', buscaAplicada, atalho, gratuito],
@@ -59,6 +69,30 @@ export default function Home() {
         </form>
       </section>
 
+      <nav aria-label="Explorar" className="-mx-4 mb-10 flex gap-2 overflow-x-auto px-4 pb-1">
+        <ChipLink to="/mapa">
+          <MapPin className="size-3.5" aria-hidden="true" /> Perto de mim
+        </ChipLink>
+        {descoberta.data?.cidades.slice(0, 12).map((c) => (
+          <ChipLink key={c.slug} to={`/eventos/${c.slug}`}>
+            {c.cidade}/{c.uf}
+          </ChipLink>
+        ))}
+      </nav>
+
+      {vitrine && destaques.data && (
+        <>
+          <TrilhoEventos titulo="Em alta" subtitulo="Os mais comprados nos últimos 7 dias" eventos={destaques.data.em_alta} ranking />
+          <TrilhoEventos titulo="Quase esgotando" eventos={destaques.data.quase_esgotando} etiqueta="Quase esgotando" />
+        </>
+      )}
+      {vitrine &&
+        colecoes.data?.map((c) => (
+          <TrilhoEventos key={c.slug} titulo={c.titulo} subtitulo={c.descricao} eventos={c.eventos} verTudo={`/c/${c.slug}`} />
+        ))}
+      {vitrine && destaques.data && <TrilhoEventos titulo="Novos esta semana" eventos={destaques.data.novos} />}
+
+      <h2 className="mb-3 text-xl font-bold text-foreground">{buscaAplicada ? `Resultados para “${buscaAplicada}”` : 'Todos os eventos'}</h2>
       <section className="mb-6 flex flex-wrap items-center gap-2">
         {atalhos.map((a) => (
           <button

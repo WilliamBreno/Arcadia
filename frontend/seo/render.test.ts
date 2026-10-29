@@ -134,3 +134,25 @@ test('robôs reconhecidos e humanos não', async () => {
   for (const ua of robos) assert.ok(REGEX_ROBO.test(ua), ua)
   assert.ok(!REGEX_ROBO.test('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36'))
 })
+
+test('página da cidade: título, ItemList e links', async () => {
+  const { renderizarLista, textosCidade } = await import('./render.ts')
+  const t = textosCidade('Maceió', 'AL', 'Dança', 'fim-de-semana', 2)
+  assert.equal(t.titulo, 'Dança em Maceió neste fim de semana')
+  const html = renderizarLista(HTML, {
+    ...t,
+    caminho: '/eventos/maceio-al/danca?quando=fim-de-semana',
+    eventos: [{ slug: 'batalha', titulo: 'Batalha <de> Dança', inicio_em: '2026-11-21T22:00:00Z' }],
+  }, 'https://evve.app')
+  assert.match(html, /<title>Dança em Maceió neste fim de semana \| Evve<\/title>/)
+  assert.match(html, /<link rel="canonical" href="https:\/\/evve.app\/eventos\/maceio-al\/danca\?quando=fim-de-semana" \/>/)
+  assert.match(html, /"@type":"ItemList"/)
+  assert.match(html, /<a href="\/e\/batalha">Batalha &lt;de&gt; Dança<\/a>/)
+  assert.ok(!html.includes('noindex'))
+})
+
+test('lista vazia não vai para o Google', async () => {
+  const { renderizarLista } = await import('./render.ts')
+  const html = renderizarLista(HTML, { titulo: 'X', descricao: 'Y', caminho: '/c/x', eventos: [], semIndexar: true }, 'https://evve.app')
+  assert.match(html, /noindex/)
+})

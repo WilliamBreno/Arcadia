@@ -20,6 +20,10 @@ import EventoNovo from '@/pages/organizador/EventoNovo'
 import AdminRelatorios from '@/pages/admin/AdminRelatorios'
 import AdminRepasses from '@/pages/admin/AdminRepasses'
 import AdminOrganizadores from '@/pages/admin/AdminOrganizadores'
+import AdminColecoes from '@/pages/admin/AdminColecoes'
+import CidadeEventos from '@/pages/CidadeEventos'
+import ColecaoPublica from '@/pages/ColecaoPublica'
+import MapaEventos from '@/pages/MapaEventos'
 import ApiKeys from '@/pages/organizador/ApiKeys'
 import Equipe from '@/pages/organizador/Equipe'
 import Eventos from '@/pages/organizador/Eventos'
@@ -35,6 +39,10 @@ function App() {
       <Route element={<SiteLayout />}>
         <Route path="/" element={<Home />} />
         <Route path="/e/:slug" element={<EventoDetalhe />} />
+        <Route path="/eventos/:cidade" element={<CidadeEventos />} />
+        <Route path="/eventos/:cidade/:categoria" element={<CidadeEventos />} />
+        <Route path="/c/:slug" element={<ColecaoPublica />} />
+        <Route path="/mapa" element={<MapaEventos />} />
         <Route path="/o/:slug" element={<OrganizadorPublico />} />
         <Route path="/convite/:token" element={<Convite />} />
         <Route path="/ingresso/:codigo/:token" element={<IngressoPublico />} />
@@ -60,6 +68,7 @@ function App() {
           <Route path="/admin/repasses" element={<AdminRepasses />} />
           <Route path="/admin/relatorios" element={<AdminRelatorios />} />
           <Route path="/admin/organizadores" element={<AdminOrganizadores />} />
+          <Route path="/admin/colecoes" element={<AdminColecoes />} />
           <Route path="/organizador/eventos/novo" element={<EventoNovo />} />
           <Route path="/organizador/eventos/:id" element={<EventoEditar />} />
         </Route>

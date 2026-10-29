@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"time"
+	_ "time/tzdata" // fusos horários embutidos (imagem Docker mínima não tem)
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -200,6 +201,11 @@ func main() {
 		v1.GET("/eventos/:slug", publicoHandler.ObterEvento)
 		v1.GET("/organizadores/:slug", publicoHandler.ObterOrganizador)
 		v1.GET("/categorias", publicoHandler.Categorias)
+		// Item 6.2: descoberta (cidades, categorias, destaques e coleções).
+		v1.GET("/descoberta", publicoHandler.Descoberta)
+		v1.GET("/destaques", publicoHandler.Destaques)
+		v1.GET("/colecoes", publicoHandler.Colecoes)
+		v1.GET("/colecoes/:slug", publicoHandler.Colecao)
 		// Item 6.1: sitemap e robots (a Vercel reescreve /sitemap.xml e /robots.txt para cá).
 		seoHandler := handler.NovoSEOHandler(eventoRepo, cfg.FrontendURL)
 		v1.GET("/seo/sitemap.xml", seoHandler.Sitemap)
@@ -348,6 +354,10 @@ func main() {
 		admin.GET("/relatorios", adminHandler.Relatorios)
 		admin.GET("/reembolsos", adminHandler.ListarReembolsos)
 		admin.GET("/contestacoes", adminHandler.ListarContestacoes)
+		admin.GET("/colecoes", publicoHandler.ListarColecoesAdmin)
+		admin.POST("/colecoes", publicoHandler.SalvarColecao)
+		admin.PUT("/colecoes/:id", publicoHandler.SalvarColecao)
+		admin.DELETE("/colecoes/:id", publicoHandler.ExcluirColecao)
 		admin.POST("/reembolsos/:id/reprocessar", adminHandler.ReprocessarReembolso)
 	}
 

@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom'
 const links = [
   { to: '/admin/repasses', rotulo: 'Repasses' },
   { to: '/admin/organizadores', rotulo: 'Organizadores' },
+  { to: '/admin/colecoes', rotulo: 'Coleções' },
   { to: '/admin/relatorios', rotulo: 'Relatórios' },
 ]
 

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/WilliamBreno/Arcadia/backend/internal/domain"
 )
@@ -20,8 +21,18 @@ type FiltrosEventoPublico struct {
 	SomenteGratuitos bool
 	Pagina           int
 	PorPagina        int
-	Ordenar          string // "data" (padrão) | "recentes"
+	Ordenar          string // "data" (padrão) | "recentes" | "distancia"
+	// Item 6.2: só eventos que ainda não terminaram (padrão da listagem pública).
+	SomenteFuturos bool
+	// Item 6.2: "perto de mim" — com Lat/Lng, filtra pelo raio (km) e permite
+	// ordenar por distância. Eventos online ou sem coordenadas ficam de fora.
+	Lat, Lng *float64
+	RaioKm   float64
 }
+
+// expressaoDistancia: distância em km entre o ponto e o local (fórmula de
+// Haversine, raio da Terra 6371 km). LEAST evita erro de arredondamento no acos.
+const expressaoDistancia = "(6371 * acos(LEAST(1, cos(radians(?)) * cos(radians(locais.latitude)) * cos(radians(locais.longitude) - radians(?)) + sin(radians(?)) * sin(radians(locais.latitude)))))"
 
 // ListarPublicos lista eventos publicados e com visibilidade pública —
 // usado pela home e pela busca (item 1.4). "não_listado" nunca aparece
@@ -54,6 +65,17 @@ func (r *EventoRepository) ListarPublicos(f FiltrosEventoPublico) ([]domain.Even
 	if f.DataAte != nil {
 		base = base.Where("eventos.inicio_em <= ?", f.DataAte)
 	}
+	if f.SomenteFuturos {
+		base = base.Where(condFuturo)
+	}
+	if f.Lat != nil && f.Lng != nil {
+		raio := f.RaioKm
+		if raio <= 0 || raio > 500 {
+			raio = 50
+		}
+		base = base.Where("locais.latitude IS NOT NULL AND locais.longitude IS NOT NULL").
+			Where(expressaoDistancia+" <= ?", *f.Lat, *f.Lng, *f.Lat, raio)
+	}
 	if f.SomenteGratuitos {
 		base = base.Where("EXISTS (SELECT 1 FROM tipos_ingresso ti WHERE ti.evento_id = eventos.id AND ti.ativo AND ti.preco_centavos = 0)")
 	}
@@ -72,15 +94,20 @@ func (r *EventoRepository) ListarPublicos(f FiltrosEventoPublico) ([]domain.Even
 		porPagina = 20
 	}
 
-	ordenacao := "eventos.inicio_em ASC"
-	if f.Ordenar == "recentes" {
-		ordenacao = "eventos.criado_em DESC"
+	ordenacao := clause.OrderBy{Expression: clause.Expr{SQL: "eventos.inicio_em ASC"}}
+	switch {
+	case f.Ordenar == "recentes":
+		ordenacao = clause.OrderBy{Expression: clause.Expr{SQL: "eventos.criado_em DESC"}}
+	case f.Ordenar == "distancia" && f.Lat != nil && f.Lng != nil:
+		ordenacao = clause.OrderBy{Expression: clause.Expr{
+			SQL: expressaoDistancia + " ASC", Vars: []any{*f.Lat, *f.Lng, *f.Lat}, WithoutParentheses: true,
+		}}
 	}
 
 	var eventos []domain.Evento
 	err := base.Session(&gorm.Session{}).
 		Select("eventos.*").
-		Order(ordenacao).
+		Clauses(ordenacao).
 		Limit(porPagina).
 		Offset((pagina - 1) * porPagina).
 		Find(&eventos).Error

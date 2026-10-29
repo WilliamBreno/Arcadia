@@ -1,18 +1,7 @@
-import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
-import markerIcon from 'leaflet/dist/images/marker-icon.png'
-import markerShadow from 'leaflet/dist/images/marker-shadow.png'
+import '@/lib/leaflet-icones'
 import { useEffect, useState } from 'react'
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet'
-
-// react-leaflet não resolve os ícones padrão com o empacotador do Vite —
-// aponta pros assets já processados manualmente.
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIcon2x,
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow,
-})
 
 const CENTRO_PADRAO: [number, number] = [-9.6498, -35.7089] // Maceió/AL
 
