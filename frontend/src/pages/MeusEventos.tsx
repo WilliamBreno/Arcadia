@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { api } from '@/lib/api'
 import type { MeuEvento } from '@/lib/conta'
 import { Card, CardContent } from '@/components/ui/card'
+import { useSeguindo } from '@/lib/seguir'
 import { Carregando } from '@/components/carregando'
 
 const rotuloSelo: Record<MeuEvento['selos'][number], string> = {
@@ -61,6 +62,37 @@ export default function MeusEventos() {
           </Link>
         ))}
       </div>
+      <VoceSegue />
     </main>
+  )
+}
+
+// Quem a pessoa segue (item 6.4): cada um gera um e-mail a cada evento novo.
+function VoceSegue() {
+  const { lista, deixar } = useSeguindo()
+  if (lista.length === 0) return null
+  return (
+    <section className="mt-12" aria-labelledby="titulo-segue">
+      <h2 id="titulo-segue" className="text-xl font-semibold text-foreground">
+        Você segue
+      </h2>
+      <p className="mb-4 text-sm text-muted-foreground">Você recebe um e-mail quando sai um evento novo de cada um.</p>
+      <ul className="flex flex-col gap-2">
+        {lista.map((s) => (
+          <li key={s.tipo + s.alvo} className="flex items-center justify-between gap-3 rounded-lg bg-muted px-3 py-2">
+            <span className="text-foreground">
+              {s.rotulo || s.alvo} <span className="text-xs text-muted-foreground">({s.tipo === 'organizador' ? 'organizador' : 'categoria'})</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => deixar.mutate({ tipo: s.tipo, alvo: s.alvo })}
+              className="text-sm font-medium text-foreground underline underline-offset-4"
+            >
+              Deixar de seguir
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }

@@ -5,7 +5,6 @@ import (
 	"html"
 	"log/slog"
 	"strings"
-	"time"
 
 	"github.com/skip2/go-qrcode"
 
@@ -25,7 +24,7 @@ func corpoEmailIngressos(saudacao, intro string, evento *domain.Evento, itens []
 	fmt.Fprintf(&b, `<p>%s</p><p>%s</p>`, html.EscapeString(saudacao), intro)
 	fmt.Fprintf(&b, `<h2 style="margin:16px 0 4px">%s</h2>`, html.EscapeString(evento.Titulo))
 	if evento.InicioEm != nil {
-		fmt.Fprintf(&b, `<p style="margin:0 0 16px;color:#555">%s</p>`, evento.InicioEm.In(time.Local).Format("02/01/2006 às 15:04"))
+		fmt.Fprintf(&b, `<p style="margin:0 0 16px;color:#555">%s</p>`, html.EscapeString(DataDoEvento(evento)))
 	}
 
 	for i, it := range itens {

@@ -12,7 +12,8 @@ export function ProtectedRoute() {
   }
 
   if (!usuario) {
-    return <Navigate to="/login" state={{ de: location.pathname }} replace />
+    // Guarda também os parâmetros (ex.: ?titulo= vindo de "Quanto custa").
+    return <Navigate to="/login" state={{ de: location.pathname + location.search }} replace />
   }
 
   return <Outlet />

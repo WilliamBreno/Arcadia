@@ -22,6 +22,7 @@ type PublicoHandler struct {
 	cronograma    *repository.CronogramaRepository
 	sessoes       *repository.SessaoRepository
 	taxas         *service.TaxasService
+	seguir        *service.SeguirService
 }
 
 // DefinirTaxas liga o cálculo de taxas por faixa (item 5.1).
@@ -237,6 +238,7 @@ type localPublico struct {
 }
 
 type organizadorPublico struct {
+	ID          int64  `json:"id"` // para seguir (item 6.4)
 	NomePublico string `json:"nome_publico"`
 	Slug        string `json:"slug"`
 	Descricao   string `json:"descricao"`
@@ -287,7 +289,7 @@ func (h *PublicoHandler) ObterEvento(c *gin.Context) {
 	var organizadorResposta *organizadorPublico
 	if organizador, err := h.organizadores.BuscarPorID(evento.OrganizadorID); err == nil {
 		organizadorResposta = &organizadorPublico{
-			NomePublico: organizador.NomePublico, Slug: organizador.Slug,
+			ID: organizador.ID, NomePublico: organizador.NomePublico, Slug: organizador.Slug,
 			Descricao: organizador.Descricao, LogoURL: organizador.LogoURL,
 			Instagram: organizador.Instagram, Site: organizador.Site,
 			Verificado: organizador.VerificadoEm != nil,
@@ -356,8 +358,9 @@ func (h *PublicoHandler) ObterOrganizador(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
+		"seguidores": h.contarSeguidores(organizador.ID),
 		"organizador": organizadorPublico{
-			NomePublico: organizador.NomePublico, Slug: organizador.Slug,
+			ID: organizador.ID, NomePublico: organizador.NomePublico, Slug: organizador.Slug,
 			Descricao: organizador.Descricao, LogoURL: organizador.LogoURL,
 			Instagram: organizador.Instagram, Site: organizador.Site,
 			Verificado: organizador.VerificadoEm != nil,
@@ -393,4 +396,15 @@ func (h *PublicoHandler) Taxas(c *gin.Context) {
 		"garantia_min_centavos":  regra.GarantiaMinCentavos,
 		"garantia_max_centavos":  regra.GarantiaMaxCentavos,
 	})
+}
+
+// DefinirSeguir liga a contagem de seguidores na página do organizador.
+func (h *PublicoHandler) DefinirSeguir(s *service.SeguirService) { h.seguir = s }
+
+func (h *PublicoHandler) contarSeguidores(organizadorID int64) int64 {
+	if h.seguir == nil {
+		return 0
+	}
+	n, _ := h.seguir.ContarSeguidores(service.SeguirOrganizador, strconv.FormatInt(organizadorID, 10))
+	return n
 }

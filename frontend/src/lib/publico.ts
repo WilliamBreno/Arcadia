@@ -50,6 +50,7 @@ export type EventoDetalhe = {
     longitude: number | null
   } | null
   organizador: {
+    id: number
     nome_publico: string
     slug: string
     descricao: string
@@ -76,6 +77,7 @@ export type EventoDetalhe = {
 
 export type OrganizadorDetalhe = {
   organizador: {
+    id: number
     nome_publico: string
     slug: string
     descricao: string
@@ -85,4 +87,5 @@ export type OrganizadorDetalhe = {
     verificado: boolean
   }
   eventos: EventoPublicoItem[]
+  seguidores: number
 }

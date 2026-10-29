@@ -25,6 +25,7 @@ import CidadeEventos from '@/pages/CidadeEventos'
 import ColecaoPublica from '@/pages/ColecaoPublica'
 import MapaEventos from '@/pages/MapaEventos'
 import QuantoCusta from '@/pages/QuantoCusta'
+import Descadastrar from '@/pages/Descadastrar'
 import ApiKeys from '@/pages/organizador/ApiKeys'
 import Equipe from '@/pages/organizador/Equipe'
 import Eventos from '@/pages/organizador/Eventos'
@@ -45,6 +46,7 @@ function App() {
         <Route path="/c/:slug" element={<ColecaoPublica />} />
         <Route path="/mapa" element={<MapaEventos />} />
         <Route path="/quanto-custa" element={<QuantoCusta />} />
+        <Route path="/descadastrar" element={<Descadastrar />} />
         <Route path="/o/:slug" element={<OrganizadorPublico />} />
         <Route path="/convite/:token" element={<Convite />} />
         <Route path="/ingresso/:codigo/:token" element={<IngressoPublico />} />

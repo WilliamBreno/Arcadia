@@ -5,6 +5,7 @@ import { useParams } from 'react-router-dom'
 import { api, ApiError } from '@/lib/api'
 import type { OrganizadorDetalhe } from '@/lib/publico'
 import { EventoCard } from '@/components/evento-card'
+import { BotaoSeguir } from '@/components/botao-seguir'
 import { Carregando } from '@/components/carregando'
 
 export default function OrganizadorPublico() {
@@ -28,6 +29,14 @@ export default function OrganizadorPublico() {
         )}
         <h1 className="text-2xl font-semibold text-foreground">{data.organizador.nome_publico}</h1>
         {data.organizador.verificado && <SeloVerificado className="mt-2" />}
+        <div className="mt-4 flex items-center gap-3">
+          <BotaoSeguir tipo="organizador" alvo={String(data.organizador.id)} rotulo={data.organizador.nome_publico} />
+          {data.seguidores > 0 && (
+            <span className="text-sm text-muted-foreground">
+              {data.seguidores} {data.seguidores === 1 ? 'seguidor' : 'seguidores'}
+            </span>
+          )}
+        </div>
         {data.organizador.descricao && (
           <p className="mt-2 max-w-lg text-muted-foreground">{data.organizador.descricao}</p>
         )}

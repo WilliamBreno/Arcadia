@@ -177,6 +177,12 @@ func main() {
 	authHandler.DefinirLimite(limiteRepo)
 	alertador := middleware.NovoAlertador(cfg.AlertaWebhookURL)
 
+	// Item 6.4: seguir, aviso de evento novo, lembretes e calendário.
+	seguirService := service.NovoSeguirService(db, organizadorRepo, localRepo, mailCliente, cfg.JWTSecret, cfg.FrontendURL, cfg.NomePlataforma)
+	eventoService.DefinirAoPublicar(seguirService.NotificarPublicacao)
+	publicoHandler.DefinirSeguir(seguirService)
+	seguirHandler := handler.NovoSeguirHandler(seguirService, service.NovoLembretesService(db, localRepo, mailCliente, cfg.FrontendURL), eventoRepo, localRepo, cfg.FrontendURL)
+
 	router := gin.New()
 	router.Use(middleware.IDRequisicao(), middleware.LogRequisicoes(), middleware.AlertarErros(alertador), middleware.TratadorDeErros(), middleware.CabecalhosSeguranca())
 	router.Use(cors.New(cors.Config{
@@ -204,6 +210,8 @@ func main() {
 		// Item 6.2: descoberta (cidades, categorias, destaques e coleções).
 		v1.GET("/descoberta", publicoHandler.Descoberta)
 		v1.GET("/taxas", publicoHandler.Taxas) // item 6.3: página "Quanto custa"
+		v1.GET("/eventos/:slug/calendario.ics", seguirHandler.Calendario)
+		v1.POST("/descadastrar", seguirHandler.Descadastrar)
 		v1.GET("/destaques", publicoHandler.Destaques)
 		v1.GET("/colecoes", publicoHandler.Colecoes)
 		v1.GET("/colecoes/:slug", publicoHandler.Colecao)
@@ -237,6 +245,9 @@ func main() {
 		autenticado := v1.Group("", middleware.ExigirAutenticacao(jwtService))
 		autenticado.GET("/me", authHandler.Me)
 		autenticado.GET("/me/eventos", contaHandler.MeusEventos)
+		autenticado.GET("/me/seguindo", seguirHandler.Meus)
+		autenticado.POST("/seguindo", seguirHandler.Seguir)
+		autenticado.DELETE("/seguindo", seguirHandler.Deixar)
 		autenticado.GET("/me/ingressos", contaHandler.MeusIngressos)
 		autenticado.GET("/me/ingressos/:id", contaHandler.MeuIngresso)
 		autenticado.GET("/me/ingressos/:id/qr", qrHandler.DoComprador)
@@ -344,6 +355,7 @@ func main() {
 		jobs.POST("/gerar-repasses", repasseHandler.GerarRepasses)
 		jobs.POST("/reprocessar-reembolsos", adminHandler.ReprocessarFalhas)
 		jobs.POST("/enviar-emails", jobHandler.EnviarEmails)
+		jobs.POST("/lembretes", seguirHandler.Lembretes)
 
 		admin := v1.Group("/admin", middleware.ExigirAutenticacao(jwtService), middleware.ExigirAdminPlataforma())
 		admin.GET("/repasses", repasseHandler.ListarAdmin)

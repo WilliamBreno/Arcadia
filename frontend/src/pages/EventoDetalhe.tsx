@@ -9,6 +9,9 @@ import { estiloTema } from '@/lib/tema'
 import { calcularItem } from '@/lib/taxas'
 import { SeloVerificado } from '@/components/selo-verificado'
 import { EvveGarante } from '@/components/evve-garante'
+import { BotaoSeguir } from '@/components/botao-seguir'
+import { linkGoogleAgenda } from '@/lib/seguir'
+import { CalendarPlus } from 'lucide-react'
 import type { EventoDetalhe as EventoDetalheTipo } from '@/lib/publico'
 import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
@@ -190,6 +193,24 @@ export default function EventoDetalhe() {
             por {organizador.nome_publico}
           </Link>
           {organizador.verificado && <SeloVerificado />}
+          <BotaoSeguir tipo="organizador" alvo={String(organizador.id)} rotulo={organizador.nome_publico} />
+        </p>
+      )}
+      {evento.inicio_em && !eventoComecou && (
+        <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+          <CalendarPlus className="size-4 text-muted-foreground" aria-hidden="true" />
+          <span className="text-muted-foreground">Adicionar ao calendário:</span>
+          <a
+            href={linkGoogleAgenda(evento.titulo, evento.inicio_em, evento.fim_em, local ? `${local.nome} · ${local.cidade}/${local.uf}` : 'Online', window.location.origin + '/e/' + evento.slug) ?? '#'}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-foreground underline underline-offset-4"
+          >
+            Google Agenda
+          </a>
+          <a href={`/api/v1/eventos/${evento.slug}/calendario.ics`} className="font-medium text-foreground underline underline-offset-4">
+            Apple / Outlook
+          </a>
         </p>
       )}
 
@@ -347,6 +368,7 @@ export default function EventoDetalhe() {
 
       {!vendasEncerradas && (
         <EvveGarante
+          gratuito={ingressos.length > 0 && ingressos.every((i) => i.preco_centavos === 0)}
           garantiaHabilitada={evento.garantia_habilitada}
           organizadorVerificado={!!organizador?.verificado}
           eventoComecou={eventoComecou}

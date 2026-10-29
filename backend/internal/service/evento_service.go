@@ -23,7 +23,11 @@ type EventoService struct {
 	locais          *repository.LocalRepository
 	regrasRegionais *repository.RegraRegionalRepository
 	config          *repository.ConfigPlataformaRepository
+	aoPublicar      func(*domain.Evento)
 }
+
+// DefinirAoPublicar liga o aviso aos seguidores quando um evento é publicado.
+func (s *EventoService) DefinirAoPublicar(f func(*domain.Evento)) { s.aoPublicar = f }
 
 func NovoEventoService(
 	eventos *repository.EventoRepository,
@@ -216,6 +220,10 @@ func (s *EventoService) Publicar(organizadorID, eventoID int64) (*domain.Evento,
 	evento.PublicadoEm = &agora
 	if err := s.eventos.Salvar(evento); err != nil {
 		return nil, nil, err
+	}
+	// Item 6.4: avisa quem segue o organizador ou a categoria (em segundo plano).
+	if s.aoPublicar != nil {
+		s.aoPublicar(evento)
 	}
 	return evento, nil, nil
 }

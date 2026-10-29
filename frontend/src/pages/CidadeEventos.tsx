@@ -5,6 +5,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ApiError } from '@/lib/api'
 import { listarEventos, obterDescoberta, obterDestaques, QUANDO } from '@/lib/descoberta'
 import { ChipLink } from '@/components/chip'
+import { BotaoSeguir } from '@/components/botao-seguir'
 import { EventoCard } from '@/components/evento-card'
 import { TrilhoEventos } from '@/components/trilho-eventos'
 import { Carregando } from '@/components/carregando'
@@ -84,6 +85,16 @@ export default function CidadeEventos() {
       <p className="mt-1 text-muted-foreground">
         {cidade.cidade}/{cidade.uf} · {eventos.data ? `${eventos.data.total} evento(s)` : `${cidade.eventos} evento(s) programados`}
       </p>
+      {categoria && (
+        <div className="mt-3">
+          <BotaoSeguir
+            tipo="categoria"
+            alvo={`${categoria.slug}@${cidade.slug}`}
+            rotulo={`${categoria.nome} em ${cidade.cidade}`}
+            texto={`Seguir ${categoria.nome} em ${cidade.cidade}`}
+          />
+        </div>
+      )}
 
       <div className="mt-6 flex flex-col gap-3">
         <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" aria-label="Categorias">
