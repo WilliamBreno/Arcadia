@@ -3,6 +3,7 @@ package handler
 import (
 	"github.com/WilliamBreno/Arcadia/backend/internal/mail"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -12,7 +13,11 @@ import (
 type JobHandler struct {
 	checkout *service.CheckoutService
 	mail     *mail.Cliente
+	carrinho *service.RecuperacaoCarrinhoService
 }
+
+// DefinirRecuperacao liga o e-mail de carrinho (item 7.2) ao job de reservas.
+func (h *JobHandler) DefinirRecuperacao(s *service.RecuperacaoCarrinhoService) { h.carrinho = s }
 
 func NovoJobHandler(checkout *service.CheckoutService) *JobHandler {
 	return &JobHandler{checkout: checkout}
@@ -28,7 +33,11 @@ func (h *JobHandler) ExpirarReservas(c *gin.Context) {
 	}
 	// Item 7.1: tenta de novo os estornos automáticos que o MP não confirmou.
 	devolucoes := h.checkout.ReprocessarDevolucoes()
-	c.JSON(http.StatusOK, gin.H{"expirados": total, "devolucoes_tentadas": devolucoes})
+	carrinhos := 0
+	if h.carrinho != nil {
+		carrinhos, _ = h.carrinho.Enviar(time.Now())
+	}
+	c.JSON(http.StatusOK, gin.H{"expirados": total, "devolucoes_tentadas": devolucoes, "carrinhos": carrinhos})
 }
 
 // EnviarEmails é o job POST /jobs/enviar-emails (item 5.5): esvazia a fila

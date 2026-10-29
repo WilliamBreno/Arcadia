@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { api, ApiError } from '@/lib/api'
@@ -20,6 +20,7 @@ import { ListaCronograma } from '@/components/cronograma-cards'
 import { ListaRanking } from '@/components/resultado-cards'
 import { Card, CardContent } from '@/components/ui/card'
 import { Carregando } from '@/components/carregando'
+import { EntrarComCodigo } from '@/components/entrar-com-codigo'
 
 export default function EventoDetalhe() {
   const { slug } = useParams()
@@ -33,6 +34,21 @@ export default function EventoDetalhe() {
   const [erroCupom, setErroCupom] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [comprando, setComprando] = useState(false)
+  // Item 7.2: quem não está logado entra com código aqui mesmo e a compra
+  // continua sozinha, sem perder os ingressos escolhidos.
+  const [pedirLogin, setPedirLogin] = useState<'comprar' | 'cupom' | null>(null)
+  const [continuarAposLogin, setContinuarAposLogin] = useState(false)
+  const comprarRef = useRef<(() => void) | null>(null)
+  const retomado = useRef(false)
+  useEffect(() => {
+    if (continuarAposLogin && usuario) {
+      setContinuarAposLogin(false)
+      comprarRef.current?.()
+    }
+  }, [continuarAposLogin, usuario])
+  useEffect(() => {
+    if (pedirLogin) document.getElementById('entrar-para-comprar')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [pedirLogin])
 
   const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
@@ -75,6 +91,21 @@ export default function EventoDetalhe() {
       }
     },
   })
+
+  // Link do e-mail de carrinho (item 7.2): ?retomar=12:2,13:1 já escolhe os
+  // mesmos ingressos (só os que ainda estão à venda nesta página).
+  useEffect(() => {
+    const retomar = searchParams.get('retomar')
+    if (!data || !retomar || retomado.current) return
+    retomado.current = true
+    const ativos = new Set(data.ingressos.filter((i) => i.ativo).map((i) => i.id))
+    const escolha: Record<number, number> = {}
+    for (const parte of retomar.split(',')) {
+      const [id, qtd] = parte.split(':').map(Number)
+      if (ativos.has(id) && qtd > 0 && qtd <= 20) escolha[id] = qtd
+    }
+    if (Object.keys(escolha).length > 0) setQuantidades(escolha)
+  }, [data, searchParams])
 
   if (isLoading) return <Carregando />
   if (error instanceof ApiError && error.status === 404) {
@@ -130,7 +161,7 @@ export default function EventoDetalhe() {
   const aplicarCupom = async () => {
     setErroCupom(null)
     if (!usuario) {
-      navigate('/login', { state: { de: location.pathname } })
+      setPedirLogin('cupom')
       return
     }
     try {
@@ -151,7 +182,7 @@ export default function EventoDetalhe() {
 
   const comprar = async () => {
     if (!usuario) {
-      navigate('/login', { state: { de: location.pathname } })
+      setPedirLogin('comprar')
       return
     }
     setErro(null)
@@ -176,6 +207,7 @@ export default function EventoDetalhe() {
       setComprando(false)
     }
   }
+  comprarRef.current = comprar
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12" style={estiloTema(evento.cor_tema)}>
@@ -365,6 +397,19 @@ export default function EventoDetalhe() {
           </div>
         )}
         {erro && <p className="mt-2 text-sm text-destructive">{erro}</p>}
+        {pedirLogin && !usuario && (
+          <div id="entrar-para-comprar" className="mt-4">
+            <EntrarComCodigo
+              titulo={pedirLogin === 'cupom' ? 'Entre para usar o cupom' : 'Entre para finalizar a compra'}
+              voltarPara={location.pathname + location.search}
+              aoEntrar={() => {
+                // Depois do cupom, a pessoa aplica e confere o total antes de comprar.
+                if (pedirLogin === 'comprar') setContinuarAposLogin(true)
+                setPedirLogin(null)
+              }}
+            />
+          </div>
+        )}
       </section>
 
       {!vendasEncerradas && (

@@ -117,7 +117,9 @@ func tokenDescadastro(segredo string, usuarioID int64, tipo, alvo string) string
 	return hex.EncodeToString(m.Sum(nil))[:32]
 }
 
-func (s *SeguirService) linkDescadastro(usuarioID int64, tipo, alvo string) string {
+// LinkDescadastro é o link assinado "não quero mais receber" (também usado
+// pelo e-mail de carrinho, item 7.2).
+func (s *SeguirService) LinkDescadastro(usuarioID int64, tipo, alvo string) string {
 	q := url.Values{"u": {strconv.FormatInt(usuarioID, 10)}, "tipo": {tipo}, "alvo": {alvo}, "t": {tokenDescadastro(s.segredo, usuarioID, tipo, alvo)}}
 	return s.frontendURL + "/descadastrar?" + q.Encode()
 }
@@ -132,7 +134,9 @@ func (s *SeguirService) Descadastrar(usuarioID int64, tipo, alvo, token string, 
 	if err := s.Deixar(usuarioID, tipo, alvo); err != nil {
 		return err
 	}
-	if tudo {
+	// O lembrete de carrinho (item 7.2) não é um "seguir": recusar é
+	// desligar as novidades por e-mail.
+	if tudo || tipo == "carrinho" {
 		return s.db.Model(&domain.Usuario{}).Where("id = ?", usuarioID).Update("receber_novidades", false).Error
 	}
 	return nil
@@ -216,7 +220,7 @@ func (s *SeguirService) notificar(evento *domain.Evento) error {
 		if d.Tipo == SeguirOrganizador && organizador != nil {
 			motivo = "Você segue " + organizador.NomePublico + "."
 		}
-		corpo := corpoAvisoEvento(d.Nome, motivo, evento, onde, s.frontendURL, s.linkDescadastro(d.UsuarioID, d.Tipo, d.Alvo))
+		corpo := corpoAvisoEvento(d.Nome, motivo, evento, onde, s.frontendURL, s.LinkDescadastro(d.UsuarioID, d.Tipo, d.Alvo))
 		if err := s.mail.Enviar(d.Email, "Evento novo: "+evento.Titulo, corpo); err == nil {
 			enviados++
 		}

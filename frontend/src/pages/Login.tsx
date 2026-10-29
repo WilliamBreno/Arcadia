@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/hooks/use-auth'
+import { EntrarComCodigo } from '@/components/entrar-com-codigo'
 
 const schema = z.object({
   email: z.string().email('E-mail inválido'),
@@ -23,6 +24,8 @@ export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
   const [erro, setErro] = useState<string | null>(null)
+  const [comCodigo, setComCodigo] = useState(false)
+  const destino = (location.state as { de?: string } | null)?.de ?? '/'
 
   const {
     register,
@@ -34,11 +37,21 @@ export default function Login() {
     setErro(null)
     try {
       await login(dados.email, dados.senha)
-      const destino = (location.state as { de?: string } | null)?.de ?? '/'
       navigate(destino, { replace: true })
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : 'Erro ao entrar')
     }
+  }
+
+  if (comCodigo) {
+    return (
+      <main className="mx-auto flex max-w-sm flex-col justify-center gap-3 px-4 py-24">
+        <EntrarComCodigo titulo="Entrar com código" aoEntrar={() => navigate(destino, { replace: true })} />
+        <button type="button" onClick={() => setComCodigo(false)} className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground">
+          Entrar com senha
+        </button>
+      </main>
+    )
   }
 
   return (
@@ -64,6 +77,9 @@ export default function Login() {
               Entrar
             </Button>
           </form>
+          <Button type="button" variant="outline" className="mt-3 w-full" onClick={() => setComCodigo(true)}>
+            Entrar sem senha, com código no e-mail
+          </Button>
           <p className="mt-4 text-center text-sm text-muted-foreground">
             Não tem conta?{' '}
             <Link to="/cadastro" className="text-primary underline-offset-4 hover:underline">

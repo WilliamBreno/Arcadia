@@ -24,6 +24,7 @@ type AuthHandler struct {
 	mail     *mail.Cliente
 	cfg      config.Config
 	limite   middleware.Contador // limite por e-mail (item 5.5); nil = desligado
+	codigo   *service.CodigoLoginService
 }
 
 // DefinirLimite liga o limite de tentativas por e-mail no login e na
@@ -136,6 +137,72 @@ func (h *AuthHandler) Cadastro(c *gin.Context) {
 
 	h.definirCookieRefresh(c, refreshToken, h.auth.RefreshTTL())
 	c.JSON(http.StatusCreated, gin.H{"access_token": accessToken, "usuario": paraUsuarioResposta(usuario)})
+}
+
+// --- Entrar com código no e-mail (item 7.2) ---
+
+// DefinirCodigo liga a entrada por código de 6 dígitos.
+func (h *AuthHandler) DefinirCodigo(s *service.CodigoLoginService) { h.codigo = s }
+
+type solicitarCodigoRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+// SolicitarCodigo é POST /auth/codigo. Responde igual exista a conta ou não.
+func (h *AuthHandler) SolicitarCodigo(c *gin.Context) {
+	var req solicitarCodigoRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "informe um e-mail válido"})
+		return
+	}
+	if h.excedeuPorEmail("codigo", req.Email, 3, 15*time.Minute) {
+		c.JSON(http.StatusTooManyRequests, gin.H{"erro": "muitos códigos pedidos para este e-mail. Use o último que chegou ou tente de novo em 15 minutos"})
+		return
+	}
+	if err := h.codigo.Solicitar(req.Email); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "não foi possível enviar o código agora"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"enviado": true})
+}
+
+type verificarCodigoRequest struct {
+	Email  string `json:"email" binding:"required,email"`
+	Codigo string `json:"codigo" binding:"required"`
+	Nome   string `json:"nome"`
+}
+
+// VerificarCodigo é POST /auth/codigo/verificar. Conta nova sem nome: 422
+// com precisa_nome (o código continua valendo).
+func (h *AuthHandler) VerificarCodigo(c *gin.Context) {
+	var req verificarCodigoRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "informe o e-mail e o código"})
+		return
+	}
+	if h.excedeuPorEmail("codigo-verificar", req.Email, 10, 15*time.Minute) {
+		c.JSON(http.StatusTooManyRequests, gin.H{"erro": "muitas tentativas para este e-mail, tente de novo em 15 minutos"})
+		return
+	}
+	usuario, err := h.codigo.Verificar(req.Email, req.Codigo, req.Nome)
+	switch {
+	case errors.Is(err, service.ErrPrecisaNome):
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"erro": err.Error(), "precisa_nome": true})
+		return
+	case errors.Is(err, service.ErrCodigoInvalido):
+		c.JSON(http.StatusUnauthorized, gin.H{"erro": err.Error()})
+		return
+	case err != nil:
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao entrar"})
+		return
+	}
+	accessToken, refreshToken, err := h.auth.EmitirTokens(usuario)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao autenticar"})
+		return
+	}
+	h.definirCookieRefresh(c, refreshToken, h.auth.RefreshTTL())
+	c.JSON(http.StatusOK, gin.H{"access_token": accessToken, "usuario": paraUsuarioResposta(usuario)})
 }
 
 // --- POST /auth/login ---

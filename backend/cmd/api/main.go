@@ -176,6 +176,7 @@ func main() {
 	// instâncias) e alertas de erro 500.
 	limiteRepo := repository.NovoLimiteTaxaRepository(db)
 	authHandler.DefinirLimite(limiteRepo)
+	authHandler.DefinirCodigo(service.NovoCodigoLoginService(db, mailCliente, cfg.JWTSecret, cfg.NomePlataforma))
 	alertador := middleware.NovoAlertador(cfg.AlertaWebhookURL)
 
 	// Item 6.4: seguir, aviso de evento novo, lembretes e calendário.
@@ -189,6 +190,8 @@ func main() {
 	avaliacaoPublicoHandler := handler.NovoAvaliacaoPublicoHandler(avaliacaoPublicoService, eventoRepo)
 	publicoHandler.DefinirAvaliacoes(avaliacaoPublicoService)
 	seguirHandler.DefinirConvites(avaliacaoPublicoService)
+	// Item 7.2: e-mail de carrinho para quem reservou e não pagou.
+	jobHandler.DefinirRecuperacao(service.NovoRecuperacaoCarrinhoService(db, mailCliente, seguirService, cfg.FrontendURL, cfg.NomePlataforma))
 
 	router := gin.New()
 	router.Use(middleware.IDRequisicao(), middleware.LogRequisicoes(), middleware.AlertarErros(alertador), middleware.TratadorDeErros(), middleware.CabecalhosSeguranca())
@@ -247,6 +250,8 @@ func main() {
 		auth := v1.Group("/auth")
 		auth.POST("/cadastro", limiteAuth, authHandler.Cadastro)
 		auth.POST("/login", limiteAuth, authHandler.Login)
+		auth.POST("/codigo", limiteAuth, authHandler.SolicitarCodigo)
+		auth.POST("/codigo/verificar", limiteAuth, authHandler.VerificarCodigo)
 		auth.POST("/google", limiteAuth, authHandler.Google)
 		auth.POST("/refresh", authHandler.Refresh)
 		auth.POST("/logout", authHandler.Logout)

@@ -19,6 +19,8 @@ type AuthContextState = {
   carregando: boolean
   login: (email: string, senha: string) => Promise<void>
   cadastrar: (nome: string, email: string, senha: string) => Promise<void>
+  // Item 7.2: entrar com o código de 6 dígitos enviado por e-mail.
+  entrarComCodigo: (email: string, codigo: string, nome?: string) => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -64,6 +66,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUsuario(resposta.usuario)
   }
 
+  const entrarComCodigo = async (email: string, codigo: string, nome?: string) => {
+    const resposta = await api<RespostaAuth>('/auth/codigo/verificar', {
+      method: 'POST',
+      body: { email, codigo, nome: nome ?? '' },
+      semAuth: true,
+    })
+    definirAccessToken(resposta.access_token)
+    setUsuario(resposta.usuario)
+  }
+
   const logout = async () => {
     await api('/auth/logout', { method: 'POST' }).catch(() => undefined)
     definirAccessToken(null)
@@ -71,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ usuario, carregando, login, cadastrar, logout }}>
+    <AuthContext.Provider value={{ usuario, carregando, login, cadastrar, entrarComCodigo, logout }}>
       {children}
     </AuthContext.Provider>
   )

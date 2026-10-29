@@ -13,6 +13,8 @@ export default function Descadastrar() {
   const [erro, setErro] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
   const corpo = { u: params.get('u') ?? '', tipo: params.get('tipo') ?? '', alvo: params.get('alvo') ?? '', t: params.get('t') ?? '' }
+  // Item 7.2: link do e-mail de carrinho (não é um "seguir").
+  const carrinho = corpo.tipo === 'carrinho'
 
   useEffect(() => {
     document.title = 'Avisos por e-mail | Evve'
@@ -34,7 +36,24 @@ export default function Descadastrar() {
   return (
     <main className="mx-auto max-w-md px-4 py-16">
       <h1 className="text-2xl font-bold text-foreground">Avisos por e-mail</h1>
-      {feito ? (
+      {feito && carrinho ? (
+        <p className="mt-4 text-foreground" role="status">
+          Pronto. Você não vai mais receber lembretes de compra nem avisos de eventos novos. E-mails dos seus ingressos continuam.
+        </p>
+      ) : carrinho ? (
+        <>
+          <p className="mt-4 text-foreground">
+            Você recebeu um lembrete porque começou uma compra e não terminou. Quer parar de receber esses lembretes?
+          </p>
+          {erro && <p className="mt-4 text-sm text-destructive" role="alert">{erro}</p>}
+          <div className="mt-6 flex flex-col gap-3">
+            <Button onClick={() => enviar(true)} disabled={enviando}>
+              Não quero receber estes lembretes
+            </Button>
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">Isso também desliga os avisos de eventos novos. Os e-mails dos seus ingressos continuam.</p>
+        </>
+      ) : feito ? (
         <p className="mt-4 text-foreground" role="status">
           {feito === 'tudo'
             ? 'Pronto. Você não vai mais receber avisos de eventos novos. Lembretes dos seus ingressos continuam.'
