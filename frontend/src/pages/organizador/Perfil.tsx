@@ -16,11 +16,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Carregando } from '@/components/carregando'
+import { CamposPix } from '@/components/campos-pix'
 
 const schemaCriar = z.object({
   nome_publico: z.string().min(2, 'Informe o nome'),
   tipo_pessoa: z.enum(['pf', 'pj']),
   documento: z.string().min(11, 'Documento inválido'),
+  tipo_chave_pix: z.string(),
+  chave_pix: z.string(),
 })
 
 const schemaEditar = z.object({
@@ -90,8 +93,9 @@ function FormularioCriar({ onCriado, onErro }: { onCriado: () => void | Promise<
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
-  } = useForm<FormCriar>({ resolver: zodResolver(schemaCriar), defaultValues: { tipo_pessoa: 'pf' } })
+  } = useForm<FormCriar>({ resolver: zodResolver(schemaCriar), defaultValues: { tipo_pessoa: 'pf', tipo_chave_pix: '', chave_pix: '' } })
 
   const aoEnviar = async (dados: FormCriar) => {
     onErro(null)
@@ -133,6 +137,10 @@ function FormularioCriar({ onCriado, onErro }: { onCriado: () => void | Promise<
             <p className="text-xs text-muted-foreground">Usado para identificar você nos repasses. Não aparece publicamente.</p>
             {errors.documento && <p className="text-sm text-destructive">{errors.documento.message}</p>}
           </div>
+          <fieldset className="flex flex-col gap-2 rounded-lg border border-border p-3">
+            <legend className="px-1 text-sm font-medium text-foreground">Pix para receber (pode preencher depois)</legend>
+            <CamposPix register={register} tipoSelecionado={watch('tipo_chave_pix')} />
+          </fieldset>
           <Button type="submit" disabled={isSubmitting}>
             Criar perfil
           </Button>
@@ -155,18 +163,29 @@ function FormularioEditar({
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<FormEditar>({ resolver: zodResolver(schemaEditar), defaultValues: organizador })
+  const [salvo, setSalvo] = useState(false)
+  const [erroPerto, setErroPerto] = useState<string | null>(null)
 
   useEffect(() => reset(organizador), [organizador, reset])
+  // Link "Cadastrar Pix" do painel leva direto para o bloco do Pix.
+  useEffect(() => {
+    if (window.location.hash === '#pix') document.getElementById('pix')?.scrollIntoView({ block: 'center' })
+  }, [])
 
   const aoEnviar = async (dados: FormEditar) => {
     onErro(null)
+    setSalvo(false)
+    setErroPerto(null)
     try {
       await api('/org/perfil', { method: 'PUT', body: dados })
+      setSalvo(true)
       onSalvar()
     } catch (e) {
-      onErro(e instanceof ApiError ? e.message : 'Erro ao salvar')
+      // Mostra perto do botão: no celular o topo da página fica fora da tela.
+      setErroPerto(e instanceof ApiError ? e.message : 'Erro ao salvar')
     }
   }
 
@@ -188,6 +207,15 @@ function FormularioEditar({
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(aoEnviar)} className="flex flex-col gap-4">
+          <section id="pix" className="flex flex-col gap-3 rounded-lg border border-border p-3" aria-labelledby="titulo-pix">
+            <div className="flex items-center justify-between gap-2">
+              <h2 id="titulo-pix" className="font-medium text-foreground">Dados de recebimento (Pix)</h2>
+              <span className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-xs ${organizador.chave_pix ? 'bg-muted text-foreground' : 'bg-foreground text-background'}`}>
+                {organizador.chave_pix ? 'Cadastrada' : 'Falta cadastrar'}
+              </span>
+            </div>
+            <CamposPix register={register} tipoSelecionado={watch('tipo_chave_pix')} />
+          </section>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="nome_publico">Nome público</Label>
             <Input id="nome_publico" {...register('nome_publico')} />
@@ -205,18 +233,10 @@ function FormularioEditar({
             <Label htmlFor="site">Site</Label>
             <Input id="site" {...register('site')} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="tipo_chave_pix">Tipo de chave Pix</Label>
-              <Input id="tipo_chave_pix" placeholder="email, cpf, telefone…" {...register('tipo_chave_pix')} />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="chave_pix">Chave Pix</Label>
-              <Input id="chave_pix" {...register('chave_pix')} />
-            </div>
-          </div>
+          {salvo && <p className="text-sm text-muted-foreground" role="status">Perfil salvo.</p>}
+          {erroPerto && <p className="text-sm text-destructive" role="alert">{erroPerto}</p>}
           <Button type="submit" disabled={isSubmitting}>
-            Salvar
+            {isSubmitting ? 'Salvando…' : 'Salvar'}
           </Button>
         </form>
       </CardContent>

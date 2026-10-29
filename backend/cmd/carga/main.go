@@ -90,7 +90,7 @@ func main() {
 	// Organizador, evento e lote.
 	_, orgTok := novoUsuario("org-carga")
 	chamar("POST", "/org/perfil", orgTok, map[string]any{"nome_publico": fmt.Sprintf("Carga %d", run), "tipo_pessoa": "pf", "documento": "12345678901"})
-	chamar("PUT", "/org/perfil", orgTok, map[string]any{"nome_publico": fmt.Sprintf("Carga %d", run), "tipo_pessoa": "pf", "documento": "12345678901", "chave_pix": "carga@pix", "tipo_chave_pix": "email"})
+	chamar("PUT", "/org/perfil", orgTok, map[string]any{"nome_publico": fmt.Sprintf("Carga %d", run), "tipo_pessoa": "pf", "documento": "12345678901", "chave_pix": "carga@pix.local", "tipo_chave_pix": "email"})
 	inicio := time.Now().Add(30 * 24 * time.Hour).UTC().Format(time.RFC3339)
 	_, b, _ := chamar("POST", "/org/eventos", orgTok, map[string]any{"titulo": fmt.Sprintf("Lote concorrido %d", run), "inicio_em": inicio, "tipo_acesso": "ingresso", "categoria": "geek"})
 	var ev struct {

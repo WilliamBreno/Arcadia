@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -105,6 +106,9 @@ type criarPerfilRequest struct {
 	NomePublico string `json:"nome_publico" binding:"required,min=2"`
 	TipoPessoa  string `json:"tipo_pessoa" binding:"required,oneof=pf pj"`
 	Documento   string `json:"documento" binding:"required"`
+	// Opcionais: a chave Pix pode ser informada já na criação.
+	ChavePix     string `json:"chave_pix"`
+	TipoChavePix string `json:"tipo_chave_pix"`
 }
 
 func (h *OrganizadorHandler) CriarPerfil(c *gin.Context) {
@@ -115,9 +119,11 @@ func (h *OrganizadorHandler) CriarPerfil(c *gin.Context) {
 	}
 
 	usuarioID := c.GetInt64(middleware.ChaveContextoUsuarioID)
-	organizador, err := h.service.CriarPerfil(usuarioID, req.NomePublico, domain.TipoPessoa(req.TipoPessoa), req.Documento)
+	organizador, err := h.service.CriarPerfil(usuarioID, req.NomePublico, domain.TipoPessoa(req.TipoPessoa), req.Documento, req.TipoChavePix, req.ChavePix)
 	if err != nil {
 		switch {
+		case errors.Is(err, service.ErrChavePixInvalida):
+			c.JSON(http.StatusBadRequest, gin.H{"erro": mensagemPix(err)})
 		case errors.Is(err, service.ErrOrganizadorJaExiste):
 			c.JSON(http.StatusConflict, gin.H{"erro": "você já tem um perfil de organizador"})
 		case errors.Is(err, service.ErrDocumentoInvalido):
@@ -173,9 +179,18 @@ func (h *OrganizadorHandler) AtualizarPerfil(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"erro": "crie seu perfil de organizador primeiro"})
 			return
 		}
+		if errors.Is(err, service.ErrChavePixInvalida) {
+			c.JSON(http.StatusBadRequest, gin.H{"erro": mensagemPix(err)})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao atualizar perfil"})
 		return
 	}
 
 	c.JSON(http.StatusOK, paraOrganizadorResposta(organizador))
+}
+
+// mensagemPix: "chave Pix inválida: <motivo>" (o erro junta os dois).
+func mensagemPix(err error) string {
+	return strings.Replace(err.Error(), "\n", ": ", 1)
 }

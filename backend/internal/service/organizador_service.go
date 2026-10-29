@@ -26,13 +26,18 @@ func NovoOrganizadorService(organizadores *repository.OrganizadorRepository) *Or
 	return &OrganizadorService{organizadores: organizadores}
 }
 
-func (s *OrganizadorService) CriarPerfil(usuarioID int64, nomePublico string, tipoPessoa domain.TipoPessoa, documento string) (*domain.Organizador, error) {
+func (s *OrganizadorService) CriarPerfil(usuarioID int64, nomePublico string, tipoPessoa domain.TipoPessoa, documento, tipoChavePix, chavePix string) (*domain.Organizador, error) {
 	if _, err := s.organizadores.BuscarPorUsuarioID(usuarioID); err == nil {
 		return nil, ErrOrganizadorJaExiste
 	}
 
 	if !documentoValido(tipoPessoa, documento) {
 		return nil, ErrDocumentoInvalido
+	}
+	// A chave Pix pode vir já na criação (opcional).
+	tipoChavePix, chavePix, err := NormalizarChavePix(tipoChavePix, chavePix)
+	if err != nil {
+		return nil, err
 	}
 
 	slug, err := s.gerarSlugUnico(nomePublico)
@@ -41,13 +46,15 @@ func (s *OrganizadorService) CriarPerfil(usuarioID int64, nomePublico string, ti
 	}
 
 	organizador := &domain.Organizador{
-		UsuarioID:   usuarioID,
-		NomePublico: nomePublico,
-		Slug:        slug,
-		TipoPessoa:  tipoPessoa,
-		Documento:   somenteDigitos(documento),
-		Status:      domain.StatusOrganizadorPendente,
-		CriadoEm:    time.Now(),
+		UsuarioID:    usuarioID,
+		NomePublico:  nomePublico,
+		Slug:         slug,
+		TipoPessoa:   tipoPessoa,
+		Documento:    somenteDigitos(documento),
+		ChavePix:     chavePix,
+		TipoChavePix: tipoChavePix,
+		Status:       domain.StatusOrganizadorPendente,
+		CriadoEm:     time.Now(),
 	}
 	if err := s.organizadores.Criar(organizador); err != nil {
 		return nil, err
@@ -70,6 +77,12 @@ func (s *OrganizadorService) AtualizarPerfil(usuarioID int64, dados AtualizarPer
 	if err != nil {
 		return nil, ErrOrganizadorNaoExiste
 	}
+
+	tipoPix, chavePix, err := NormalizarChavePix(dados.TipoChavePix, dados.ChavePix)
+	if err != nil {
+		return nil, err
+	}
+	dados.TipoChavePix, dados.ChavePix = tipoPix, chavePix
 
 	organizador.NomePublico = dados.NomePublico
 	organizador.Descricao = dados.Descricao

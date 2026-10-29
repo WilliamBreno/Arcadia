@@ -338,7 +338,17 @@ export default function EventoEditar() {
               {problemasPublicacao && (
                 <ul className="mb-4 list-inside list-disc text-sm text-destructive">
                   {problemasPublicacao.map((p) => (
-                    <li key={p}>{p}</li>
+                    <li key={p}>
+                      {p}
+                      {/Pix/i.test(p) && (
+                        <>
+                          {' '}
+                          <Link to="/organizador/perfil#pix" className="font-medium underline underline-offset-4">
+                            Cadastrar Pix agora
+                          </Link>
+                        </>
+                      )}
+                    </li>
                   ))}
                 </ul>
               )}

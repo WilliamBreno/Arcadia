@@ -7,6 +7,7 @@ import { Carregando } from '@/components/carregando'
 import type { Evento } from '@/lib/evento'
 import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { AvisoPix } from '@/components/campos-pix'
 
 const rotuloStatus: Record<Evento['status'], string> = {
   rascunho: 'Rascunho',
@@ -28,9 +29,10 @@ export default function Eventos() {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-12">
-      <div className="mb-6 flex items-center justify-between">
+      <AvisoPix />
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-foreground">Meus eventos</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Link to="/organizador/relatorios" className={buttonVariants({ variant: 'outline' })}>
             Relatórios
           </Link>
