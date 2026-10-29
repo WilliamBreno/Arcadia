@@ -9,6 +9,7 @@ import { estiloTema } from '@/lib/tema'
 import { calcularItem } from '@/lib/taxas'
 import { SeloVerificado } from '@/components/selo-verificado'
 import { EvveGarante } from '@/components/evve-garante'
+import { AvaliacoesDoEvento } from '@/components/avaliacoes-evento'
 import { BotaoSeguir } from '@/components/botao-seguir'
 import { linkGoogleAgenda } from '@/lib/seguir'
 import { CalendarPlus } from 'lucide-react'
@@ -419,6 +420,8 @@ export default function EventoDetalhe() {
           </Link>
         </div>
       )}
+
+      <AvaliacoesDoEvento slug={evento.slug} eventoComecou={eventoComecou} />
 
       <p className="mt-4 text-center">
         <Link to={`/e/${evento.slug}/jurado`} className="text-xs text-muted-foreground hover:text-foreground">

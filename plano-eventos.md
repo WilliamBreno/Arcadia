@@ -411,7 +411,7 @@ Tipo de ingresso "Meia". Cota de 40% do total para estudantes/PcD/jovem baixa re
 - [x] 6.2 Páginas por cidade, categoria e data (A3), "Em alta" (A5), coleções curadas pelo admin (A6) e mapa "perto de mim" (A7).
 - [x] 6.3 Página "Quanto custa" com simulador (C1), selo "Evve Garante" (B12) e preço final em destaque (B3).
 - [x] 6.4 Seguir organizador e categoria com aviso de novo evento (A4); lembretes automáticos e "adicionar ao calendário" (A12).
-- [ ] 6.5 Avaliação do evento e do organizador por quem fez check-in (A15).
+- [x] 6.5 Avaliação do evento e do organizador por quem fez check-in (A15).
 - [ ] 6.6 **Fechar a fase:** commit, push e `git tag fase-6` + `git push --tags`
 
 ### Fase 7 — Conversão no checkout
@@ -668,6 +668,13 @@ Fora do plano por enquanto (seção 7.3 da análise): app nativo, cashless/bar, 
 - **Item 6.4 — bug antigo corrigido:** o e-mail de ingresso formatava a data no fuso do servidor (UTC em produção): um evento às 20h aparecia como 23h. Agora todos os e-mails usam o fuso do evento (`DataDoEvento`).
 - **Item 6.4 — outros ajustes:** o login exigido por uma página protegida agora volta com os parâmetros da URL (o "Criar evento" da página "Quanto custa" perdia o nome digitado para quem não estava logado); o selo "Evve Garante" de **evento gratuito** não fala mais de garantia de vaga nem de arrependimento (não há dinheiro a devolver) — mostra o cancelamento da inscrição até o início.
 - **Item 6.4 — testes:** 27 conferências de ponta a ponta (seguir, não duplicar, organizador não segue a si mesmo, alvo inválido, aviso para cada tipo de seguidor, um e-mail por pessoa, quem desligou não recebe, outra categoria, descadastro com token adulterado/válido, desligar tudo, .ics, lembrete de 1 e de 7 dias, sem repetição, conteúdo do lembrete) + testes Go (janela dos lembretes, .ics, Google Agenda, fuso, token, alvos).
+
+- **Item 6.5 — quem avalia:** só quem **comprou e fez check-in** (ingresso `utilizado` num pedido da própria conta; cortesia não conta, porque é da conta do organizador). O organizador não avalia o próprio evento (não tem ingresso usado). Uma avaliação por pessoa e evento (`avaliacoes_publico`, único por evento + usuário), editável: nota de 1 a 5 e comentário opcional de até 500 caracteres.
+- **Item 6.5 — prazo:** abre quando o evento começa e fecha 30 dias depois do fim (sem fim cadastrado: 30 dias depois do início).
+- **Item 6.5 — o que aparece em público:** primeiro nome + inicial do sobrenome ("Ana T."), nunca o e-mail; comentários aparecem primeiro. A **média só aparece com 3 avaliações ou mais** (com menos, só a contagem), arredondada em uma casa ("4,7"). A página do organizador mostra a média de todos os eventos dele (também só com 3 ou mais).
+- **Item 6.5 — moderação:** o admin vê a lista (com o e-mail de quem avaliou) em Admin › Avaliações e pode **ocultar** ou reexibir; ocultar tira da página e da média, nada é apagado. O organizador não apaga avaliações. Quem teve a avaliação ocultada vê o aviso na própria avaliação.
+- **Item 6.5 — convite "Como foi?":** no mesmo job de lembretes (de hora em hora), entre 3 e 48 horas depois do fim, um e-mail por pessoa que fez check-in, com o link `/e/slug#avaliar` (abre a página já no formulário; quem não está logado vê "Entre na sua conta"). Sai uma vez (`lembretes_enviados`, tipo `pos`).
+- **Item 6.5 — testes:** 33 conferências de ponta a ponta (antes do início, sem login, quem não foi, organizador, nota e comentário inválidos, criar e editar sem duplicar, nome curto, sem e-mail em público, média só com 3, página do organizador, moderação com permissão, ocultar e reexibir, convite só para quem foi, sem repetir, prazo de 30 dias) + testes Go (nome, janela, média, convite). Conferido no navegador no celular e no desktop.
 
 **Pendências para validar fora do código:**
 - Contador/advogado: custódia de recursos de terceiros, nome "Garantia de vaga" (vs. "seguro"), retenção ou não da taxa no arrependimento, regras regionais por UF (incluindo Sergipe), emissão de nota fiscal e tributação da taxa/garantia.

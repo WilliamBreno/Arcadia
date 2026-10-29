@@ -17,6 +17,7 @@ import (
 type SeguirHandler struct {
 	seguir      *service.SeguirService
 	lembretes   *service.LembretesService
+	convites    *service.AvaliacaoPublicoService
 	eventos     *repository.EventoRepository
 	locais      *repository.LocalRepository
 	frontendURL string
@@ -135,12 +136,24 @@ func (h *SeguirHandler) Calendario(c *gin.Context) {
 	c.Data(http.StatusOK, "text/calendar; charset=utf-8", []byte(ics))
 }
 
+// DefinirConvites liga o convite para avaliar depois do evento (6.5).
+func (h *SeguirHandler) DefinirConvites(s *service.AvaliacaoPublicoService) { h.convites = s }
+
 // Lembretes é o job POST /api/v1/jobs/lembretes (de hora em hora).
 func (h *SeguirHandler) Lembretes(c *gin.Context) {
-	n, err := h.lembretes.Enviar(time.Now())
+	agora := time.Now()
+	n, err := h.lembretes.Enviar(agora)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao enviar lembretes"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"enviados": n})
+	convites := 0
+	if h.convites != nil {
+		// Item 6.5: "Como foi?" para quem fez check-in, depois do evento.
+		if convites, err = h.convites.ConvidarParaAvaliar(agora); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao enviar convites de avaliação"})
+			return
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{"enviados": n, "convites_avaliacao": convites})
 }

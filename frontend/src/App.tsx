@@ -21,6 +21,7 @@ import AdminRelatorios from '@/pages/admin/AdminRelatorios'
 import AdminRepasses from '@/pages/admin/AdminRepasses'
 import AdminOrganizadores from '@/pages/admin/AdminOrganizadores'
 import AdminColecoes from '@/pages/admin/AdminColecoes'
+import AdminAvaliacoes from '@/pages/admin/AdminAvaliacoes'
 import CidadeEventos from '@/pages/CidadeEventos'
 import ColecaoPublica from '@/pages/ColecaoPublica'
 import MapaEventos from '@/pages/MapaEventos'
@@ -73,6 +74,7 @@ function App() {
           <Route path="/admin/relatorios" element={<AdminRelatorios />} />
           <Route path="/admin/organizadores" element={<AdminOrganizadores />} />
           <Route path="/admin/colecoes" element={<AdminColecoes />} />
+          <Route path="/admin/avaliacoes" element={<AdminAvaliacoes />} />
           <Route path="/organizador/eventos/novo" element={<EventoNovo />} />
           <Route path="/organizador/eventos/:id" element={<EventoEditar />} />
         </Route>

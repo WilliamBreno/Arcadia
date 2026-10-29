@@ -1,4 +1,5 @@
 import type { RegraTaxas } from '@/lib/taxas'
+import type { ResumoAvaliacoes } from '@/lib/avaliacoes'
 
 export type EventoPublicoItem = {
   slug: string
@@ -88,4 +89,5 @@ export type OrganizadorDetalhe = {
   }
   eventos: EventoPublicoItem[]
   seguidores: number
+  avaliacoes?: ResumoAvaliacoes
 }

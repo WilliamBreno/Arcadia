@@ -183,6 +183,12 @@ func main() {
 	publicoHandler.DefinirSeguir(seguirService)
 	seguirHandler := handler.NovoSeguirHandler(seguirService, service.NovoLembretesService(db, localRepo, mailCliente, cfg.FrontendURL), eventoRepo, localRepo, cfg.FrontendURL)
 
+	// Item 6.5: avaliação do evento por quem fez check-in.
+	avaliacaoPublicoService := service.NovoAvaliacaoPublicoService(db, mailCliente, cfg.FrontendURL)
+	avaliacaoPublicoHandler := handler.NovoAvaliacaoPublicoHandler(avaliacaoPublicoService, eventoRepo)
+	publicoHandler.DefinirAvaliacoes(avaliacaoPublicoService)
+	seguirHandler.DefinirConvites(avaliacaoPublicoService)
+
 	router := gin.New()
 	router.Use(middleware.IDRequisicao(), middleware.LogRequisicoes(), middleware.AlertarErros(alertador), middleware.TratadorDeErros(), middleware.CabecalhosSeguranca())
 	router.Use(cors.New(cors.Config{
@@ -214,6 +220,7 @@ func main() {
 		v1.POST("/descadastrar", seguirHandler.Descadastrar)
 		v1.GET("/destaques", publicoHandler.Destaques)
 		v1.GET("/colecoes", publicoHandler.Colecoes)
+		v1.GET("/eventos/:slug/avaliacoes", avaliacaoPublicoHandler.DoEvento)
 		v1.GET("/colecoes/:slug", publicoHandler.Colecao)
 		// Item 6.1: sitemap e robots (a Vercel reescreve /sitemap.xml e /robots.txt para cá).
 		seoHandler := handler.NovoSEOHandler(eventoRepo, cfg.FrontendURL)
@@ -246,6 +253,8 @@ func main() {
 		autenticado.GET("/me", authHandler.Me)
 		autenticado.GET("/me/eventos", contaHandler.MeusEventos)
 		autenticado.GET("/me/seguindo", seguirHandler.Meus)
+		autenticado.GET("/eventos/:slug/minha-avaliacao", avaliacaoPublicoHandler.Minha)
+		autenticado.PUT("/eventos/:slug/minha-avaliacao", avaliacaoPublicoHandler.Salvar)
 		autenticado.POST("/seguindo", seguirHandler.Seguir)
 		autenticado.DELETE("/seguindo", seguirHandler.Deixar)
 		autenticado.GET("/me/ingressos", contaHandler.MeusIngressos)
@@ -368,6 +377,8 @@ func main() {
 		admin.GET("/reembolsos", adminHandler.ListarReembolsos)
 		admin.GET("/contestacoes", adminHandler.ListarContestacoes)
 		admin.GET("/colecoes", publicoHandler.ListarColecoesAdmin)
+		admin.GET("/avaliacoes", avaliacaoPublicoHandler.ListarAdmin)
+		admin.POST("/avaliacoes/:id/ocultar", avaliacaoPublicoHandler.Ocultar)
 		admin.POST("/colecoes", publicoHandler.SalvarColecao)
 		admin.PUT("/colecoes/:id", publicoHandler.SalvarColecao)
 		admin.DELETE("/colecoes/:id", publicoHandler.ExcluirColecao)

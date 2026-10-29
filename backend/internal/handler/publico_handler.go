@@ -23,6 +23,7 @@ type PublicoHandler struct {
 	sessoes       *repository.SessaoRepository
 	taxas         *service.TaxasService
 	seguir        *service.SeguirService
+	avaliacoes    *service.AvaliacaoPublicoService
 }
 
 // DefinirTaxas liga o cálculo de taxas por faixa (item 5.1).
@@ -359,6 +360,7 @@ func (h *PublicoHandler) ObterOrganizador(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"seguidores": h.contarSeguidores(organizador.ID),
+		"avaliacoes": h.resumoOrganizador(organizador.ID),
 		"organizador": organizadorPublico{
 			ID: organizador.ID, NomePublico: organizador.NomePublico, Slug: organizador.Slug,
 			Descricao: organizador.Descricao, LogoURL: organizador.LogoURL,
@@ -396,6 +398,17 @@ func (h *PublicoHandler) Taxas(c *gin.Context) {
 		"garantia_min_centavos":  regra.GarantiaMinCentavos,
 		"garantia_max_centavos":  regra.GarantiaMaxCentavos,
 	})
+}
+
+// DefinirAvaliacoes liga a nota média do público na página do organizador (6.5).
+func (h *PublicoHandler) DefinirAvaliacoes(s *service.AvaliacaoPublicoService) { h.avaliacoes = s }
+
+func (h *PublicoHandler) resumoOrganizador(organizadorID int64) service.ResumoAvaliacoes {
+	if h.avaliacoes == nil {
+		return service.ResumoAvaliacoes{}
+	}
+	r, _ := h.avaliacoes.ResumoDoOrganizador(organizadorID)
+	return r
 }
 
 // DefinirSeguir liga a contagem de seguidores na página do organizador.
