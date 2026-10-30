@@ -8,6 +8,7 @@ on:
     - cron: "17 * * * *"    # reprocessar reembolsos
     - cron: "2-59/10 * * * *" # enviar e-mails da fila (cobre instância dormindo)
     - cron: "40 * * * *"    # lembretes 7 dias e 1 dia antes do evento
+    - cron: "25 * * * *"    # repasse automático por Pix (item 9.1)
   workflow_dispatch:
 
 jobs:
@@ -23,6 +24,7 @@ jobs:
             "17 * * * *") echo "nome=reprocessar-reembolsos" >> "$GITHUB_OUTPUT" ;;
             "2-59/10 * * * *") echo "nome=enviar-emails" >> "$GITHUB_OUTPUT" ;;
             "40 * * * *") echo "nome=lembretes" >> "$GITHUB_OUTPUT" ;;
+            "25 * * * *") echo "nome=enviar-repasses" >> "$GITHUB_OUTPUT" ;;
             *) echo "nome=expirar-reservas" >> "$GITHUB_OUTPUT" ;;
           esac
       - name: Chamar API

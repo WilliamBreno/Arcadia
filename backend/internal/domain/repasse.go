@@ -31,7 +31,15 @@ type Repasse struct {
 	PagoEm                *time.Time
 	ComprovanteURL        string
 	Observacao            string
-	CriadoEm              time.Time
+	// Item 9.1: envio automático por Pix (Mercado Pago Payouts).
+	EnvioStatus      string
+	EnvioMotivo      string
+	EnvioTentativa   int
+	EnvioReferencia  *string
+	MPPayoutID       *string `gorm:"column:mp_payout_id"`
+	EnvioProximaEm   *time.Time
+	EnvioAprovadoPor *int64
+	CriadoEm         time.Time
 }
 
 func (Repasse) TableName() string {

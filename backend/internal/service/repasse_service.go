@@ -1,6 +1,7 @@
 package service
 
 import (
+	"crypto/ed25519"
 	"errors"
 	"fmt"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/WilliamBreno/Arcadia/backend/internal/domain"
+	"github.com/WilliamBreno/Arcadia/backend/internal/mail"
 	"github.com/WilliamBreno/Arcadia/backend/internal/repository"
 )
 
@@ -71,6 +73,11 @@ type RepasseService struct {
 	config        *repository.ConfigPlataformaRepository
 	pagamentos    *repository.PagamentoRepository
 	organizadores *repository.OrganizadorRepository
+	// Item 9.1: envio automático por Pix.
+	payout          Payouter
+	chaveAssinatura ed25519.PrivateKey
+	mailCliente     *mail.Cliente
+	nomePlataforma  string
 }
 
 // DefinirOrganizadores liga a reserva de risco (item 5.4).
@@ -145,8 +152,7 @@ func (s *RepasseService) FinanceiroDoEvento(organizadorID, eventoID int64) (*Fin
 		return nil, err
 	}
 	if fim, ok := fimDoEvento(evento); ok {
-		dias, _ := s.config.BuscarInt64(domain.ChaveRepasseDiasUteis)
-		l := adicionarDiasUteis(fim, int(dias))
+		l := adicionarDiasUteis(fim, s.diasParaRepasse(evento.OrganizadorID)) // 9.1: verificado recebe antes
 		res.LiberarEm = &l
 	}
 	return res, nil
@@ -160,9 +166,12 @@ func (s *RepasseService) GerarRepasses() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	dias, err := s.config.BuscarInt64(domain.ChaveRepasseDiasUteis)
-	if err != nil {
+	if _, err := s.config.BuscarInt64(domain.ChaveRepasseDiasUteis); err != nil {
 		return 0, fmt.Errorf("config REPASSE_DIAS_UTEIS ausente: %w", err)
+	}
+	envio := EnvioManual
+	if s.EnvioLigado() {
+		envio = EnvioNaFila // item 9.1: vai sozinho (ou espera o admin, se não puder)
 	}
 
 	agora := time.Now()
@@ -173,7 +182,7 @@ func (s *RepasseService) GerarRepasses() (int, error) {
 		if !ok {
 			continue
 		}
-		liberarEm := adicionarDiasUteis(fim, int(dias))
+		liberarEm := adicionarDiasUteis(fim, s.diasParaRepasse(e.OrganizadorID))
 		if agora.Before(liberarEm) {
 			continue
 		}
@@ -200,7 +209,7 @@ func (s *RepasseService) GerarRepasses() (int, error) {
 				TaxaAbsorvidaCentavos: f.TaxaAbsorvidaCentavos,
 				ReservaCentavos:       reserva, ReservaLiberarEm: reservaAte, ReservaStatus: reservaStatus,
 				ValorLiquidoCentavos: f.LiquidoCentavos, Status: domain.StatusRepassePendente,
-				LiberarEm: liberarEm, CriadoEm: agora,
+				LiberarEm: liberarEm, CriadoEm: agora, EnvioStatus: envio,
 			}
 			if err := s.repasses.Criar(tx, rep); err != nil {
 				return err
@@ -237,8 +246,17 @@ func (s *RepasseService) MarcarPago(id int64, comprovanteURL, observacao string)
 	if err != nil {
 		return nil, ErrRepasseNaoEncontrado
 	}
+	// Item 9.1: com Pix automático no meio do caminho, marcar à mão pagaria duas vezes.
+	if rep.EnvioStatus == EnvioEnviando || rep.EnvioStatus == EnvioProcessando {
+		return nil, ErrEnvioEmAndamento
+	}
+	return s.marcarPago(rep, comprovanteURL, observacao)
+}
 
-	err = s.db.Transaction(func(tx *gorm.DB) error {
+func (s *RepasseService) marcarPago(rep *domain.Repasse, comprovanteURL, observacao string) (*domain.Repasse, error) {
+	id := rep.ID
+
+	err := s.db.Transaction(func(tx *gorm.DB) error {
 		ok, err := s.repasses.MarcarPagoAtomico(tx, id, comprovanteURL, observacao)
 		if err != nil {
 			return err

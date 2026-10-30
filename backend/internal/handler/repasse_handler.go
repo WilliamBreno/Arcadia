@@ -8,6 +8,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/WilliamBreno/Arcadia/backend/internal/domain"
+	"github.com/WilliamBreno/Arcadia/backend/internal/mercadopago"
+	"github.com/WilliamBreno/Arcadia/backend/internal/middleware"
 	"github.com/WilliamBreno/Arcadia/backend/internal/repository"
 	"github.com/WilliamBreno/Arcadia/backend/internal/service"
 )
@@ -44,6 +46,10 @@ type repasseResposta struct {
 	PagoEm            *time.Time `json:"pago_em"`
 	ComprovanteURL    string     `json:"comprovante_url"`
 	Observacao        string     `json:"observacao"`
+	// Item 9.1: Pix automático.
+	EnvioStatus string `json:"envio_status"`
+	EnvioRotulo string `json:"envio_rotulo"`
+	EnvioMotivo string `json:"envio_motivo,omitempty"`
 }
 
 func paraRepasseResposta(r *repository.RepasseDetalhado, comPix bool) repasseResposta {
@@ -55,8 +61,10 @@ func paraRepasseResposta(r *repository.RepasseDetalhado, comPix bool) repasseRes
 		ValorAPagarAgora: service.ValorAPagarAgora(&r.Repasse), ReservaCentavos: r.ReservaCentavos,
 		ReservaStatus: r.ReservaStatus, ReservaLiberarEm: r.ReservaLiberarEm, ReservaPagoEm: r.ReservaPagoEm,
 		ReservaObservacao: r.ReservaObservacao,
+		EnvioStatus:       r.EnvioStatus, EnvioRotulo: service.RotuloEnvio(r.EnvioStatus),
 	}
 	if comPix {
+		resp.EnvioMotivo = r.EnvioMotivo
 		resp.OrganizadorNome, resp.ChavePix, resp.TipoChavePix = r.OrganizadorNome, r.ChavePix, r.TipoChavePix
 	}
 	return resp
@@ -150,7 +158,7 @@ func (h *RepasseHandler) Pagar(c *gin.Context) {
 		switch {
 		case errors.Is(err, service.ErrRepasseNaoEncontrado):
 			c.JSON(http.StatusNotFound, gin.H{"erro": err.Error()})
-		case errors.Is(err, service.ErrRepasseNaoPendente):
+		case errors.Is(err, service.ErrRepasseNaoPendente), errors.Is(err, service.ErrEnvioEmAndamento):
 			c.JSON(http.StatusConflict, gin.H{"erro": err.Error()})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao marcar repasse como pago"})
@@ -168,4 +176,41 @@ func (h *RepasseHandler) GerarRepasses(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"criados": n})
+}
+
+// EnviarPix é POST /admin/repasses/:id/enviar (item 9.1): o admin aprova e
+// o Pix sai pelo Mercado Pago, mesmo acima do limite automático.
+func (h *RepasseHandler) EnviarPix(c *gin.Context) {
+	id, ok := idDaURL(c)
+	if !ok {
+		return
+	}
+	rep, err := h.service.AprovarEnvio(id, c.GetInt64(middleware.ChaveContextoUsuarioID))
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrRepasseNaoEncontrado):
+			c.JSON(http.StatusNotFound, gin.H{"erro": err.Error()})
+		case errors.Is(err, service.ErrRepasseNaoPendente), errors.Is(err, service.ErrEnvioEmAndamento):
+			c.JSON(http.StatusConflict, gin.H{"erro": err.Error()})
+		case errors.Is(err, service.ErrEnvioDesligado), errors.Is(err, service.ErrChaveNaoEnviavel), errors.Is(err, service.ErrRepasseSemChave),
+			errors.Is(err, mercadopago.ErrPayoutRecusado):
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"erro": err.Error()})
+		default:
+			// Rede/5xx: o envio fica "enviando" e o job repete com a mesma chave.
+			c.JSON(http.StatusAccepted, gin.H{"erro": "o Mercado Pago não respondeu agora; o envio será repetido com segurança em instantes"})
+		}
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"id": rep.ID, "envio_status": rep.EnvioStatus})
+}
+
+// EnviarRepasses é o job POST /jobs/enviar-repasses (item 9.1).
+func (h *RepasseHandler) EnviarRepasses(c *gin.Context) {
+	r, err := h.service.EnviarRepasses()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao enviar repasses"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ligado": h.service.EnvioLigado(), "enviados": r.Enviados, "aguardando_aprovacao": r.AguardandoAprovacao,
+		"confirmados": r.Confirmados, "falhas": r.Falhas})
 }

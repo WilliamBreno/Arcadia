@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/ed25519"
 	"log/slog"
 	"net/http"
 	"os"
@@ -171,6 +172,22 @@ func main() {
 	// Item 5.4: verificação do organizador e reserva de risco.
 	adminHandler.DefinirOrganizadores(organizadorRepo)
 	repasseService.DefinirOrganizadores(organizadorRepo)
+	// Item 9.1: repasse automático por Pix (Mercado Pago Payouts).
+	if cfg.MercadoPagoAccessToken != "" {
+		var chavePayout ed25519.PrivateKey
+		if cfg.MercadoPagoPayoutChavePrivada != "" {
+			k, err := mercadopago.LerChavePrivadaEd25519(cfg.MercadoPagoPayoutChavePrivada)
+			if err != nil {
+				slog.Error("chave do repasse automático inválida; envio desligado", "erro", err)
+			} else {
+				chavePayout = k
+			}
+		}
+		payoutCliente := mercadopago.NovoCliente(cfg.MercadoPagoAccessToken).ComBaseURL(cfg.MercadoPagoBaseURL)
+		if chavePayout != nil || payoutCliente.ModoTeste() {
+			repasseService.DefinirEnvio(payoutCliente, chavePayout, mailCliente, cfg.NomePlataforma)
+		}
+	}
 
 	// Item 5.5: venda bloqueada depois do fim do evento ou do dia do ingresso.
 	checkoutService.DefinirSessoes(sessaoRepo)
@@ -507,6 +524,7 @@ func main() {
 		jobs := v1.Group("/jobs", middleware.ExigirCronSecret(cfg.CronSecret))
 		jobs.POST("/expirar-reservas", jobHandler.ExpirarReservas)
 		jobs.POST("/gerar-repasses", repasseHandler.GerarRepasses)
+		jobs.POST("/enviar-repasses", repasseHandler.EnviarRepasses)
 		jobs.POST("/reprocessar-reembolsos", adminHandler.ReprocessarFalhas)
 		jobs.POST("/enviar-emails", jobHandler.EnviarEmails)
 		jobs.POST("/lembretes", seguirHandler.Lembretes)
@@ -514,6 +532,7 @@ func main() {
 		admin := v1.Group("/admin", middleware.ExigirAutenticacao(jwtService), middleware.ExigirAdminPlataforma())
 		admin.GET("/repasses", repasseHandler.ListarAdmin)
 		admin.POST("/repasses/:id/pagar", repasseHandler.Pagar)
+		admin.POST("/repasses/:id/enviar", repasseHandler.EnviarPix)
 		admin.POST("/repasses/:id/reserva/pagar", repasseHandler.PagarReserva)
 		admin.POST("/repasses/:id/reserva/usar", repasseHandler.UsarReserva)
 		admin.GET("/organizadores", adminHandler.ListarOrganizadores)

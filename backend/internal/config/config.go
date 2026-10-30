@@ -46,6 +46,10 @@ type Config struct {
 	// MercadoPagoBaseURL troca a API do MP por um servidor falso local
 	// (só testes de desenvolvimento; proibido em produção).
 	MercadoPagoBaseURL string
+	// MercadoPagoPayoutChavePrivada é a chave Ed25519 (PEM) que assina o
+	// envio de Pix ao organizador (item 9.1). Vazia em produção = repasse
+	// automático desligado (segue manual).
+	MercadoPagoPayoutChavePrivada string
 	// AlertaWebhookURL recebe avisos de erro 500 (webhook do Discord ou
 	// Slack, item 5.5). Opcional.
 	AlertaWebhookURL string
@@ -114,12 +118,13 @@ func Carregar() Config {
 
 		BackendURL: getEnv("BACKEND_URL", "http://localhost:8080"),
 
-		MercadoPagoAccessToken:   getEnv("MERCADOPAGO_ACCESS_TOKEN", ""),
-		MercadoPagoWebhookSecret: getEnv("MERCADOPAGO_WEBHOOK_SECRET", ""),
-		MercadoPagoPublicKey:     getEnv("MERCADOPAGO_PUBLIC_KEY", ""),
-		MercadoPagoBaseURL:       getEnv("MERCADOPAGO_BASE_URL", ""),
-		AlertaWebhookURL:         getEnv("ALERTA_WEBHOOK_URL", ""),
-		DBMaxConexoes:            getEnvInt("DB_MAX_CONEXOES", 20),
+		MercadoPagoAccessToken:        getEnv("MERCADOPAGO_ACCESS_TOKEN", ""),
+		MercadoPagoWebhookSecret:      getEnv("MERCADOPAGO_WEBHOOK_SECRET", ""),
+		MercadoPagoPublicKey:          getEnv("MERCADOPAGO_PUBLIC_KEY", ""),
+		MercadoPagoBaseURL:            getEnv("MERCADOPAGO_BASE_URL", ""),
+		MercadoPagoPayoutChavePrivada: getEnv("MERCADOPAGO_PAYOUT_CHAVE_PRIVADA", ""),
+		AlertaWebhookURL:              getEnv("ALERTA_WEBHOOK_URL", ""),
+		DBMaxConexoes:                 getEnvInt("DB_MAX_CONEXOES", 20),
 
 		CronSecret: getEnv("CRON_SECRET", ""),
 	}
@@ -163,6 +168,9 @@ func (c Config) ValidarProducao() (erros []error, avisos []string) {
 		avisos = append(avisos, "MERCADOPAGO_PUBLIC_KEY vazio: o cartão abre no site do Mercado Pago (o Pix continua na página)")
 	} else if strings.HasPrefix(c.MercadoPagoPublicKey, "TEST-") {
 		avisos = append(avisos, "MERCADOPAGO_PUBLIC_KEY é de TESTE em produção")
+	}
+	if c.MercadoPagoPayoutChavePrivada == "" {
+		avisos = append(avisos, "MERCADOPAGO_PAYOUT_CHAVE_PRIVADA vazia: repasse automático por Pix desligado (segue manual)")
 	}
 	if c.MercadoPagoWebhookSecret == "" {
 		avisos = append(avisos, "MERCADOPAGO_WEBHOOK_SECRET vazio: webhook sem validação de assinatura (segue seguro por reconsultar o MP, mas configure)")

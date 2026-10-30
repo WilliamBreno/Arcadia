@@ -43,6 +43,7 @@ export default function Repasses() {
                 )}
                 <p className="text-xs text-muted-foreground">
                   {r.pago_em ? `Pago em ${new Date(r.pago_em).toLocaleDateString('pt-BR')}` : `Liberado em ${new Date(r.liberar_em).toLocaleDateString('pt-BR')}`}
+                  {r.envio_status && r.envio_status !== 'manual' && r.status !== 'pago' && ` · ${r.envio_status === 'falhou' ? 'Pix não saiu: confira sua chave Pix no perfil' : r.envio_rotulo}`}
                 </p>
               </div>
               <div className="text-right">

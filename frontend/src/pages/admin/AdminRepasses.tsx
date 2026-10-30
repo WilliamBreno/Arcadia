@@ -3,7 +3,7 @@ import { useState } from 'react'
 
 import { ApiError } from '@/lib/api'
 import { formatarCentavos } from '@/lib/evento'
-import { listarRepassesAdmin, pagarRepasse, pagarReserva, usarReserva } from '@/lib/financeiro'
+import { enviarPixRepasse, listarRepassesAdmin, pagarRepasse, pagarReserva, usarReserva } from '@/lib/financeiro'
 import { AdminNav } from '@/components/admin-nav'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -28,6 +28,18 @@ export default function AdminRepasses() {
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : 'Erro ao marcar como pago')
     }
+  }
+
+  // Item 9.1: envia o Pix pelo Mercado Pago (mesmo acima do limite automático).
+  const enviarPix = async (id: number, valor: string) => {
+    if (!confirm(`Enviar ${valor} por Pix agora, pelo Mercado Pago?`)) return
+    setErro(null)
+    try {
+      await enviarPixRepasse(id)
+    } catch (e) {
+      setErro(e instanceof ApiError ? e.message : 'Erro ao enviar o Pix')
+    }
+    queryClient.invalidateQueries({ queryKey: ['admin-repasses'] })
   }
 
   const acaoReserva = async (id: number, acao: 'pagar' | 'usar') => {
@@ -83,6 +95,12 @@ export default function AdminRepasses() {
                   Bruto {formatarCentavos(r.valor_bruto_centavos)} − taxa {formatarCentavos(r.taxa_processador_centavos)}
                   {r.taxa_absorvida_centavos > 0 && <> − taxa absorvida {formatarCentavos(r.taxa_absorvida_centavos)}</>} · {r.status}
                 </p>
+                {r.envio_status !== 'manual' && (
+                  <p className={`text-xs ${r.envio_status === 'falhou' || r.envio_status === 'aguardando_aprovacao' ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
+                    Pix automático: {r.envio_rotulo}
+                    {r.envio_motivo && ` · ${r.envio_motivo}`}
+                  </p>
+                )}
                 {r.reserva_centavos > 0 && (
                   <p className="text-xs text-muted-foreground">
                     Reserva {formatarCentavos(r.reserva_centavos)} ({r.reserva_status})
@@ -94,10 +112,17 @@ export default function AdminRepasses() {
                 <span className="font-semibold text-foreground">
                   {formatarCentavos(r.status === 'pendente' ? r.valor_a_pagar_agora_centavos : r.valor_liquido_centavos)}
                 </span>
-                {r.status === 'pendente' && (
-                  <Button size="sm" onClick={() => pagar(r.id)}>
-                    Marcar pago
-                  </Button>
+                {r.status === 'pendente' && !['enviando', 'processando', 'enviado'].includes(r.envio_status) && (
+                  <>
+                    {r.tipo_chave_pix !== 'aleatoria' && (
+                      <Button size="sm" onClick={() => enviarPix(r.id, formatarCentavos(r.valor_a_pagar_agora_centavos))}>
+                        {r.envio_status === 'falhou' ? 'Tentar Pix de novo' : 'Enviar Pix'}
+                      </Button>
+                    )}
+                    <Button size="sm" variant="outline" onClick={() => pagar(r.id)}>
+                      Marcar pago (Pix manual)
+                    </Button>
+                  </>
                 )}
                 {r.status === 'pago' && r.reserva_status === 'retida' && (
                   <>

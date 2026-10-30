@@ -43,6 +43,10 @@ export type Repasse = {
   pago_em: string | null
   comprovante_url: string
   observacao: string
+  // Item 9.1: Pix automático pelo Mercado Pago.
+  envio_status: 'manual' | 'na_fila' | 'aguardando_aprovacao' | 'enviando' | 'processando' | 'enviado' | 'falhou'
+  envio_rotulo: string
+  envio_motivo?: string
 }
 
 export const obterFinanceiroEvento = (eventoId: number) => api<FinanceiroEvento>(`/org/eventos/${eventoId}/financeiro`)
@@ -55,3 +59,6 @@ export const usarReserva = (id: number, observacao: string) =>
 export const listarRepassesAdmin = (status: string) => api<Repasse[]>(`/admin/repasses${status ? `?status=${status}` : ''}`)
 export const pagarRepasse = (id: number, comprovante_url: string, observacao: string) =>
   api(`/admin/repasses/${id}/pagar`, { method: 'POST', body: { comprovante_url, observacao } })
+
+// Item 9.1: o admin aprova e o Pix sai pelo Mercado Pago.
+export const enviarPixRepasse = (id: number) => api<{ envio_status: string }>(`/admin/repasses/${id}/enviar`, { method: 'POST' })
