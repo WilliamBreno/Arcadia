@@ -307,7 +307,7 @@ export default function EventoEditar() {
 
       <AfiliadosCard eventoId={Number(id)} slug={evento.slug} />
 
-      <DivulgacaoCard eventoId={Number(id)} slug={evento.slug} />
+      <DivulgacaoCard eventoId={Number(id)} slug={evento.slug} ingressos={tiposIngresso?.filter((t) => t.ativo).length ?? 1} />
 
       <PerguntasCard eventoId={Number(id)} tipos={tiposIngresso ?? []} />
 
