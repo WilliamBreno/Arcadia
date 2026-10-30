@@ -439,6 +439,8 @@ type PerfilPublico struct {
 	YouTube       string         `json:"youtube,omitempty"`
 	Indexar       bool           `json:"indexar"`
 	Participacoes []Participacao `json:"participacoes"`
+	// Item 8.7: fotos da galeria em que o talento (adulto) se marcou.
+	Fotos []FotoDoPerfil `json:"fotos,omitempty"`
 }
 
 // Montar aplica as regras de menor. Testada.
@@ -470,6 +472,9 @@ func (s *PerfilTalentoService) Publico(slug string) (*PerfilPublico, error) {
 		return nil, err
 	}
 	out := Montar(&p, sit, parts)
+	if !sit.Menor {
+		out.Fotos = FotosDoTalento(s.db, p.UsuarioID)
+	}
 	return &out, nil
 }
 

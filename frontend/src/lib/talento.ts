@@ -24,6 +24,8 @@ export type PerfilPublico = {
   youtube?: string
   indexar: boolean
   participacoes: Participacao[]
+  // Item 8.7: fotos da galeria em que o talento se marcou.
+  fotos?: { url: string; evento_titulo: string; evento_slug: string }[]
 }
 
 export type DadosPerfil = {

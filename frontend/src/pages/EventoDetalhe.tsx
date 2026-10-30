@@ -23,6 +23,8 @@ import { MinhaDevolutiva, PremioPublico, VotacaoPublico, type LinhaVoto } from '
 import { MinhaInscricao } from '@/components/minha-inscricao'
 import { SelosCircuito } from '@/components/selos-circuito'
 import { ExpositoresDoEvento } from '@/components/expositores-evento'
+import { CaravanasDoEvento } from '@/components/caravanas-evento'
+import { GaleriaDoEvento } from '@/components/galeria-evento'
 import { MeuQRParticipante } from '@/components/meu-qr-participante'
 import { Card, CardContent } from '@/components/ui/card'
 import { Carregando } from '@/components/carregando'
@@ -578,6 +580,8 @@ export default function EventoDetalhe() {
 
       <MinhaInscricao evento={evento} />
       <ExpositoresDoEvento slug={evento.slug} timezone={evento.timezone} />
+      <CaravanasDoEvento slug={evento.slug} eventoComecou={eventoComecou} />
+      <GaleriaDoEvento slug={evento.slug} />
 
       <AvaliacoesDoEvento slug={evento.slug} eventoComecou={eventoComecou} />
 

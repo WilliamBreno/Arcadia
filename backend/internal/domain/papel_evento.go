@@ -9,6 +9,7 @@ const (
 	PapelJurado       Papel = "jurado"
 	PapelParticipante Papel = "participante"
 	PapelStaff        Papel = "staff"
+	PapelFotografo    Papel = "fotografo" // item 8.7
 )
 
 type OrigemPapel string

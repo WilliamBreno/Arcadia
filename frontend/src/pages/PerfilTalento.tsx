@@ -158,6 +158,23 @@ export default function PerfilTalento() {
           ))}
         </ul>
       </section>
+
+      {p.fotos && p.fotos.length > 0 && (
+        <section aria-labelledby="titulo-fotos" className="mt-10">
+          <h2 id="titulo-fotos" className="mb-3 text-xl font-semibold text-foreground">
+            Fotos nos eventos
+          </h2>
+          <ul className="grid grid-cols-3 gap-1 sm:grid-cols-4">
+            {p.fotos.map((f) => (
+              <li key={f.url}>
+                <Link to={`/e/${f.evento_slug}#galeria`} className="block aspect-square overflow-hidden rounded-md bg-muted" title={f.evento_titulo}>
+                  <img src={f.url} alt={`${p.nome_artistico} em ${f.evento_titulo}`} loading="lazy" className="size-full object-cover" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </main>
   )
 }

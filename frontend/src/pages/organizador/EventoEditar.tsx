@@ -30,6 +30,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { CircuitoCard } from '@/components/circuito-card'
 import { ExpositoresCard } from '@/components/expositores-card'
+import { GaleriaCard } from '@/components/galeria-card'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Carregando } from '@/components/carregando'
@@ -351,6 +352,8 @@ export default function EventoEditar() {
       {evento.aprovacao_manual && <SolicitacoesCard eventoId={Number(id)} />}
 
       <ExpositoresCard eventoId={Number(id)} />
+
+      <GaleriaCard eventoId={Number(id)} slug={evento.slug} />
 
       <ParticipantesCard eventoId={Number(id)} />
 
