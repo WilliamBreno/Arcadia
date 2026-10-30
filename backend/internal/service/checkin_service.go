@@ -43,6 +43,7 @@ type CheckinService struct {
 	qrSecret      string
 	sessoes       *repository.SessaoRepository
 	revendaDB     *gorm.DB // item 7.4
+	db            *gorm.DB // item 9.6: entradas, importados e credenciais
 }
 
 func NovoCheckinService(
@@ -176,7 +177,15 @@ func (s *CheckinService) Resumo(usuarioID, eventoID int64) (repository.ResumoChe
 			return repository.ResumoCheckin{TotalPagos: total, TotalUtilizados: entraram}, err
 		}
 	}
-	return s.itensPedido.ResumoCheckin(eventoID)
+	r, err := s.itensPedido.ResumoCheckin(eventoID)
+	if err == nil && s.db != nil {
+		// Item 9.6: ingressos importados de outra plataforma também contam.
+		var imp struct{ Total, Entraram int64 }
+		s.db.Raw(`SELECT count(*) AS total, count(utilizado_em) AS entraram FROM ingressos_importados WHERE evento_id = ?`, eventoID).Scan(&imp)
+		r.TotalPagos += imp.Total
+		r.TotalUtilizados += imp.Entraram
+	}
+	return r, err
 }
 
 // DefinirRevenda liga a checagem da revenda oficial no check-in (item 7.4).

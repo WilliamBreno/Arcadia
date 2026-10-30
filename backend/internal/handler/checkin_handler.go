@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -23,6 +24,7 @@ type validarCheckinRequest struct {
 	EventoID int64  `json:"evento_id" binding:"required"`
 	Codigo   string `json:"codigo" binding:"required"`
 	QRToken  string `json:"qr_token" binding:"required"`
+	Portao   string `json:"portao"` // item 9.6
 }
 
 type validarCheckinResposta struct {
@@ -55,6 +57,9 @@ func (h *CheckinHandler) Validar(c *gin.Context) {
 		return
 	}
 
+	if resultado.Resultado == service.ResultadoValido && resultado.Item != nil {
+		h.service.RegistrarEntrada(req.EventoID, service.OrigemEntradaIngresso, resultado.Item.ID, req.Portao, usuarioID, time.Now())
+	}
 	resp := validarCheckinResposta{Resultado: string(resultado.Resultado), TipoIngressoNome: resultado.TipoIngressoNome, MeiaEntrada: resultado.MeiaEntrada}
 	if resultado.Item != nil {
 		resp.TitularNome = resultado.Item.TitularNome
@@ -104,6 +109,17 @@ func (h *CheckinHandler) Buscar(c *gin.Context) {
 			ID: i.ID, TitularNome: i.TitularNome, TitularEmail: i.TitularEmail,
 			Codigo: i.Codigo, Status: string(i.Status), TipoIngressoNome: i.TipoIngressoNome, MeiaEntrada: i.MeiaEntrada, Lugar: i.LugarRotulo,
 		})
+	}
+	// Item 9.6: ingressos importados de outra plataforma.
+	if importados, err := h.service.BuscarImportados(usuarioID, eventoID, texto); err == nil {
+		for _, i := range importados {
+			status := "pago"
+			if i.UtilizadoEm != nil {
+				status = "utilizado"
+			}
+			resposta = append(resposta, buscaCheckinItem{ID: -i.ID, TitularNome: i.Nome, TitularEmail: i.Email, Codigo: i.Codigo,
+				Status: status, TipoIngressoNome: service.RotuloImportado(i.Origem, i.Tipo)})
+		}
 	}
 	c.JSON(http.StatusOK, resposta)
 }

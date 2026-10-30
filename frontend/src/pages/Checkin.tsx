@@ -5,6 +5,7 @@ import { Link, useParams } from 'react-router-dom'
 import { VoltarBotao } from '@/components/voltar-link'
 import { ApiError } from '@/lib/api'
 import { lerCredencial } from '@/lib/expositor'
+import { lerCredencialEvento, portaoSalvo, portoesCheckin, rotuloFuncao, salvarPortao, validarImportado } from '@/lib/dia-evento'
 import { buscarCheckin, resumoCheckin, validarCheckin, type ItemBusca, type ResumoCheckin, type ValidarCheckinResposta } from '@/lib/checkin'
 import {
   baixarPacote,
@@ -33,6 +34,7 @@ const corPorResultado: Record<ValidarCheckinResposta['resultado'], string> = {
   em_revenda: 'bg-orange-500 border-orange-600',
   requer_internet: 'bg-orange-500 border-orange-600',
   expositor: 'bg-green-600 border-green-700',
+  credencial: 'bg-green-600 border-green-700',
   credencial_invalida: 'bg-red-600 border-red-700',
 }
 
@@ -47,7 +49,8 @@ const tituloPorResultado: Record<ValidarCheckinResposta['resultado'], string> = 
   em_revenda: '⛔ Ingresso sendo revendido agora — peça para retirar da revenda ou aguardar',
   requer_internet: '📶 QR dinâmico: precisa de internet para validar',
   expositor: '✅ Expositor liberado',
-  credencial_invalida: '❌ Credencial de expositor inválida',
+  credencial: '✅ Credencial liberada',
+  credencial_invalida: '❌ Credencial inválida ou desativada',
 }
 
 export default function Checkin() {
@@ -69,6 +72,11 @@ export default function Checkin() {
   const [msgOffline, setMsgOffline] = useState<string | null>(null)
   const [conflitos, setConflitos] = useState<{ nome: string; codigo: string }[]>([])
   const [modoOffline, setModoOffline] = useState(false)
+  // Item 9.6: portão deste aparelho (vai junto em cada entrada).
+  const [portoes, setPortoes] = useState<string[]>([])
+  const [portao, setPortao] = useState(() => portaoSalvo(id))
+  const portaoRef = useRef(portao)
+  portaoRef.current = portao
 
   const leitorRef = useRef<Html5Qrcode | null>(null)
   const processandoRef = useRef(false)
@@ -138,6 +146,9 @@ export default function Checkin() {
       .then((r) => {
         setResumo(r)
         setAcessoLiberado(true)
+        portoesCheckin(id)
+          .then((p) => setPortoes(p.portoes))
+          .catch(() => {})
       })
       .catch(async (e) => {
         // sem rede + pacote salvo no aparelho: abre em modo offline
@@ -178,8 +189,16 @@ export default function Checkin() {
 
   const processarLeitura = async (texto: string) => {
     if (processandoRef.current) return
+    texto = texto.trim()
+    if (!texto) return
     const separador = texto.indexOf(':')
-    if (separador === -1) return
+    const liberarLeitor = () =>
+      setTimeout(() => {
+        setResultado(null)
+        processandoRef.current = false
+        setProcessando(false)
+        leitorRef.current?.resume()
+      }, 2500)
 
     processandoRef.current = true
     setProcessando(true)
@@ -206,12 +225,41 @@ export default function Checkin() {
       return
     }
 
+    // Item 9.6: credencial impressa (EVVEC:...) de equipe, jurado e imprensa.
+    if (texto.startsWith('EVVEC:')) {
+      try {
+        const r = await lerCredencialEvento(id, texto, portaoRef.current)
+        setResultado({ resultado: 'credencial', titular_nome: r.nome, tipo_ingresso_nome: `${rotuloFuncao[r.funcao]}${r.primeira_vez ? '' : ' · reentrada'}` })
+      } catch {
+        setResultado({ resultado: 'credencial_invalida' })
+      }
+      liberarLeitor()
+      return
+    }
+
+    // QR de outra plataforma (ingresso importado): o texto inteiro é o código.
+    const importado = async () => {
+      const r = await validarImportado(id, texto, portaoRef.current)
+      setResultado(r)
+      if (r.resultado === 'valido') atualizarResumo()
+    }
+    if (separador === -1) {
+      try {
+        await importado()
+      } catch (e) {
+        setResultado({ resultado: e instanceof ApiError ? 'nao_encontrado' : 'requer_internet' })
+      }
+      liberarLeitor()
+      return
+    }
+
     const codigo = texto.slice(0, separador)
     const qrToken = texto.slice(separador + 1)
 
     try {
-      const resp = await validarCheckin(id, codigo, qrToken)
-      setResultado(resp)
+      const resp = await validarCheckin(id, codigo, qrToken, portaoRef.current)
+      if (resp.resultado === 'nao_encontrado') await importado()
+      else setResultado(resp)
       if (resp.resultado === 'valido') atualizarResumo()
     } catch (e) {
       if (e instanceof ApiError) {
@@ -273,6 +321,9 @@ export default function Checkin() {
           <Link to={`/porta/${id}`} className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground">
             Vender na porta
           </Link>
+          <Link to={`/ao-vivo/${id}`} className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground">
+            Ao vivo
+          </Link>
           <Link to={`/palco/${id}`} className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground">
             Palco e camarim
           </Link>
@@ -285,6 +336,30 @@ export default function Checkin() {
           {resumo ? `${resumo.total_utilizados} / ${resumo.total_pagos}` : '—'}
         </span>
       </div>
+
+      {portoes.length > 0 && (
+        <div className="mb-4 flex flex-col gap-1.5">
+          <label htmlFor="portao" className="text-sm font-medium text-foreground">
+            Portão deste aparelho
+          </label>
+          <select
+            id="portao"
+            className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground"
+            value={portao}
+            onChange={(e) => {
+              setPortao(e.target.value)
+              salvarPortao(id, e.target.value)
+            }}
+          >
+            <option value="">Escolha o portão</option>
+            {portoes.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {erroCamera && <p className="mb-2 text-sm text-destructive">{erroCamera}</p>}
 

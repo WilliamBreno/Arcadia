@@ -1,6 +1,6 @@
 import { api } from '@/lib/api'
 
-export type ResultadoCheckin = 'valido' | 'ja_utilizado' | 'cancelado' | 'outro_evento' | 'nao_encontrado' | 'qr_expirado' | 'fora_da_sessao' | 'requer_internet' | 'em_revenda' | 'credencial_invalida' | 'expositor'
+export type ResultadoCheckin = 'valido' | 'ja_utilizado' | 'cancelado' | 'outro_evento' | 'nao_encontrado' | 'qr_expirado' | 'fora_da_sessao' | 'requer_internet' | 'em_revenda' | 'credencial_invalida' | 'expositor' | 'credencial'
 
 export type ValidarCheckinResposta = {
   resultado: ResultadoCheckin
@@ -28,10 +28,10 @@ export type ResumoCheckin = {
   total_utilizados: number
 }
 
-export function validarCheckin(eventoId: number, codigo: string, qrToken: string) {
+export function validarCheckin(eventoId: number, codigo: string, qrToken: string, portao = '') {
   return api<ValidarCheckinResposta>('/checkin/validar', {
     method: 'POST',
-    body: { evento_id: eventoId, codigo, qr_token: qrToken },
+    body: { evento_id: eventoId, codigo, qr_token: qrToken, portao },
   })
 }
 

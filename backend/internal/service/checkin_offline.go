@@ -126,6 +126,9 @@ func (s *CheckinService) Sincronizar(usuarioID, eventoID int64, entradas []Entra
 			return resultados, err
 		}
 		resultados = append(resultados, ResultadoOffline{e.EntradaID, e.Codigo, resultado})
+		if resultado == "aceito" && itemID != nil {
+			s.RegistrarEntrada(eventoID, OrigemEntradaIngresso, *itemID, "Offline", usuarioID, e.LidoEm) // item 9.6
+		}
 	}
 	return resultados, nil
 }

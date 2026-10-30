@@ -27,6 +27,8 @@ import CircuitoPublico from '@/pages/CircuitoPublico'
 import CandidaturaExpositor from '@/pages/CandidaturaExpositor'
 import Caravana from '@/pages/Caravana'
 import VendaPorta from '@/pages/VendaPorta'
+import AoVivo from '@/pages/AoVivo'
+import CredenciaisImprimir from '@/pages/organizador/CredenciaisImprimir'
 import PainelDivulgador from '@/pages/PainelDivulgador'
 import MeusCircuitos from '@/pages/organizador/Circuitos'
 import Crm from '@/pages/organizador/Crm'
@@ -81,6 +83,7 @@ function App() {
           <Route path="/meu-talento" element={<MeuTalento />} />
           <Route path="/palco/:eventoId" element={<PalcoCamarim />} />
           <Route path="/porta/:eventoId" element={<VendaPorta />} />
+          <Route path="/ao-vivo/:eventoId" element={<AoVivo />} />
           <Route path="/e/:slug/inscricao" element={<Inscricao />} />
           <Route path="/e/:slug/expositor" element={<CandidaturaExpositor />} />
           <Route path="/caravana/:codigo" element={<Caravana />} />
@@ -107,6 +110,7 @@ function App() {
           <Route path="/admin/avaliacoes" element={<AdminAvaliacoes />} />
           <Route path="/organizador/eventos/novo" element={<EventoNovo />} />
           <Route path="/organizador/eventos/:id" element={<EventoEditar />} />
+          <Route path="/organizador/eventos/:id/credenciais/imprimir" element={<CredenciaisImprimir />} />
         </Route>
       </Route>
     </Routes>

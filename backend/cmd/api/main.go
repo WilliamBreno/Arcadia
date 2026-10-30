@@ -223,6 +223,7 @@ func main() {
 	checkoutService.DefinirRevenda(revendaService)
 	cancelamentoService.DefinirRevenda(db)
 	checkinService.DefinirRevenda(db)
+	checkinService.DefinirDiaDoEvento(db) // item 9.6
 	jobHandler.DefinirRevenda(revendaService)
 	revendaHandler := handler.NovoRevendaHandler(revendaService)
 	pixelsHandler := handler.NovoPixelsHandler(db, eventoRepo, organizadorHandler) // item 7.5
@@ -251,6 +252,8 @@ func main() {
 	checkoutService.DefinirAvisoEspaco(expositorService)
 	jobHandler.DefinirExpositores(expositorService)
 	expositorHandler := handler.NovoExpositorHandler(expositorService, eventoRepo, organizadorHandler)
+	// Item 9.6: painel ao vivo, importados e credenciais.
+	diaHandler := handler.NovoDiaDoEventoHandler(checkinService, service.NovoDiaDoEventoService(db, eventoRepo, cfg.JWTSecret), organizadorHandler)
 	lugaresHandler := handler.NovoLugaresHandler(service.NovoLugaresService(db, eventoRepo), organizadorHandler) // item 9.5
 	// Item 9.4: venda na porta (organizador e equipe de check-in).
 	checkoutService.DefinirAcessoPorta(checkinService.TemAcesso)
@@ -430,6 +433,10 @@ func main() {
 		autenticado.GET("/checkin/eventos/:id/conflitos", checkinHandler.Conflitos)
 		autenticado.GET("/checkin/eventos/:id/resumo", checkinHandler.Resumo)
 		autenticado.GET("/checkin/eventos/:id/busca", checkinHandler.Buscar)
+		autenticado.GET("/checkin/eventos/:id/portoes", diaHandler.Portoes)
+		autenticado.POST("/checkin/eventos/:id/importado", diaHandler.Importado)
+		autenticado.POST("/checkin/eventos/:id/credencial-evento", diaHandler.Credencial)
+		autenticado.GET("/checkin/eventos/:id/ao-vivo", diaHandler.AoVivo)
 
 		org := v1.Group("/org", middleware.ExigirAutenticacao(jwtService))
 		org.POST("/perfil", organizadorHandler.CriarPerfil)
@@ -522,6 +529,14 @@ func main() {
 		org.GET("/eventos/:id/caravanas", caravanaHandler.DoOrganizador)
 		org.GET("/eventos/:id/expositores", expositorHandler.Painel)
 		org.GET("/eventos/:id/lugares", lugaresHandler.Painel)
+		org.GET("/eventos/:id/portoes", diaHandler.OrgPortoes)
+		org.PUT("/eventos/:id/portoes", diaHandler.DefinirPortoes)
+		org.GET("/eventos/:id/importados", diaHandler.Importados)
+		org.POST("/eventos/:id/importados", diaHandler.Importar)
+		org.DELETE("/eventos/:id/importados", diaHandler.ApagarImportados)
+		org.GET("/eventos/:id/credenciais", diaHandler.Credenciais)
+		org.POST("/eventos/:id/credenciais", diaHandler.CriarCredencial)
+		org.DELETE("/eventos/:id/credenciais/:cid", diaHandler.DesativarCredencial)
 		org.POST("/eventos/:id/setores", lugaresHandler.CriarSetor)
 		org.PUT("/eventos/:id/setores/:sid", lugaresHandler.AtualizarSetor)
 		org.DELETE("/eventos/:id/setores/:sid", lugaresHandler.ExcluirSetor)
