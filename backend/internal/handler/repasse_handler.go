@@ -72,7 +72,7 @@ func paraRepasseResposta(r *repository.RepasseDetalhado, comPix bool) repasseRes
 
 // FinanceiroEvento é GET /org/eventos/:id/financeiro.
 func (h *RepasseHandler) FinanceiroEvento(c *gin.Context) {
-	org, ok := h.organizadorHandler.ObterOrganizadorDono(c)
+	org, ok := h.organizadorHandler.ObterOrganizadorFinanceiro(c)
 	if !ok {
 		return
 	}
@@ -97,12 +97,14 @@ func (h *RepasseHandler) FinanceiroEvento(c *gin.Context) {
 	if f.Repasse != nil {
 		resp["repasse_status"] = f.Repasse.Status
 	}
+	resp["percentual_bp"] = f.PercentualBP // item 9.8
+	resp["coprodutor"] = f.Coprodutor
 	c.JSON(http.StatusOK, resp)
 }
 
 // Extrato é GET /org/repasses: a receber + histórico.
 func (h *RepasseHandler) Extrato(c *gin.Context) {
-	org, ok := h.organizadorHandler.ObterOrganizadorDono(c)
+	org, ok := h.organizadorHandler.ObterOrganizadorFinanceiro(c)
 	if !ok {
 		return
 	}

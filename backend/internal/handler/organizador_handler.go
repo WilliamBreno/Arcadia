@@ -71,7 +71,7 @@ func (h *OrganizadorHandler) ObterOrganizadorAtual(c *gin.Context) (*domain.Orga
 		id, err := strconv.ParseInt(bruto, 10, 64)
 		if err == nil {
 			if org, err := h.organizadores.BuscarPorID(id); err == nil && (org.UsuarioID == usuarioID || h.membros.Existe(id, usuarioID)) {
-				return org, true
+				return h.conferirFuncao(c, org, usuarioID)
 			}
 		}
 		c.JSON(http.StatusForbidden, gin.H{"erro": "você não faz parte deste organizador"})
@@ -83,11 +83,91 @@ func (h *OrganizadorHandler) ObterOrganizadorAtual(c *gin.Context) (*domain.Orga
 	}
 	if orgID, ok := h.membros.PrimeiroOrganizadorDoMembro(usuarioID); ok {
 		if org, err := h.organizadores.BuscarPorID(orgID); err == nil {
-			return org, true
+			return h.conferirFuncao(c, org, usuarioID)
 		}
 	}
 	c.JSON(http.StatusNotFound, gin.H{"erro": "crie seu perfil de organizador primeiro"})
 	return nil, false
+}
+
+// Rotas que a função "checkin" pode abrir no painel (achar os eventos).
+var rotasFuncaoCheckin = map[string]bool{"/api/v1/org/eventos": true, "/api/v1/org/eventos/:id": true, "/api/v1/org/minha-funcao": true}
+
+// conferirFuncao aplica a função do membro (item 9.8): gestor faz tudo
+// que fazia; financeiro e leitura só consultam; checkin só acha os
+// eventos (a portaria e a venda na porta ficam em /checkin).
+func (h *OrganizadorHandler) conferirFuncao(c *gin.Context, org *domain.Organizador, usuarioID int64) (*domain.Organizador, bool) {
+	if org.UsuarioID == usuarioID {
+		return org, true
+	}
+	leitura := c.Request.Method == http.MethodGet || c.Request.Method == http.MethodHead
+	switch h.membros.Funcao(org.ID, usuarioID) {
+	case repository.FuncaoGestor:
+		return org, true
+	case repository.FuncaoFinanceiro, repository.FuncaoLeitura:
+		if leitura {
+			return org, true
+		}
+		c.JSON(http.StatusForbidden, gin.H{"erro": "sua função na equipe é só de consulta"})
+		return nil, false
+	case repository.FuncaoCheckin:
+		if leitura && rotasFuncaoCheckin[c.FullPath()] {
+			return org, true
+		}
+		c.JSON(http.StatusForbidden, gin.H{"erro": "sua função na equipe é só o check-in"})
+		return nil, false
+	}
+	c.JSON(http.StatusForbidden, gin.H{"erro": "você não faz parte deste organizador"})
+	return nil, false
+}
+
+// ObterOrganizadorFinanceiro: consultas com dinheiro (financeiro do
+// evento, repasses, relatórios): o dono ou a função financeiro (item 9.8).
+func (h *OrganizadorHandler) ObterOrganizadorFinanceiro(c *gin.Context) (*domain.Organizador, bool) {
+	usuarioID := c.GetInt64(middleware.ChaveContextoUsuarioID)
+	negar := func() (*domain.Organizador, bool) {
+		c.JSON(http.StatusForbidden, gin.H{"erro": "apenas o dono ou a função financeiro veem valores"})
+		return nil, false
+	}
+	if bruto := c.GetHeader("X-Organizador-ID"); bruto != "" {
+		id, err := strconv.ParseInt(bruto, 10, 64)
+		if err != nil {
+			return negar()
+		}
+		org, err := h.organizadores.BuscarPorID(id)
+		if err != nil {
+			return negar()
+		}
+		if org.UsuarioID == usuarioID || (c.Request.Method == http.MethodGet && h.membros.Funcao(id, usuarioID) == repository.FuncaoFinanceiro) {
+			return org, true
+		}
+		return negar()
+	}
+	if org, err := h.organizadores.BuscarPorUsuarioID(usuarioID); err == nil {
+		return org, true
+	}
+	if c.Request.Method == http.MethodGet {
+		if ids := h.membros.OrganizadoresComFuncao(usuarioID, []string{repository.FuncaoFinanceiro}); len(ids) > 0 {
+			if org, err := h.organizadores.BuscarPorID(ids[0]); err == nil {
+				return org, true
+			}
+		}
+	}
+	return negar()
+}
+
+// MinhaFuncao é GET /org/minha-funcao: o painel esconde o que a pessoa não pode usar.
+func (h *OrganizadorHandler) MinhaFuncao(c *gin.Context) {
+	org, ok := h.ObterOrganizadorAtual(c)
+	if !ok {
+		return
+	}
+	usuarioID := c.GetInt64(middleware.ChaveContextoUsuarioID)
+	funcao := "dono"
+	if org.UsuarioID != usuarioID {
+		funcao = h.membros.Funcao(org.ID, usuarioID)
+	}
+	c.JSON(http.StatusOK, gin.H{"organizador_id": org.ID, "nome_publico": org.NomePublico, "funcao": funcao})
 }
 
 // ObterOrganizadorDono é para operações sensíveis (perfil/Pix, financeiro,

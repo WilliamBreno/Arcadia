@@ -39,7 +39,9 @@ type Repasse struct {
 	MPPayoutID       *string `gorm:"column:mp_payout_id"`
 	EnvioProximaEm   *time.Time
 	EnvioAprovadoPor *int64
-	CriadoEm         time.Time
+	// Item 9.8: parte deste organizador no evento (10000 = 100%).
+	PercentualBP int64 `gorm:"column:percentual_bp;default:10000"`
+	CriadoEm     time.Time
 }
 
 func (Repasse) TableName() string {

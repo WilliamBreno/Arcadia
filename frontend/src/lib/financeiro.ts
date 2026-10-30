@@ -8,6 +8,9 @@ export type FinanceiroEvento = {
   liquido_centavos: number
   liberar_em: string | null
   repasse_status: 'calculado' | 'pendente' | 'pago' | 'cancelado' | null
+  // Item 9.8: parte deste organizador (10000 = 100%).
+  percentual_bp?: number
+  coprodutor?: boolean
   metodos: {
     pix_quantidade: number
     pix_valor_centavos: number

@@ -223,7 +223,8 @@ func main() {
 	checkoutService.DefinirRevenda(revendaService)
 	cancelamentoService.DefinirRevenda(db)
 	checkinService.DefinirRevenda(db)
-	checkinService.DefinirDiaDoEvento(db) // item 9.6
+	checkinService.DefinirDiaDoEvento(db)
+	checkinService.DefinirMembros(membroRepo) // item 9.8 // item 9.6
 	jobHandler.DefinirRevenda(revendaService)
 	revendaHandler := handler.NovoRevendaHandler(revendaService)
 	pixelsHandler := handler.NovoPixelsHandler(db, eventoRepo, organizadorHandler) // item 7.5
@@ -254,6 +255,8 @@ func main() {
 	expositorHandler := handler.NovoExpositorHandler(expositorService, eventoRepo, organizadorHandler)
 	// Item 9.6: painel ao vivo, importados e credenciais.
 	diaHandler := handler.NovoDiaDoEventoHandler(checkinService, service.NovoDiaDoEventoService(db, eventoRepo, cfg.JWTSecret), organizadorHandler)
+	// Item 9.8: coprodução com divisão de repasse.
+	coproducaoHandler := handler.NovoCoproducaoHandler(service.NovoCoproducaoService(db, mailCliente, cfg.FrontendURL), organizadorHandler)
 	// Item 9.7: certificados e pesquisa pós-evento.
 	posEventoService := service.NovoPosEventoService(db, mailCliente, cfg.JWTSecret, cfg.FrontendURL, cfg.NomePlataforma)
 	avaliacaoPublicoService.DefinirPosEvento(posEventoService)
@@ -493,6 +496,7 @@ func main() {
 		org.GET("/equipe", equipeHandler.Listar)
 		org.POST("/equipe", equipeHandler.Adicionar)
 		org.DELETE("/equipe/:usuarioId", equipeHandler.Remover)
+		org.PUT("/equipe/:usuarioId", equipeHandler.MudarFuncao)
 		org.GET("/relatorios", equipeHandler.Relatorios)
 		org.GET("/eventos/:id/cronograma", cronogramaHandler.Listar)
 		org.POST("/eventos/:id/cronograma", cronogramaHandler.Criar)
@@ -541,6 +545,13 @@ func main() {
 		org.GET("/eventos/:id/expositores", expositorHandler.Painel)
 		org.GET("/eventos/:id/lugares", lugaresHandler.Painel)
 		org.GET("/eventos/:id/portoes", diaHandler.OrgPortoes)
+		org.GET("/minha-funcao", organizadorHandler.MinhaFuncao)
+		org.GET("/eventos/:id/coproducao", coproducaoHandler.DoEvento)
+		org.POST("/eventos/:id/coproducao", coproducaoHandler.Convidar)
+		org.PUT("/eventos/:id/coproducao/:cid", coproducaoHandler.Propor)
+		org.GET("/coproducoes", coproducaoHandler.Minhas)
+		org.POST("/coproducoes/:cid/responder", coproducaoHandler.Responder)
+		org.POST("/coproducoes/:cid/sair", coproducaoHandler.Sair)
 		org.GET("/eventos/:id/certificados", posEventoHandler.OrgResumo)
 		org.PUT("/eventos/:id/certificados/config", posEventoHandler.OrgSalvarConfig)
 		org.POST("/eventos/:id/certificados/emitir", posEventoHandler.OrgEmitir)

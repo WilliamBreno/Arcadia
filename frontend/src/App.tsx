@@ -47,6 +47,7 @@ import QuantoCusta from '@/pages/QuantoCusta'
 import Descadastrar from '@/pages/Descadastrar'
 import ApiKeys from '@/pages/organizador/ApiKeys'
 import Equipe from '@/pages/organizador/Equipe'
+import Coproducoes from '@/pages/organizador/Coproducoes'
 import Eventos from '@/pages/organizador/Eventos'
 import Relatorios from '@/pages/organizador/Relatorios'
 import Repasses from '@/pages/organizador/Repasses'
@@ -103,6 +104,7 @@ function App() {
           <Route path="/organizador/eventos" element={<Eventos />} />
           <Route path="/organizador/repasses" element={<Repasses />} />
           <Route path="/organizador/equipe" element={<Equipe />} />
+          <Route path="/organizador/coproducoes" element={<Coproducoes />} />
           <Route path="/organizador/api" element={<ApiKeys />} />
           <Route path="/organizador/relatorios" element={<Relatorios />} />
           <Route path="/organizador/circuitos" element={<MeusCircuitos />} />

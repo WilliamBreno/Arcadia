@@ -42,9 +42,14 @@ type CheckinService struct {
 	papeis        *repository.PapelEventoRepository
 	qrSecret      string
 	sessoes       *repository.SessaoRepository
-	revendaDB     *gorm.DB // item 7.4
-	db            *gorm.DB // item 9.6: entradas, importados e credenciais
+	revendaDB     *gorm.DB                                // item 7.4
+	db            *gorm.DB                                // item 9.6: entradas, importados e credenciais
+	membros       *repository.OrganizadorMembroRepository // item 9.8
 }
+
+// DefinirMembros: a equipe do organizador com função gestor ou check-in
+// também opera a portaria (item 9.8).
+func (s *CheckinService) DefinirMembros(m *repository.OrganizadorMembroRepository) { s.membros = m }
 
 func NovoCheckinService(
 	itensPedido *repository.ItemPedidoRepository,
@@ -70,6 +75,11 @@ func (s *CheckinService) TemAcesso(usuarioID, eventoID int64) bool {
 	}
 	if organizador, err := s.organizadores.BuscarPorUsuarioID(usuarioID); err == nil && organizador.ID == evento.OrganizadorID {
 		return true
+	}
+	if s.membros != nil {
+		if f := s.membros.Funcao(evento.OrganizadorID, usuarioID); f == repository.FuncaoGestor || f == repository.FuncaoCheckin {
+			return true
+		}
 	}
 	papel, err := s.papeis.Buscar(eventoID, usuarioID, domain.PapelStaff)
 	return err == nil && papel.Status == domain.StatusPapelConfirmado

@@ -34,6 +34,7 @@ import { ExpositoresCard } from '@/components/expositores-card'
 import { LugaresCard } from '@/components/lugares-card'
 import { DiaDoEventoCard } from '@/components/dia-evento-card'
 import { CertificadosCard } from '@/components/certificados-card'
+import { CoproducaoCard } from '@/components/coproducao-card'
 import { GaleriaCard } from '@/components/galeria-card'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -364,6 +365,8 @@ export default function EventoEditar() {
 
       <FinanceiroCard eventoId={Number(id)} />
 
+      <CoproducaoCard eventoId={Number(id)} />
+
       <CuponsCard eventoId={Number(id)} />
 
       <AfiliadosCard eventoId={Number(id)} slug={evento.slug} />
@@ -666,6 +669,11 @@ function FinanceiroCard({ eventoId }: { eventoId: number }) {
       <CardContent className="flex flex-col gap-2 text-sm">
         {data && (
           <>
+            {data.percentual_bp !== undefined && data.percentual_bp < 10000 && (
+              <p className="rounded-lg bg-muted px-3 py-2 text-foreground">
+                Coprodução: os valores abaixo são a sua parte ({(data.percentual_bp / 100).toLocaleString('pt-BR')}% do evento).
+              </p>
+            )}
             <div className="flex justify-between">
               <span className="text-muted-foreground">Receita bruta (preço dos ingressos)</span>
               <span className="text-foreground">{formatarCentavos(data.bruto_centavos)}</span>

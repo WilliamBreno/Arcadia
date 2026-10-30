@@ -50,7 +50,8 @@ func (h *EquipeHandler) Listar(c *gin.Context) {
 }
 
 type adicionarMembroRequest struct {
-	Email string `json:"email" binding:"required,email"`
+	Email  string `json:"email" binding:"required,email"`
+	Funcao string `json:"funcao"` // item 9.8: gestor, financeiro, leitura ou checkin
 }
 
 // Adicionar é POST /org/equipe: dá acesso de gestor (eventos, ingressos,
@@ -80,13 +81,52 @@ func (h *EquipeHandler) Adicionar(c *gin.Context) {
 		c.JSON(http.StatusConflict, gin.H{"erro": "essa pessoa já está na equipe"})
 		return
 	}
-	if err := h.membros.Adicionar(&repository.OrganizadorMembro{OrganizadorID: org.ID, UsuarioID: usuario.ID, Papel: "gestor", CriadoEm: time.Now()}); err != nil {
+	// Item 9.8: função na equipe (padrão gestor, como antes).
+	funcao := req.Funcao
+	if funcao == "" {
+		funcao = repository.FuncaoGestor
+	}
+	if !repository.FuncaoValida(funcao) {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "função inválida"})
+		return
+	}
+	if err := h.membros.Adicionar(&repository.OrganizadorMembro{OrganizadorID: org.ID, UsuarioID: usuario.ID, Papel: funcao, CriadoEm: time.Now()}); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao adicionar à equipe"})
 		return
 	}
 	_ = h.mailCliente.Enviar(usuario.Email, "Você entrou na equipe de "+org.NomePublico+" — "+h.plataforma,
 		"<p>Olá, "+usuario.Nome+"!</p><p>Você foi adicionado à equipe de <strong>"+org.NomePublico+"</strong> e já pode gerenciar os eventos em "+h.frontendURL+"/organizador/eventos.</p>")
-	c.JSON(http.StatusCreated, gin.H{"usuario_id": usuario.ID, "nome": usuario.Nome, "email": usuario.Email, "papel": "gestor"})
+	c.JSON(http.StatusCreated, gin.H{"usuario_id": usuario.ID, "nome": usuario.Nome, "email": usuario.Email, "papel": funcao})
+}
+
+// MudarFuncao é PUT /org/equipe/:usuarioId {funcao} (item 9.8).
+func (h *EquipeHandler) MudarFuncao(c *gin.Context) {
+	org, ok := h.organizadorHandler.ObterOrganizadorDono(c)
+	if !ok {
+		return
+	}
+	usuarioID, err := strconv.ParseInt(c.Param("usuarioId"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "id inválido"})
+		return
+	}
+	var req struct {
+		Funcao string `json:"funcao"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || !repository.FuncaoValida(req.Funcao) {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "função inválida"})
+		return
+	}
+	mudou, err := h.membros.MudarFuncao(org.ID, usuarioID, req.Funcao)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao mudar a função"})
+		return
+	}
+	if !mudou {
+		c.JSON(http.StatusNotFound, gin.H{"erro": "membro não encontrado"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
 // Remover é DELETE /org/equipe/:usuarioId.
@@ -114,7 +154,7 @@ func (h *EquipeHandler) Remover(c *gin.Context) {
 
 // Relatorios é GET /org/relatorios?de=YYYY-MM-DD&ate=YYYY-MM-DD.
 func (h *EquipeHandler) Relatorios(c *gin.Context) {
-	org, ok := h.organizadorHandler.ObterOrganizadorDono(c)
+	org, ok := h.organizadorHandler.ObterOrganizadorFinanceiro(c)
 	if !ok {
 		return
 	}

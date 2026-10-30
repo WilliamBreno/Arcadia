@@ -28,6 +28,17 @@ func (r *RepasseRepository) BuscarPorID(id int64) (*domain.Repasse, error) {
 	return &rep, nil
 }
 
+// BuscarAtivoPorEventoEOrg: o repasse de um organizador no evento (com
+// coprodução há um por organizador, item 9.8).
+func (r *RepasseRepository) BuscarAtivoPorEventoEOrg(eventoID, organizadorID int64) (*domain.Repasse, error) {
+	var rep domain.Repasse
+	err := r.db.Where("evento_id = ? AND organizador_id = ? AND status <> ?", eventoID, organizadorID, domain.StatusRepasseCancelado).First(&rep).Error
+	if err != nil {
+		return nil, err
+	}
+	return &rep, nil
+}
+
 func (r *RepasseRepository) BuscarAtivoPorEvento(eventoID int64) (*domain.Repasse, error) {
 	var rep domain.Repasse
 	if err := r.db.Where("evento_id = ? AND status <> ?", eventoID, domain.StatusRepasseCancelado).First(&rep).Error; err != nil {

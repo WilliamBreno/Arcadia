@@ -128,6 +128,9 @@ type FinanceiroEvento struct {
 	LiberarEm *time.Time
 	Repasse   *domain.Repasse
 	Metodos   *ResumoMetodos
+	// Item 9.8: parte deste organizador (10000 = 100%) e se é coprodutor.
+	PercentualBP int64
+	Coprodutor   bool
 }
 
 // FinanceiroDoEvento é o painel do organizador (seção 3): valores ao vivo
@@ -137,15 +140,18 @@ func (s *RepasseService) FinanceiroDoEvento(organizadorID, eventoID int64) (*Fin
 	if err != nil {
 		return nil, err
 	}
-	if evento.OrganizadorID != organizadorID {
+	// Item 9.8: o coprodutor ativo vê a parte dele.
+	bp, participa := ParticipaComo(s.db, evento, organizadorID)
+	if evento.OrganizadorID != organizadorID && !participa {
 		return nil, ErrEventoNaoPertenceAoOrganizador
 	}
 
-	res := &FinanceiroEvento{}
+	res := &FinanceiroEvento{PercentualBP: bp, Coprodutor: evento.OrganizadorID != organizadorID}
 	if res.Metodos, err = s.resumoMetodos(eventoID); err != nil {
 		return nil, err
 	}
-	if rep, err := s.repasses.BuscarAtivoPorEvento(eventoID); err == nil {
+	if rep, err := s.repasses.BuscarAtivoPorEventoEOrg(eventoID, organizadorID); err == nil {
+		res.PercentualBP = rep.PercentualBP
 		res.Repasse = rep
 		res.Financeiro = Financeiro{
 			BrutoCentavos: rep.ValorBrutoCentavos, TaxaProcessadorCentavos: rep.TaxaProcessadorCentavos,
@@ -158,6 +164,18 @@ func (s *RepasseService) FinanceiroDoEvento(organizadorID, eventoID int64) (*Fin
 
 	if res.Financeiro, err = s.calcular(eventoID); err != nil {
 		return nil, err
+	}
+	if bp < BPTotal {
+		partes, err := PartesAtivas(s.db, eventoID)
+		if err != nil {
+			return nil, err
+		}
+		for _, v := range DividirRepasse(res.Financeiro, 0, PartesDoEvento(evento.OrganizadorID, partes)) {
+			if v.OrganizadorID == organizadorID {
+				res.BrutoCentavos, res.TaxaProcessadorCentavos, res.TaxaAbsorvidaCentavos, res.LiquidoCentavos =
+					v.BrutoCentavos, v.TaxaProcessadorCentavos, v.TaxaAbsorvidaCentavos, v.LiquidoCentavos
+			}
+		}
 	}
 	if fim, ok := fimDoEvento(evento); ok {
 		l := adicionarDiasUteis(fim, s.diasParaRepasse(evento.OrganizadorID)) // 9.1: verificado recebe antes
@@ -211,16 +229,31 @@ func (s *RepasseService) GerarRepasses() (int, error) {
 		}
 
 		err = s.db.Transaction(func(tx *gorm.DB) error {
-			rep := &domain.Repasse{
-				EventoID: e.ID, OrganizadorID: e.OrganizadorID,
-				ValorBrutoCentavos: f.BrutoCentavos, TaxaProcessadorCentavos: f.TaxaProcessadorCentavos,
-				TaxaAbsorvidaCentavos: f.TaxaAbsorvidaCentavos,
-				ReservaCentavos:       reserva, ReservaLiberarEm: reservaAte, ReservaStatus: reservaStatus,
-				ValorLiquidoCentavos: f.LiquidoCentavos, Status: domain.StatusRepassePendente,
-				LiberarEm: liberarEm, CriadoEm: agora, EnvioStatus: envio,
-			}
-			if err := s.repasses.Criar(tx, rep); err != nil {
+			// Item 9.8: trava o evento (a coprodução não muda no meio) e gera
+			// um repasse por organizador, cada um com a sua parte de tudo.
+			if err := tx.Exec("SELECT id FROM eventos WHERE id = ? FOR UPDATE", e.ID).Error; err != nil {
 				return err
+			}
+			copro, err := PartesAtivas(tx, e.ID)
+			if err != nil {
+				return err
+			}
+			for _, v := range DividirRepasse(f, reserva, PartesDoEvento(e.OrganizadorID, copro)) {
+				status := reservaStatus
+				if v.ReservaCentavos <= 0 {
+					status = domain.ReservaNenhuma
+				}
+				rep := &domain.Repasse{
+					EventoID: e.ID, OrganizadorID: v.OrganizadorID, PercentualBP: v.BP,
+					ValorBrutoCentavos: v.BrutoCentavos, TaxaProcessadorCentavos: v.TaxaProcessadorCentavos,
+					TaxaAbsorvidaCentavos: v.TaxaAbsorvidaCentavos,
+					ReservaCentavos:       v.ReservaCentavos, ReservaLiberarEm: reservaAte, ReservaStatus: status,
+					ValorLiquidoCentavos: v.LiquidoCentavos, Status: domain.StatusRepassePendente,
+					LiberarEm: liberarEm, CriadoEm: agora, EnvioStatus: envio,
+				}
+				if err := s.repasses.Criar(tx, rep); err != nil {
+					return err
+				}
 			}
 			if f.TaxaProcessadorCentavos > 0 {
 				return tx.Create(&domain.Lancamento{

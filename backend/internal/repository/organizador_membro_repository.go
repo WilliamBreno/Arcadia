@@ -64,3 +64,37 @@ func (r *OrganizadorMembroRepository) Listar(organizadorID int64) ([]MembroDetal
 		Order("organizador_membros.id").Scan(&lista).Error
 	return lista, err
 }
+
+// Funções da equipe (item 9.8).
+const (
+	FuncaoGestor     = "gestor"
+	FuncaoFinanceiro = "financeiro"
+	FuncaoLeitura    = "leitura"
+	FuncaoCheckin    = "checkin"
+)
+
+func FuncaoValida(f string) bool {
+	return f == FuncaoGestor || f == FuncaoFinanceiro || f == FuncaoLeitura || f == FuncaoCheckin
+}
+
+// Funcao devolve a função do membro ("" se não é membro).
+func (r *OrganizadorMembroRepository) Funcao(organizadorID, usuarioID int64) string {
+	var m OrganizadorMembro
+	if err := r.db.Where("organizador_id = ? AND usuario_id = ?", organizadorID, usuarioID).First(&m).Error; err != nil {
+		return ""
+	}
+	return m.Papel
+}
+
+// MudarFuncao troca a função de um membro.
+func (r *OrganizadorMembroRepository) MudarFuncao(organizadorID, usuarioID int64, funcao string) (bool, error) {
+	res := r.db.Model(&OrganizadorMembro{}).Where("organizador_id = ? AND usuario_id = ?", organizadorID, usuarioID).Update("papel", funcao)
+	return res.RowsAffected > 0, res.Error
+}
+
+// OrganizadoresComFuncao: organizadores em que o usuário tem uma das funções.
+func (r *OrganizadorMembroRepository) OrganizadoresComFuncao(usuarioID int64, funcoes []string) []int64 {
+	var ids []int64
+	r.db.Model(&OrganizadorMembro{}).Where("usuario_id = ? AND papel IN ?", usuarioID, funcoes).Pluck("organizador_id", &ids)
+	return ids
+}

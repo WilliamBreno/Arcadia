@@ -48,6 +48,9 @@ export default function Eventos() {
           <Link to="/organizador/equipe" className={buttonVariants({ variant: 'outline' })}>
             Equipe
           </Link>
+          <Link to="/organizador/coproducoes" className={buttonVariants({ variant: 'outline' })}>
+            Coproduções
+          </Link>
           <Link to="/organizador/repasses" className={buttonVariants({ variant: 'outline' })}>
             Repasses
           </Link>
