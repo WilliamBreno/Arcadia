@@ -21,6 +21,7 @@ import { ListaCronograma } from '@/components/cronograma-cards'
 import { ListaRanking } from '@/components/resultado-cards'
 import { MinhaDevolutiva, PremioPublico, VotacaoPublico, type LinhaVoto } from '@/components/concurso-publico'
 import { MinhaInscricao } from '@/components/minha-inscricao'
+import { useSeguindo } from '@/lib/seguir'
 import { SelosCircuito } from '@/components/selos-circuito'
 import { ExpositoresDoEvento } from '@/components/expositores-evento'
 import { CaravanasDoEvento } from '@/components/caravanas-evento'
@@ -42,6 +43,8 @@ export default function EventoDetalhe() {
   const navigate = useNavigate()
   const [quantidades, setQuantidades] = useState<Record<number, number>>({})
   const [garantia, setGarantia] = useState(false)
+  const [novidades, setNovidades] = useState(false) // item 9.3
+  const { segue, seguir } = useSeguindo()
   const [cupomCodigo, setCupomCodigo] = useState('')
   const [cupom, setCupom] = useState<{ codigo: string; tipo: 'percentual' | 'valor'; valor: number } | null>(null)
   const [erroCupom, setErroCupom] = useState<string | null>(null)
@@ -256,6 +259,12 @@ export default function EventoDetalhe() {
         method: 'POST',
         body: { itens, cupom: cupom?.codigo ?? '', ref: refAtual() },
       })
+      // Item 9.3: "quero receber novidades" = seguir o organizador (6.4).
+      if (novidades && data.organizador && !segue('organizador', String(data.organizador.id))) {
+        await seguir
+          .mutateAsync({ tipo: 'organizador', alvo: String(data.organizador.id), rotulo: data.organizador.nome_publico })
+          .catch(() => undefined)
+      }
       navigate(`/pedidos/${pedido.id}`)
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : 'Erro ao criar pedido')
@@ -473,6 +482,14 @@ export default function EventoDetalhe() {
                   Quero <strong>garantia de vaga</strong> (+{formatarCentavos(resumo.garantiaSeMarcar)}:{' '}
                   {data.taxas.garantia_percentual_bp / 100}% do preço, mín. {formatarCentavos(data.taxas.garantia_min_centavos)}{' '}
                   por item) — cancele a qualquer momento até o início do evento e receba tudo de volta.
+                </span>
+              </label>
+            )}
+            {organizador && !segue('organizador', String(organizador.id)) && (
+              <label className="flex items-start gap-2 text-sm text-foreground">
+                <input type="checkbox" className="mt-0.5" checked={novidades} onChange={(e) => setNovidades(e.target.checked)} />
+                <span>
+                  Quero receber por e-mail as novidades de <strong>{organizador.nome_publico}</strong> (dá para cancelar em qualquer e-mail).
                 </span>
               </label>
             )}

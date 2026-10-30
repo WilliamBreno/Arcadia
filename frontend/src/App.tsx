@@ -28,6 +28,7 @@ import CandidaturaExpositor from '@/pages/CandidaturaExpositor'
 import Caravana from '@/pages/Caravana'
 import PainelDivulgador from '@/pages/PainelDivulgador'
 import MeusCircuitos from '@/pages/organizador/Circuitos'
+import Crm from '@/pages/organizador/Crm'
 import PerfilTalento from '@/pages/PerfilTalento'
 import MeuTalento from '@/pages/MeuTalento'
 import AutorizarPerfil from '@/pages/AutorizarPerfil'
@@ -96,6 +97,7 @@ function App() {
           <Route path="/organizador/api" element={<ApiKeys />} />
           <Route path="/organizador/relatorios" element={<Relatorios />} />
           <Route path="/organizador/circuitos" element={<MeusCircuitos />} />
+          <Route path="/organizador/crm" element={<Crm />} />
           <Route path="/admin/repasses" element={<AdminRepasses />} />
           <Route path="/admin/relatorios" element={<AdminRelatorios />} />
           <Route path="/admin/organizadores" element={<AdminOrganizadores />} />

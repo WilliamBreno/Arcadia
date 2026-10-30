@@ -248,6 +248,8 @@ func main() {
 	checkoutService.DefinirAvisoEspaco(expositorService)
 	jobHandler.DefinirExpositores(expositorService)
 	expositorHandler := handler.NovoExpositorHandler(expositorService, eventoRepo, organizadorHandler)
+	// Item 9.3: CRM do organizador (e-mail para quem segue).
+	crmHandler := handler.NovoCRMHandler(service.NovoCRMService(db, organizadorRepo, seguirService, mailCliente, cfg.FrontendURL), organizadorHandler)
 	// Item 8.7: galeria oficial e caravanas.
 	galeriaHandler := handler.NovoGaleriaHandler(service.NovoGaleriaService(db, eventoRepo, usuarioRepo, papelEventoRepo, talentoService, armazenamento), eventoRepo, organizadorHandler)
 	caravanaHandler := handler.NovoCaravanaHandler(service.NovoCaravanaService(db, eventoRepo), eventoRepo, organizadorHandler)
@@ -497,6 +499,10 @@ func main() {
 		org.GET("/eventos/:id/participantes", fichaHandler.ListarDoOrganizador)
 		org.POST("/eventos/:id/participantes/:fichaId/aprovar", fichaHandler.Aprovar)
 		org.GET("/circuitos", circuitoHandler.Meus)
+		org.GET("/crm", crmHandler.Resumo)
+		org.GET("/crm/previa", crmHandler.Previa)
+		org.POST("/crm/campanhas", crmHandler.Enviar)
+		org.GET("/crm/contatos.csv", crmHandler.ExportarCSV)
 		org.GET("/eventos/:id/fotografos", galeriaHandler.Fotografos)
 		org.POST("/eventos/:id/fotografos", galeriaHandler.AdicionarFotografo)
 		org.DELETE("/eventos/:id/fotografos/:usuarioId", galeriaHandler.RemoverFotografo)

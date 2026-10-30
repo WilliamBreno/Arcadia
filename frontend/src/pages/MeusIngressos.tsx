@@ -86,6 +86,19 @@ export default function MeusIngressos() {
                   revenda={revendaDe(selecionado.id)}
                 />
               )}
+              {(selecionado.status === 'pago' || selecionado.status === 'utilizado') && (
+                // Item 9.3: mandar o ingresso pelo WhatsApp (link wa.me, sem custo).
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(
+                    `Ingresso para ${selecionado.evento_titulo} (${selecionado.titular_nome}): ${window.location.origin}/ingresso/${selecionado.codigo}/${selecionado.qr_token}`,
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-medium text-foreground underline underline-offset-4"
+                >
+                  Enviar pelo WhatsApp
+                </a>
+              )}
               <Link
                 to={`/e/${selecionado.evento_slug}`}
                 className="text-xs text-primary underline-offset-4 hover:underline"
