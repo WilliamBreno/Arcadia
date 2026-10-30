@@ -39,6 +39,8 @@ export type EventoDetalhe = {
     cor_tema: string
     politica_cancelamento_texto: string
     modo_participantes: 'nenhum' | 'convite' | 'inscricao_aberta' | 'ambos'
+    inscricao_talento_centavos?: number // item 8.4
+    timezone?: string
   }
   local: {
     nome: string

@@ -58,6 +58,7 @@ type EventoDados struct {
 	ModoParticipantes         domain.ModoParticipantes
 	InscricaoTalentosInicio   *time.Time
 	InscricaoTalentosFim      *time.Time
+	InscricaoTalentoCentavos  *int64 // item 8.4: nil = manter (0 ao criar)
 	CapacidadeTotal           *int
 	GarantiaHabilitada        *bool // nil = padrão (true) ao criar, manter ao atualizar
 	AprovacaoManual           *bool // nil = padrão (false) ao criar, manter ao atualizar
@@ -93,6 +94,7 @@ func (s *EventoService) Criar(organizadorID int64, dados EventoDados) (*domain.E
 		ModoParticipantes:         valorOuPadraoModoParticipantes(dados.ModoParticipantes),
 		InscricaoTalentosInicio:   dados.InscricaoTalentosInicio,
 		InscricaoTalentosFim:      dados.InscricaoTalentosFim,
+		InscricaoTalentoCentavos:  valorInscricao(dados.InscricaoTalentoCentavos, 0),
 		CapacidadeTotal:           dados.CapacidadeTotal,
 		GarantiaHabilitada:        boolOuPadrao(dados.GarantiaHabilitada, true),
 		AprovacaoManual:           boolOuPadrao(dados.AprovacaoManual, false),
@@ -130,6 +132,7 @@ func (s *EventoService) Atualizar(organizadorID, eventoID int64, dados EventoDad
 	evento.ModoParticipantes = valorOuPadraoModoParticipantes(dados.ModoParticipantes)
 	evento.InscricaoTalentosInicio = dados.InscricaoTalentosInicio
 	evento.InscricaoTalentosFim = dados.InscricaoTalentosFim
+	evento.InscricaoTalentoCentavos = valorInscricao(dados.InscricaoTalentoCentavos, evento.InscricaoTalentoCentavos)
 	evento.CapacidadeTotal = dados.CapacidadeTotal
 	evento.GarantiaHabilitada = boolOuPadrao(dados.GarantiaHabilitada, evento.GarantiaHabilitada)
 	evento.AprovacaoManual = boolOuPadrao(dados.AprovacaoManual, evento.AprovacaoManual)
@@ -357,4 +360,16 @@ func limiteContaOuPadrao(v *int, atual int) int {
 		return *v
 	}
 	return atual
+}
+
+// valorInscricao (item 8.4): nil mantém o atual; abaixo de R$ 1,00 vira
+// gratuita (o Pix não aceita cobrança menor).
+func valorInscricao(v *int64, atual int64) int64 {
+	if v == nil {
+		return atual
+	}
+	if *v < 100 {
+		return 0
+	}
+	return *v
 }

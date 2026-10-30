@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button'
 import { ListaCronograma } from '@/components/cronograma-cards'
 import { ListaRanking } from '@/components/resultado-cards'
 import { MinhaDevolutiva, PremioPublico, VotacaoPublico, type LinhaVoto } from '@/components/concurso-publico'
+import { MinhaInscricao } from '@/components/minha-inscricao'
 import { MeuQRParticipante } from '@/components/meu-qr-participante'
 import { Card, CardContent } from '@/components/ui/card'
 import { Carregando } from '@/components/carregando'
@@ -572,17 +573,7 @@ export default function EventoDetalhe() {
       <MinhaDevolutiva slug={evento.slug} />
       <MeuQRParticipante slug={evento.slug} />
 
-      {(evento.modo_participantes === 'inscricao_aberta' || evento.modo_participantes === 'ambos') && (
-        <div className="mt-6 flex items-center justify-between rounded-lg border border-border p-4">
-          <p className="text-sm text-foreground">Quer participar do concurso deste evento?</p>
-          <Link
-            to={`/e/${evento.slug}/inscricao`}
-            className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-          >
-            Inscrever-se
-          </Link>
-        </div>
-      )}
+      <MinhaInscricao evento={evento} />
 
       <AvaliacoesDoEvento slug={evento.slug} eventoComecou={eventoComecou} />
 

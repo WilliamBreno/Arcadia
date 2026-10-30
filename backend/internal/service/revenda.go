@@ -190,7 +190,7 @@ func NovoRevendaService(db *gorm.DB, itens *repository.ItemPedidoRepository, can
 // PodeRevender confere as regras do item (sem olhar o estoque). Testada.
 func PodeRevender(item *domain.ItemPedido, evento *domain.Evento, agora time.Time) error {
 	switch {
-	case item.Status != domain.StatusItemPago:
+	case item.Status != domain.StatusItemPago || item.FichaID != nil: // 8.4: inscrição não se revende
 		return ErrRevendaNaoPermitida
 	case item.Cortesia || item.PrecoCentavos <= 0:
 		return errors.Join(ErrRevendaNaoPermitida, errors.New("ingresso gratuito ou cortesia: é só cancelar a inscrição"))

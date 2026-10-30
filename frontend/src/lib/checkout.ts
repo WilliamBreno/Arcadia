@@ -19,6 +19,7 @@ export type Pedido = {
   id: number
   evento_id: number
   evento_slug?: string
+  inscricao?: boolean // item 8.4: pedido da inscrição paga de talento
   status: 'aberto' | 'aguardando_pagamento' | 'pago' | 'expirado' | 'cancelado' | 'reembolsado_parcial' | 'reembolsado'
   total_centavos: number
   expira_em: string | null

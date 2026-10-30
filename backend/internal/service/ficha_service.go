@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"gorm.io/gorm"
 	"html"
 	"strings"
 	"time"
@@ -75,6 +76,56 @@ type FichaService struct {
 	usuarios    *repository.UsuarioRepository
 	mailCliente *mail.Cliente
 	frontendURL string // item 8.3: link do QR de participante no e-mail
+	// Item 8.4: inscrição paga (consulta do item pago e reembolso na remoção).
+	db           *gorm.DB
+	reembolsador ReembolsadorInscricao
+}
+
+// ReembolsadorInscricao devolve o que a pessoa pagou pela inscrição.
+type ReembolsadorInscricao interface {
+	ReembolsarInscricao(fichaID, solicitadoPor int64, motivo string) error
+}
+
+// DefinirInscricaoPaga liga a inscrição paga de talento (item 8.4).
+func (s *FichaService) DefinirInscricaoPaga(db *gorm.DB, r ReembolsadorInscricao) {
+	s.db, s.reembolsador = db, r
+}
+
+// inscricaoPaga: a ficha tem a inscrição paga e ainda valendo.
+func (s *FichaService) inscricaoPaga(fichaID int64) bool {
+	if s.db == nil {
+		return false
+	}
+	var n int64
+	s.db.Model(&domain.ItemPedido{}).Where("ficha_id = ? AND status IN ?", fichaID,
+		[]domain.StatusItemPedido{domain.StatusItemPago, domain.StatusItemUtilizado}).Count(&n)
+	return n > 0
+}
+
+// AvisarInscricaoPaga: pagamento confirmado = inscrição confirmada (8.4).
+func (s *FichaService) AvisarInscricaoPaga(fichaID int64) {
+	if f, err := s.fichas.BuscarPorID(fichaID); err == nil {
+		s.enviarEmailStatusFicha(f)
+	}
+}
+
+// AvisarPrazoVencido: a pessoa aprovada não pagou a tempo (8.4).
+func (s *FichaService) AvisarPrazoVencido(fichaID int64) {
+	f, err := s.fichas.BuscarPorID(fichaID)
+	if err != nil {
+		return
+	}
+	usuario, err := s.usuarios.BuscarPorID(f.UsuarioID)
+	if err != nil || usuario.Email == "" {
+		return
+	}
+	evento, err := s.eventos.BuscarPorID(f.EventoID)
+	if err != nil {
+		return
+	}
+	corpo := fmt.Sprintf(`<p>Olá, %s!</p><p>O prazo para pagar sua inscrição em <strong>%s</strong> terminou, e a vaga foi liberada. Se ainda quiser participar, fale com o organizador.</p>`,
+		html.EscapeString(f.Nome), html.EscapeString(evento.Titulo))
+	_ = s.mailCliente.Enviar(usuario.Email, "Prazo da inscrição encerrado — "+evento.Titulo, corpo)
 }
 
 // DefinirFrontendURL liga o link do QR de participante no e-mail de aprovação (8.3).
@@ -110,6 +161,17 @@ func (s *FichaService) enviarEmailStatusFicha(ficha *domain.FichaParticipacao) {
 		if ficha.Papel == domain.PapelParticipante && s.frontendURL != "" {
 			// Item 8.3: o QR do camarim fica na página do evento, para a pessoa logada.
 			corpo += fmt.Sprintf(`<p>No dia, mostre seu <strong>QR de participante</strong> na entrada do camarim. Ele fica na página do evento, com você conectado: <a href="%s/e/%s#meu-qr">abrir meu QR</a>.</p>`, s.frontendURL, evento.Slug)
+		}
+	case domain.StatusFichaAguardandoPagamento:
+		assunto = "Inscrição aprovada: falta pagar — " + evento.Titulo
+		prazo := ""
+		if ficha.PrazoPagamentoEm != nil {
+			prazo = " até " + ficha.PrazoPagamentoEm.In(FusoDoEvento(evento)).Format("02/01/2006 às 15:04")
+		}
+		corpo = fmt.Sprintf(`<p>Olá, %s!</p><p>Sua inscrição em <strong>%s</strong> foi aprovada. Para confirmar a vaga, pague a inscrição de <strong>%s</strong> (mais a taxa de serviço)%s. Sem o pagamento, a vaga é liberada.</p>`,
+			html.EscapeString(ficha.Nome), html.EscapeString(evento.Titulo), formatarReais(evento.InscricaoTalentoCentavos), prazo)
+		if s.frontendURL != "" {
+			corpo += fmt.Sprintf(`<p><a href="%s/e/%s/inscricao">Pagar a inscrição</a></p>`, s.frontendURL, evento.Slug)
 		}
 	case domain.StatusFichaRejeitado:
 		assunto = "Inscrição não aprovada — " + evento.Titulo
@@ -206,8 +268,26 @@ func (s *FichaService) Aprovar(organizadorID, eventoID, fichaID int64) (*domain.
 		return nil, err
 	}
 
+	// Item 8.4: inscrição paga. Aprovada, a pessoa tem 48 h para pagar; a
+	// vaga (e o papel de participante) só é confirmada com o pagamento.
+	// Convidado pelo organizador não paga.
+	if ficha.Papel == domain.PapelParticipante && ficha.Origem == domain.OrigemInscricao && !s.inscricaoPaga(ficha.ID) {
+		if evento, err := s.eventos.BuscarPorID(eventoID); err == nil && evento.InscricaoTalentoCentavos > 0 {
+			prazo := PrazoParaPagar(time.Now(), evento.InicioEm)
+			ficha.Status = domain.StatusFichaAguardandoPagamento
+			ficha.PrazoPagamentoEm = &prazo
+			ficha.MotivoRejeicao = ""
+			if err := s.fichas.Salvar(ficha); err != nil {
+				return nil, err
+			}
+			s.enviarEmailStatusFicha(ficha)
+			return ficha, nil
+		}
+	}
+
 	ficha.Status = domain.StatusFichaAprovado
 	ficha.MotivoRejeicao = ""
+	ficha.PrazoPagamentoEm = nil
 	if err := s.fichas.Salvar(ficha); err != nil {
 		return nil, err
 	}
@@ -242,10 +322,23 @@ func (s *FichaService) Rejeitar(organizadorID, eventoID, fichaID int64, motivo s
 		return nil, err
 	}
 
+	// Item 8.4: removeu quem já pagou a inscrição = reembolso integral.
+	// Sem o estorno confirmado, a ficha não muda.
+	if s.reembolsador != nil && s.inscricaoPaga(ficha.ID) {
+		if err := s.reembolsador.ReembolsarInscricao(ficha.ID, organizadorID, "participação removida pelo organizador"); err != nil {
+			return nil, err
+		}
+	}
+
 	ficha.Status = domain.StatusFichaRejeitado
 	ficha.MotivoRejeicao = motivo
+	ficha.PrazoPagamentoEm = nil
 	if err := s.fichas.Salvar(ficha); err != nil {
 		return nil, err
+	}
+	if papel, err := s.papeis.Buscar(eventoID, ficha.UsuarioID, ficha.Papel); err == nil && papel.Status != domain.StatusPapelRemovido {
+		papel.Status = domain.StatusPapelRemovido
+		_ = s.papeis.Salvar(papel)
 	}
 	s.enviarEmailStatusFicha(ficha)
 	return ficha, nil

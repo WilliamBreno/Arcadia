@@ -30,14 +30,16 @@ type ItemPedido struct {
 	CupomID                *int64
 	DescontoCentavos       int64
 	Cortesia               bool
-	TotalCentavos          int64
-	Status                 StatusItemPedido
-	Codigo                 string
-	QRToken                string
-	UtilizadoEm            *time.Time
-	CanceladoEm            *time.Time
-	MotivoCancelamento     string
-	CriadoEm               time.Time
+	// Item 8.4: inscrição paga de talento (não é ingresso de plateia).
+	FichaID            *int64
+	TotalCentavos      int64
+	Status             StatusItemPedido
+	Codigo             string
+	QRToken            string
+	UtilizadoEm        *time.Time
+	CanceladoEm        *time.Time
+	MotivoCancelamento string
+	CriadoEm           time.Time
 }
 
 func (ItemPedido) TableName() string {

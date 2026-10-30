@@ -217,6 +217,9 @@ func main() {
 	palcoService := service.NovoPalcoService(db, cfg.JWTSecret, avaliacaoService, concursoService, talentoService)
 	palcoHandler := handler.NovoPalcoHandler(palcoService, checkinService, eventoRepo, organizadorHandler)
 	fichaService.DefinirFrontendURL(cfg.FrontendURL)
+	// Item 8.4: inscrição paga de talento.
+	fichaService.DefinirInscricaoPaga(db, cancelamentoService)
+	checkoutService.DefinirAvisoInscricao(fichaService)
 	perguntasHandler := handler.NovoPerguntasHandler(perguntasService, eventoRepo, organizadorHandler)
 	jobHandler.DefinirPerguntas(perguntasService)
 	publicoHandler.DefinirPerguntas(db)
@@ -330,6 +333,8 @@ func main() {
 		autenticado.GET("/eventos/:slug/minha-ficha", fichaHandler.ObterMinha)
 		autenticado.PUT("/eventos/:slug/minha-ficha", fichaHandler.AtualizarMinha)
 		autenticado.POST("/eventos/:slug/inscricao", fichaHandler.Inscrever)
+		autenticado.GET("/eventos/:slug/inscricao/pagamento", pedidoHandler.ValoresInscricao)
+		autenticado.POST("/eventos/:slug/inscricao/pagamento", pedidoHandler.PagarInscricao)
 		autenticado.GET("/eventos/:slug/participantes", fichaHandler.ListarParaJurado)
 		autenticado.GET("/eventos/:slug/participantes/:fichaId", fichaHandler.ObterParaJurado)
 		autenticado.POST("/uploads", uploadHandler.Criar)

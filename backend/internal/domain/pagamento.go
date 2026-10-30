@@ -29,6 +29,8 @@ const (
 	DevolucaoAposReserva     = "apos_reserva"
 	DevolucaoDuplicado       = "duplicado"
 	DevolucaoValorDivergente = "valor_divergente"
+	// Item 8.4: a inscrição já não esperava este pagamento.
+	DevolucaoInscricaoEncerrada = "inscricao_encerrada"
 )
 
 func (Pagamento) TableName() string {

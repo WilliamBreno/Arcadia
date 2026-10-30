@@ -39,6 +39,7 @@ type eventoResposta struct {
 	ModoParticipantes         string     `json:"modo_participantes"`
 	InscricaoTalentosInicio   *time.Time `json:"inscricao_talentos_inicio"`
 	InscricaoTalentosFim      *time.Time `json:"inscricao_talentos_fim"`
+	InscricaoTalentoCentavos  int64      `json:"inscricao_talento_centavos"`
 	CapacidadeTotal           *int       `json:"capacidade_total"`
 	GarantiaHabilitada        bool       `json:"garantia_habilitada"`
 	TaxaPagaPor               string     `json:"taxa_paga_por"`
@@ -70,6 +71,7 @@ func paraEventoResposta(e *domain.Evento) eventoResposta {
 		ModoParticipantes:         string(e.ModoParticipantes),
 		InscricaoTalentosInicio:   e.InscricaoTalentosInicio,
 		InscricaoTalentosFim:      e.InscricaoTalentosFim,
+		InscricaoTalentoCentavos:  e.InscricaoTalentoCentavos,
 		CapacidadeTotal:           e.CapacidadeTotal,
 		GarantiaHabilitada:        e.GarantiaHabilitada,
 		TaxaPagaPor:               e.TaxaPagaPor,
@@ -98,6 +100,7 @@ type eventoRequest struct {
 	ModoParticipantes         string     `json:"modo_participantes" binding:"omitempty,oneof=nenhum convite inscricao_aberta ambos"`
 	InscricaoTalentosInicio   *time.Time `json:"inscricao_talentos_inicio"`
 	InscricaoTalentosFim      *time.Time `json:"inscricao_talentos_fim"`
+	InscricaoTalentoCentavos  *int64     `json:"inscricao_talento_centavos" binding:"omitempty,min=0,max=10000000"`
 	CapacidadeTotal           *int       `json:"capacidade_total"`
 	GarantiaHabilitada        *bool      `json:"garantia_habilitada"`
 	TaxaPagaPor               *string    `json:"taxa_paga_por"`
@@ -125,6 +128,7 @@ func (req eventoRequest) paraDados() service.EventoDados {
 		ModoParticipantes:         domain.ModoParticipantes(req.ModoParticipantes),
 		InscricaoTalentosInicio:   req.InscricaoTalentosInicio,
 		InscricaoTalentosFim:      req.InscricaoTalentosFim,
+		InscricaoTalentoCentavos:  req.InscricaoTalentoCentavos,
 		CapacidadeTotal:           req.CapacidadeTotal,
 		GarantiaHabilitada:        req.GarantiaHabilitada,
 		TaxaPagaPor:               req.TaxaPagaPor,

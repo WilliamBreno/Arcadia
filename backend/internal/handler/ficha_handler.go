@@ -52,6 +52,7 @@ type fichaResposta struct {
 	Dados              json.RawMessage `json:"dados"`
 	ResponsavelNome    string          `json:"responsavel_nome,omitempty"`
 	ResponsavelContato string          `json:"responsavel_contato,omitempty"`
+	PrazoPagamentoEm   *time.Time      `json:"prazo_pagamento_em,omitempty"` // item 8.4
 }
 
 func paraFichaResposta(f *domain.FichaParticipacao) fichaResposta {
@@ -80,6 +81,7 @@ func paraFichaResposta(f *domain.FichaParticipacao) fichaResposta {
 		Dados:              dados,
 		ResponsavelNome:    f.ResponsavelNome,
 		ResponsavelContato: f.ResponsavelContato,
+		PrazoPagamentoEm:   f.PrazoPagamentoEm,
 	}
 }
 

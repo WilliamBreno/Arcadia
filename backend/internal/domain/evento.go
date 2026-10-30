@@ -64,12 +64,14 @@ type Evento struct {
 	ModoParticipantes       ModoParticipantes
 	InscricaoTalentosInicio *time.Time
 	InscricaoTalentosFim    *time.Time
-	CapacidadeTotal         *int
-	GarantiaHabilitada      bool
-	TaxaPagaPor             string // comprador | organizador (item 5.1)
-	AprovacaoManual         bool
-	QRRotativo              bool
-	CorTema                 string
+	// Item 8.4: valor da inscrição de talento (0 = gratuita), pago após a aprovação.
+	InscricaoTalentoCentavos int64
+	CapacidadeTotal          *int
+	GarantiaHabilitada       bool
+	TaxaPagaPor              string // comprador | organizador (item 5.1)
+	AprovacaoManual          bool
+	QRRotativo               bool
+	CorTema                  string
 	// Item 7.5: pixels de anúncio do organizador (só os IDs).
 	PixelMeta           string
 	PixelGA4            string `gorm:"column:pixel_ga4"`

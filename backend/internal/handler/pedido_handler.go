@@ -64,16 +64,21 @@ type pedidoResposta struct {
 	MaxParcelas int `json:"max_parcelas"`
 	// Endereço do evento, para o botão "Voltar ao evento".
 	EventoSlug string `json:"evento_slug,omitempty"`
+	// Item 8.4: pedido da inscrição paga de talento (não é ingresso).
+	Inscricao bool `json:"inscricao,omitempty"`
 }
 
 func paraPedidoResposta(p *domain.Pedido, itens []domain.ItemPedido) pedidoResposta {
 	itensResp := make([]itemPedidoResposta, 0, len(itens))
+	inscricao := false
 	for i := range itens {
+		inscricao = inscricao || itens[i].FichaID != nil
 		itensResp = append(itensResp, paraItemPedidoResposta(&itens[i]))
 	}
 	return pedidoResposta{
 		ID: p.ID, EventoID: p.EventoID, Status: string(p.Status), TotalCentavos: p.TotalCentavos,
 		ExpiraEm: p.ExpiraEm, MaxParcelas: service.MaxParcelas(p.TotalCentavos), Itens: itensResp,
+		Inscricao: inscricao,
 	}
 }
 
@@ -295,4 +300,76 @@ func (h *PedidoHandler) responderErro(c *gin.Context, err error) {
 	default:
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"erro": err.Error()})
 	}
+}
+
+// Item 8.4: inscrição paga de talento.
+
+type valoresInscricaoResposta struct {
+	PrecoCentavos      int64      `json:"preco_centavos"`
+	TaxaCentavos       int64      `json:"taxa_centavos"`
+	GarantiaCentavos   int64      `json:"garantia_centavos"`
+	GarantiaDisponivel bool       `json:"garantia_disponivel"`
+	PrazoEm            *time.Time `json:"prazo_em"`
+	PedidoAbertoID     *int64     `json:"pedido_aberto_id"`
+	Pago               bool       `json:"pago"`
+	ItemPagoID         *int64     `json:"item_pago_id"`
+	TotalPagoCentavos  int64      `json:"total_pago_centavos"`
+	GarantiaContratada bool       `json:"garantia_contratada"`
+}
+
+func (h *PedidoHandler) eventoDoSlug(c *gin.Context) (int64, bool) {
+	e, err := h.eventos.BuscarPorSlug(c.Param("slug"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"erro": "evento não encontrado"})
+		return 0, false
+	}
+	return e.ID, true
+}
+
+func (h *PedidoHandler) responderErroInscricao(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, service.ErrInscricaoSemPagamento):
+		c.JSON(http.StatusNotFound, gin.H{"erro": err.Error()})
+	case errors.Is(err, service.ErrPrazoInscricaoVencido), errors.Is(err, service.ErrGarantiaNaoDisponivel):
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"erro": err.Error()})
+	default:
+		slog.Error("inscrição paga", "erro", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao preparar o pagamento da inscrição"})
+	}
+}
+
+// ValoresInscricao é GET /eventos/:slug/inscricao/pagamento.
+func (h *PedidoHandler) ValoresInscricao(c *gin.Context) {
+	eventoID, ok := h.eventoDoSlug(c)
+	if !ok {
+		return
+	}
+	v, err := h.service.ValoresInscricao(c.GetInt64(middleware.ChaveContextoUsuarioID), eventoID)
+	if err != nil {
+		h.responderErroInscricao(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, valoresInscricaoResposta{
+		PrecoCentavos: v.PrecoCentavos, TaxaCentavos: v.TaxaCentavos, GarantiaCentavos: v.GarantiaCentavos,
+		GarantiaDisponivel: v.GarantiaDisponivel, PrazoEm: v.PrazoEm, PedidoAbertoID: v.PedidoAbertoID,
+		Pago: v.Pago, ItemPagoID: v.ItemPagoID, TotalPagoCentavos: v.TotalPagoCentavos, GarantiaContratada: v.GarantiaContratada,
+	})
+}
+
+// PagarInscricao é POST /eventos/:slug/inscricao/pagamento: abre o pedido.
+func (h *PedidoHandler) PagarInscricao(c *gin.Context) {
+	eventoID, ok := h.eventoDoSlug(c)
+	if !ok {
+		return
+	}
+	var req struct {
+		GarantiaContratada bool `json:"garantia_contratada"`
+	}
+	_ = c.ShouldBindJSON(&req)
+	pedido, itens, err := h.service.ReservarInscricao(c.GetInt64(middleware.ChaveContextoUsuarioID), eventoID, req.GarantiaContratada)
+	if err != nil {
+		h.responderErroInscricao(c, err)
+		return
+	}
+	c.JSON(http.StatusCreated, paraPedidoResposta(pedido, itens))
 }

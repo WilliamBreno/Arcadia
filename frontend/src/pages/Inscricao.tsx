@@ -1,8 +1,11 @@
+import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import { VoltarLink } from '@/components/voltar-link'
 import { api, ApiError } from '@/lib/api'
+import { formatarCentavos } from '@/lib/evento'
+import type { EventoDetalhe } from '@/lib/publico'
 import { UploadAudio } from '@/components/upload-audio'
 import { UploadImagem } from '@/components/upload-imagem'
 import { Button } from '@/components/ui/button'
@@ -61,6 +64,13 @@ export default function Inscricao() {
   const [erro, setErro] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
 
+  // Item 8.4: inscrição paga (avisa o valor antes de enviar a ficha).
+  const { data: detalhe } = useQuery({
+    queryKey: ['evento-publico', slug],
+    queryFn: () => api<EventoDetalhe>(`/eventos/${slug}`),
+  })
+  const valorInscricao = detalhe?.evento.inscricao_talento_centavos ?? 0
+
   const idade = calcularIdade(dataNascimento)
   const menorDeIdade = idade !== null && idade < 18
 
@@ -84,7 +94,7 @@ export default function Inscricao() {
           autorizacao_responsavel_url: autorizacaoURL,
         },
       })
-      navigate(`/e/${slug}`, { replace: true })
+      navigate(`/e/${slug}#minha-inscricao`, { replace: true })
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : 'Erro ao enviar inscrição')
     } finally {
@@ -102,6 +112,13 @@ export default function Inscricao() {
         <CardContent className="flex flex-col gap-4">
           <p className="text-sm text-muted-foreground">
             Sua inscrição fica pendente até o organizador aprovar.
+            {valorInscricao > 0 && (
+              <>
+                {' '}
+                A inscrição custa <strong className="text-foreground">{formatarCentavos(valorInscricao)}</strong> + taxa de serviço. Você só paga se for
+                aprovada, e tem 48 horas para pagar.
+              </>
+            )}
           </p>
 
           <div className="flex flex-col gap-1.5">

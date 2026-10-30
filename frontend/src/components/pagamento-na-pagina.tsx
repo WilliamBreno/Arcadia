@@ -170,7 +170,7 @@ function BlocoPix({ pedidoId, aoConfirmar }: { pedidoId: number; aoConfirmar: ()
         <Button size="lg" onClick={gerar} disabled={gerando}>
           {gerando ? 'Gerando o Pix…' : 'Gerar QR do Pix'}
         </Button>
-        <p className="text-center text-xs text-muted-foreground">Confirma na hora e o ingresso chega em segundos.</p>
+        <p className="text-center text-xs text-muted-foreground">Confirma na hora, em segundos.</p>
         {erro && (
           <p role="alert" className="text-sm text-destructive">
             {erro}
@@ -198,7 +198,7 @@ function BlocoPix({ pedidoId, aoConfirmar }: { pedidoId: number; aoConfirmar: ()
       <ol className="w-full list-decimal pl-5 text-sm text-foreground">
         <li>Abra o app do seu banco e escolha Pix.</li>
         <li>Leia o QR Code ou use o código "copia e cola".</li>
-        <li>Pague: o ingresso aparece aqui na hora.</li>
+        <li>Pague: a confirmação aparece aqui na hora.</li>
       </ol>
       <div className="flex w-full flex-col gap-2">
         <label htmlFor="pix-copia-cola" className="text-xs text-muted-foreground">

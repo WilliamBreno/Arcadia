@@ -58,7 +58,7 @@ func (s *CortesiaService) Emitir(organizadorID, usuarioID, eventoID, tipoID int6
 	var itens []domain.ItemPedido
 	err = s.db.Transaction(func(tx *gorm.DB) error {
 		tipo, err := s.itensPedido.BuscarTipoIngressoParaAtualizar(tx, tipoID)
-		if err != nil || tipo.EventoID != eventoID {
+		if err != nil || tipo.EventoID != eventoID || tipo.InscricaoTalento {
 			return fmt.Errorf("tipo de ingresso não encontrado")
 		}
 		ativos, err := s.itensPedido.ContarAtivosPorTipo(tx, tipo.ID)

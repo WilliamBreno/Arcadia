@@ -326,6 +326,7 @@ func (s *CheckoutService) confirmarPagamento(pedidoID int64, registro *domain.Pa
 		emitiu   bool
 		devolver string
 		vendidas []int64 // anúncios da revenda vendidos neste pagamento (7.4)
+		fichas   []int64 // item 8.4: inscrições pagas por este pedido
 	)
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&pedido, pedidoID).Error; err != nil {
@@ -334,6 +335,23 @@ func (s *CheckoutService) confirmarPagamento(pedidoID int64, registro *domain.Pa
 		var err error
 		if evento, err = s.eventos.BuscarPorID(pedido.EventoID); err != nil {
 			return err
+		}
+
+		// Item 8.4: a inscrição precisa ainda estar esperando este pagamento
+		// (prazo, remoção ou desistência no meio do caminho: devolve tudo).
+		if pedido.Status == domain.StatusPedidoAguardandoPagamento || pedido.Status == domain.StatusPedidoExpirado {
+			ids, esperando, err := fichasDoPedido(tx, pedido.ID)
+			if err != nil {
+				return err
+			}
+			if !esperando {
+				if registro == nil {
+					return nil
+				}
+				devolver = domain.DevolucaoInscricaoEncerrada
+				return s.pagamentos.MarcarDevolver(tx, registro.ID, devolver)
+			}
+			fichas = ids
 		}
 
 		switch pedido.Status {
@@ -404,6 +422,9 @@ func (s *CheckoutService) confirmarPagamento(pedidoID int64, registro *domain.Pa
 		if vendidas, err2 = fecharVendas(tx, pagos); err2 != nil { // item 7.4
 			return err2
 		}
+		if err := confirmarFichasPagas(tx, fichas); err != nil { // item 8.4
+			return err
+		}
 		return tx.Save(&pedido).Error
 	})
 	if err != nil {
@@ -412,6 +433,11 @@ func (s *CheckoutService) confirmarPagamento(pedidoID int64, registro *domain.Pa
 	if emitiu {
 		if itens, err := s.itensPedido.ListarPorPedido(pedido.ID); err == nil {
 			s.enviarEmailConfirmacao(&pedido, itens, evento)
+		}
+	}
+	if emitiu && s.avisoInscricao != nil {
+		for _, id := range fichas {
+			s.avisoInscricao.AvisarInscricaoPaga(id)
 		}
 	}
 	if len(vendidas) > 0 && s.revenda != nil {
@@ -527,6 +553,8 @@ func TextoDevolucao(motivo string) string {
 		return "O pagamento chegou depois do fim da reserva, e os ingressos já tinham sido vendidos para outra pessoa."
 	case domain.DevolucaoDuplicado:
 		return "Este pedido já estava pago quando este pagamento chegou. Os ingressos do primeiro pagamento continuam valendo, e o valor a mais foi devolvido."
+	case domain.DevolucaoInscricaoEncerrada:
+		return "O pagamento chegou quando a inscrição já não estava esperando por ele (prazo encerrado, inscrição cancelada ou removida)."
 	case domain.DevolucaoValorDivergente:
 		return "O valor pago não correspondia ao valor do pedido, então nenhum ingresso foi emitido com ele."
 	}

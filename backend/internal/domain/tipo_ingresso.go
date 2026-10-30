@@ -20,7 +20,9 @@ type TipoIngresso struct {
 	MeiaEntrada   bool
 	SessaoIDs     []int64 `gorm:"-"` // vazio = vale para todas as sessões
 	Ativo         bool
-	CriadoEm      time.Time
+	// Item 8.4: ingresso interno que segura a inscrição paga de talento.
+	InscricaoTalento bool
+	CriadoEm         time.Time
 }
 
 func (TipoIngresso) TableName() string {

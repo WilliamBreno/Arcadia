@@ -56,11 +56,13 @@ func (h *JobHandler) ExpirarReservas(c *gin.Context) {
 	if h.perguntas != nil {
 		_, _ = h.perguntas.ApagarVencidas(time.Now())
 	}
+	// Item 8.4: aprovada que não pagou a inscrição no prazo perde a vaga.
+	inscricoes, _ := h.checkout.ExpirarInscricoesNaoPagas()
 	convidados := 0
 	if h.fila != nil {
 		convidados, _ = h.fila.Processar(time.Now())
 	}
-	c.JSON(http.StatusOK, gin.H{"expirados": total, "devolucoes_tentadas": devolucoes, "carrinhos": carrinhos, "fila_convidados": convidados, "revendas_encerradas": revendasEncerradas})
+	c.JSON(http.StatusOK, gin.H{"expirados": total, "devolucoes_tentadas": devolucoes, "carrinhos": carrinhos, "fila_convidados": convidados, "revendas_encerradas": revendasEncerradas, "inscricoes_vencidas": inscricoes})
 }
 
 // EnviarEmails é o job POST /jobs/enviar-emails (item 5.5): esvazia a fila

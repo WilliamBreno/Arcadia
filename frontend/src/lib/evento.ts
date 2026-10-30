@@ -14,6 +14,8 @@ export type Evento = {
   tipo_acesso: 'ingresso' | 'cadastro'
   status: 'rascunho' | 'publicado' | 'encerrado' | 'cancelado'
   modo_participantes: 'nenhum' | 'convite' | 'inscricao_aberta' | 'ambos'
+  // Item 8.4: valor da inscrição de talento (0 = gratuita).
+  inscricao_talento_centavos: number
   capacidade_total: number | null
   garantia_habilitada: boolean
   taxa_paga_por: 'comprador' | 'organizador'

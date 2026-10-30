@@ -60,6 +60,10 @@ const schemaBasico = z.object({
   max_ingressos_por_conta: z.number().int().min(0).max(1000),
   taxa_paga_por: z.enum(['comprador', 'organizador']),
   cor_tema: z.string(),
+  // Item 8.4: valor da inscrição de talento, em reais (0 = gratuita).
+  inscricao_reais: z
+    .string()
+    .refine((v) => v === '' || Number(v) === 0 || (Number(v) >= 1 && Number(v) <= 100000), 'Use 0 (gratuita) ou um valor a partir de R$ 1,00.'),
 })
 
 type FormBasico = z.infer<typeof schemaBasico>
@@ -89,7 +93,8 @@ export default function EventoEditar() {
     handleSubmit,
     reset,
     control,
-    formState: { isSubmitting },
+    watch,
+    formState: { isSubmitting, errors },
   } = useForm<FormBasico>({ resolver: zodResolver(schemaBasico) })
 
   useEffect(() => {
@@ -99,17 +104,19 @@ export default function EventoEditar() {
         local_id: evento.local_id?.toString() ?? '',
         inicio_em: paraDatetimeLocal(evento.inicio_em),
         fim_em: paraDatetimeLocal(evento.fim_em),
+        inscricao_reais: ((evento.inscricao_talento_centavos ?? 0) / 100).toFixed(2),
       })
     }
   }, [evento, reset])
 
-  const salvarBasico = async (dados: FormBasico) => {
+  const salvarBasico = async ({ inscricao_reais, ...dados }: FormBasico) => {
     setErro(null)
     try {
       await api(`/org/eventos/${id}`, {
         method: 'PUT',
         body: {
           ...dados,
+          inscricao_talento_centavos: Math.round(Number(inscricao_reais || 0) * 100),
           local_id: dados.local_id ? Number(dados.local_id) : null,
           inicio_em: paraISO(dados.inicio_em),
           fim_em: paraISO(dados.fim_em),
@@ -289,6 +296,27 @@ export default function EventoEditar() {
                 <option value="ambos">Convite + inscrição aberta</option>
               </select>
             </div>
+
+            {(watch('modo_participantes') === 'inscricao_aberta' || watch('modo_participantes') === 'ambos') && (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="inscricao_reais">Valor da inscrição de talento (R$)</Label>
+                <Input
+                  id="inscricao_reais"
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.01"
+                  className="max-w-40"
+                  aria-describedby="inscricao-ajuda"
+                  {...register('inscricao_reais')}
+                />
+                <p id="inscricao-ajuda" className="text-xs text-muted-foreground">
+                  0 = gratuita. A pessoa só paga se você aprovar a inscrição e tem 48 horas para pagar; sem pagamento, a vaga é liberada. A taxa Evve é somada
+                  para o participante, que pode contratar a garantia para desistir com reembolso. O valor da inscrição entra no seu repasse.
+                </p>
+                {errors.inscricao_reais && <p className="text-sm text-destructive">{errors.inscricao_reais.message}</p>}
+              </div>
+            )}
 
             {erro && <p className="text-sm text-destructive">{erro}</p>}
             <Button type="submit" disabled={isSubmitting}>
@@ -835,9 +863,10 @@ type Ficha = {
   papel: 'jurado' | 'participante'
   nome: string
   nome_artistico: string
-  status: 'rascunho' | 'pendente' | 'aprovado' | 'rejeitado' | 'lista_espera' | 'desistiu'
+  status: 'rascunho' | 'pendente' | 'aprovado' | 'rejeitado' | 'lista_espera' | 'desistiu' | 'aguardando_pagamento'
   motivo_rejeicao?: string
   tipo_apresentacao: string | null
+  prazo_pagamento_em?: string
 }
 
 const rotuloStatusFicha: Record<Ficha['status'], string> = {
@@ -847,6 +876,7 @@ const rotuloStatusFicha: Record<Ficha['status'], string> = {
   rejeitado: 'Rejeitado',
   lista_espera: 'Lista de espera',
   desistiu: 'Desistiu',
+  aguardando_pagamento: 'Aguardando pagamento',
 }
 
 function ParticipantesCard({ eventoId }: { eventoId: number }) {
@@ -864,10 +894,19 @@ function ParticipantesCard({ eventoId }: { eventoId: number }) {
     invalidar()
   }
 
-  const rejeitar = async (fichaId: number) => {
-    const motivo = window.prompt('Motivo da rejeição (opcional):') ?? ''
-    await api(`/org/eventos/${eventoId}/participantes/${fichaId}/rejeitar`, { method: 'POST', body: { motivo } })
-    invalidar()
+  const [erroAcao, setErroAcao] = useState<string | null>(null)
+  const rejeitar = async (fichaId: number, remover = false) => {
+    const motivo = window.prompt(
+      remover ? 'Motivo da remoção (opcional). Se a inscrição foi paga, a pessoa recebe tudo de volta:' : 'Motivo da rejeição (opcional):',
+    )
+    if (motivo === null) return
+    setErroAcao(null)
+    try {
+      await api(`/org/eventos/${eventoId}/participantes/${fichaId}/rejeitar`, { method: 'POST', body: { motivo } })
+      invalidar()
+    } catch (e) {
+      setErroAcao(e instanceof ApiError ? e.message : 'Não foi possível concluir agora.')
+    }
   }
 
   const pendentes = fichas?.filter((f) => f.status === 'pendente') ?? []
@@ -880,6 +919,11 @@ function ParticipantesCard({ eventoId }: { eventoId: number }) {
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {fichas?.length === 0 && <p className="text-sm text-muted-foreground">Ninguém se inscreveu ou aceitou convite ainda.</p>}
+        {erroAcao && (
+          <p role="alert" className="text-sm text-destructive">
+            {erroAcao}
+          </p>
+        )}
 
         {pendentes.length > 0 && (
           <div className="flex flex-col gap-2">
@@ -917,11 +961,26 @@ function ParticipantesCard({ eventoId }: { eventoId: number }) {
                   <p className="text-xs text-muted-foreground">
                     {f.papel} · {f.tipo_apresentacao ?? ''}
                     {f.status === 'rejeitado' && f.motivo_rejeicao ? ` · ${f.motivo_rejeicao}` : ''}
+                    {f.status === 'aguardando_pagamento' && f.prazo_pagamento_em
+                      ? ` · paga até ${new Date(f.prazo_pagamento_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}`
+                      : ''}
                   </p>
                 </div>
-                <span className="rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground">
-                  {rotuloStatusFicha[f.status]}
-                </span>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <span className="rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground">
+                    {rotuloStatusFicha[f.status]}
+                  </span>
+                  {(f.status === 'aprovado' || f.status === 'aguardando_pagamento') && (
+                    <Button variant="ghost" size="sm" onClick={() => rejeitar(f.id, true)}>
+                      Remover
+                    </Button>
+                  )}
+                  {f.status === 'rejeitado' && f.papel === 'participante' && (
+                    <Button variant="ghost" size="sm" onClick={() => aprovar(f.id)}>
+                      Aprovar de novo
+                    </Button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

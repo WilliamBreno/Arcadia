@@ -15,6 +15,8 @@ const (
 	StatusFichaRejeitado   StatusFicha = "rejeitado"
 	StatusFichaListaEspera StatusFicha = "lista_espera"
 	StatusFichaDesistiu    StatusFicha = "desistiu"
+	// Item 8.4: aprovada, falta pagar a inscrição (prazo em PrazoPagamentoEm).
+	StatusFichaAguardandoPagamento StatusFicha = "aguardando_pagamento"
 )
 
 type TipoApresentacao string
@@ -50,6 +52,7 @@ type FichaParticipacao struct {
 	ResponsavelNome           string
 	ResponsavelContato        string
 	AutorizacaoResponsavelURL string
+	PrazoPagamentoEm          *time.Time // item 8.4
 	CriadoEm                  time.Time
 }
 
