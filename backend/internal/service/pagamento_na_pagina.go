@@ -27,7 +27,22 @@ import (
 // pedido passa a terminar junto com o QR (decisão do dono, 29/10/2026).
 const ValidadePix = 31 * time.Minute
 
+// Parcelamento (item 7.6, decisões do dono): até 12x, parcela mínima de
+// R$ 20, juros sempre do comprador (o Mercado Pago cobra na fatura dele; o
+// Evve recebe o mesmo valor do pagamento à vista).
+const (
+	MaxParcelasCartao     = 12
+	ParcelaMinimaCentavos = 2000
+)
+
+// MaxParcelas: quantas vezes um pedido pode ser dividido. Testada.
+func MaxParcelas(totalCentavos int64) int {
+	n := int(totalCentavos / ParcelaMinimaCentavos)
+	return max(1, min(n, MaxParcelasCartao))
+}
+
 var (
+	ErrParcelasInvalidas              = errors.New("número de parcelas não permitido para este valor")
 	ErrPagamentoNaoEncontradoNoPedido = errors.New("pagamento não pertence a este pedido")
 	ErrDadosCartaoIncompletos         = errors.New("dados do cartão incompletos")
 )
@@ -47,6 +62,7 @@ type DadosCartao struct {
 	EmissorID       string
 	DocumentoTipo   string
 	DocumentoNumero string
+	Parcelas        int
 }
 
 // ResultadoCartao diz à página o que fazer depois de enviar o cartão.
@@ -173,8 +189,15 @@ func (s *CheckoutService) PagarCartao(usuarioID, pedidoID int64, d DadosCartao) 
 	if err != nil {
 		return nil, err
 	}
+	if d.Parcelas == 0 {
+		d.Parcelas = 1
+	}
+	if d.Parcelas < 1 || d.Parcelas > MaxParcelas(pedido.TotalCentavos) {
+		return nil, ErrParcelasInvalidas
+	}
 	ref := strconv.FormatInt(pedido.ID, 10)
 	criado, err := s.mp.CriarPagamento(pagamento.NovoPagamento{
+		Parcelas:          d.Parcelas,
 		Referencia:        ref,
 		Descricao:         s.descricaoCobranca(pedido),
 		ValorCentavos:     pedido.TotalCentavos,

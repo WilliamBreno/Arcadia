@@ -46,3 +46,12 @@ func TestTextoDevolucao(t *testing.T) {
 		}
 	}
 }
+
+func TestMaxParcelas(t *testing.T) {
+	casos := map[int64]int{0: 1, 1999: 1, 2000: 1, 3999: 1, 4000: 2, 12000: 6, 24000: 12, 99999: 12}
+	for total, quer := range casos {
+		if got := MaxParcelas(total); got != quer {
+			t.Errorf("MaxParcelas(%d) = %d, quer %d", total, got, quer)
+		}
+	}
+}

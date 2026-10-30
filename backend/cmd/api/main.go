@@ -204,6 +204,10 @@ func main() {
 	jobHandler.DefinirRevenda(revendaService)
 	revendaHandler := handler.NovoRevendaHandler(revendaService)
 	pixelsHandler := handler.NovoPixelsHandler(db, eventoRepo, organizadorHandler) // item 7.5
+	perguntasService := service.NovoPerguntasService(db)                           // item 7.6
+	perguntasHandler := handler.NovoPerguntasHandler(perguntasService, eventoRepo, organizadorHandler)
+	jobHandler.DefinirPerguntas(perguntasService)
+	publicoHandler.DefinirPerguntas(db)
 	filaHandler := handler.NovoFilaEsperaHandler(filaService, eventoRepo, organizadorHandler)
 	jobHandler.DefinirRecuperacao(service.NovoRecuperacaoCarrinhoService(db, mailCliente, seguirService, cfg.FrontendURL, cfg.NomePlataforma))
 
@@ -376,6 +380,11 @@ func main() {
 		org.GET("/eventos/:id/fila", filaHandler.Resumo)
 		org.GET("/eventos/:id/pixels", pixelsHandler.Obter)
 		org.PUT("/eventos/:id/pixels", pixelsHandler.Salvar)
+		org.GET("/eventos/:id/perguntas", perguntasHandler.Listar)
+		org.POST("/eventos/:id/perguntas", perguntasHandler.Salvar)
+		org.PUT("/eventos/:id/perguntas/:pergunta", perguntasHandler.Salvar)
+		org.DELETE("/eventos/:id/perguntas/:pergunta", perguntasHandler.Remover)
+		org.GET("/eventos/:id/respostas.csv", perguntasHandler.Exportar)
 		org.POST("/eventos/:id/cupons", cupomHandler.Criar)
 		org.DELETE("/eventos/:id/cupons/:cupomId", cupomHandler.Desativar)
 

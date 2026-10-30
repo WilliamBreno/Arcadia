@@ -10,12 +10,12 @@ import { Button } from '@/components/ui/button'
 
 const CartaoMercadoPago = lazy(() => import('@/components/cartao-mercado-pago'))
 
-type Props = { pedidoId: number; totalCentavos: number; aoConfirmar: () => void }
+type Props = { pedidoId: number; totalCentavos: number; maxParcelas?: number; aoConfirmar: () => void }
 
 // Escolha do pagamento na página do pedido (item 7.1): Pix com QR na tela
 // (padrão) ou cartão no formulário seguro do Mercado Pago. Pagar no site do
 // Mercado Pago fica como plano B.
-export function PagamentoNaPagina({ pedidoId, totalCentavos, aoConfirmar }: Props) {
+export function PagamentoNaPagina({ pedidoId, totalCentavos, maxParcelas, aoConfirmar }: Props) {
   const { usuario } = useAuth()
   const [metodo, setMetodo] = useState<'pix' | 'cartao'>('pix')
   const [cartaoFalhou, setCartaoFalhou] = useState(false)
@@ -43,7 +43,7 @@ export function PagamentoNaPagina({ pedidoId, totalCentavos, aoConfirmar }: Prop
           Pix
         </OpcaoMetodo>
         <OpcaoMetodo ativo={metodo === 'cartao'} aoEscolher={() => setMetodo('cartao')} icone={<CreditCard className="size-4" aria-hidden="true" />}>
-          Cartão
+          {maxParcelas && maxParcelas > 1 ? `Cartão até ${maxParcelas}x` : 'Cartão'}
         </OpcaoMetodo>
       </div>
 
@@ -58,6 +58,7 @@ export function PagamentoNaPagina({ pedidoId, totalCentavos, aoConfirmar }: Prop
               publicKey={publicKey}
               pedidoId={pedidoId}
               totalCentavos={totalCentavos}
+              maxParcelas={maxParcelas}
               email={usuario?.email}
               aoConfirmar={aoConfirmar}
               aoFalhar={() => setCartaoFalhou(true)}

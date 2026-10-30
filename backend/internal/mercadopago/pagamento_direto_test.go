@@ -37,7 +37,10 @@ func TestRequisicaoPagamentoCartao(t *testing.T) {
 		t.Fatalf("cartão montado errado: %+v", r)
 	}
 	if r.Installments != 1 {
-		t.Errorf("parcelas = %d, esperado 1 (parcelamento é o item 7.6)", r.Installments)
+		t.Errorf("sem parcelas informadas: 1x, veio %d", r.Installments)
+	}
+	if r6 := requisicaoPagamento(pagamento.NovoPagamento{Metodo: pagamento.MetodoCartao, BandeiraID: "visa", CartaoToken: "t", Parcelas: 6}); r6.Installments != 6 {
+		t.Errorf("6x pedido, veio %d", r6.Installments)
 	}
 	if r.ThreeDSecureMode != "optional" {
 		t.Errorf("3DS = %q, esperado optional", r.ThreeDSecureMode)

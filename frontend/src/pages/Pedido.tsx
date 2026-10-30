@@ -101,7 +101,7 @@ export default function Pedido() {
                   Reserva válida até {new Date(pedido.expira_em).toLocaleTimeString('pt-BR')}.
                 </p>
               )}
-              <PagamentoNaPagina pedidoId={pedido.id} totalCentavos={pedido.total_centavos} aoConfirmar={() => refetch()} />
+              <PagamentoNaPagina pedidoId={pedido.id} totalCentavos={pedido.total_centavos} maxParcelas={pedido.max_parcelas} aoConfirmar={() => refetch()} />
             </>
           )}
 

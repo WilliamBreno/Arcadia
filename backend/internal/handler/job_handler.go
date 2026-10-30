@@ -11,12 +11,16 @@ import (
 )
 
 type JobHandler struct {
-	checkout *service.CheckoutService
-	mail     *mail.Cliente
-	carrinho *service.RecuperacaoCarrinhoService
-	fila     *service.FilaEsperaService
-	revenda  *service.RevendaService
+	checkout  *service.CheckoutService
+	mail      *mail.Cliente
+	carrinho  *service.RecuperacaoCarrinhoService
+	fila      *service.FilaEsperaService
+	revenda   *service.RevendaService
+	perguntas *service.PerguntasService
 }
+
+// DefinirPerguntas liga a limpeza das respostas (item 7.6, 90 dias após o evento).
+func (h *JobHandler) DefinirPerguntas(p *service.PerguntasService) { h.perguntas = p }
 
 // DefinirRevenda liga a revenda oficial (item 7.4) ao job de reservas.
 func (h *JobHandler) DefinirRevenda(r *service.RevendaService) { h.revenda = r }
@@ -48,6 +52,9 @@ func (h *JobHandler) ExpirarReservas(c *gin.Context) {
 	var revendasEncerradas int64
 	if h.revenda != nil {
 		revendasEncerradas, _ = h.revenda.Encerrar(time.Now())
+	}
+	if h.perguntas != nil {
+		_, _ = h.perguntas.ApagarVencidas(time.Now())
 	}
 	convidados := 0
 	if h.fila != nil {

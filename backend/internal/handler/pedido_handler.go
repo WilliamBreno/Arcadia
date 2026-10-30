@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -59,6 +60,8 @@ type pedidoResposta struct {
 	ExpiraEm      *time.Time           `json:"expira_em"`
 	Itens         []itemPedidoResposta `json:"itens"`
 	Pixels        *service.Pixels      `json:"pixels,omitempty"`
+	// Item 7.6: até quantas vezes o cartão pode dividir este pedido.
+	MaxParcelas int `json:"max_parcelas"`
 }
 
 func paraPedidoResposta(p *domain.Pedido, itens []domain.ItemPedido) pedidoResposta {
@@ -68,7 +71,7 @@ func paraPedidoResposta(p *domain.Pedido, itens []domain.ItemPedido) pedidoRespo
 	}
 	return pedidoResposta{
 		ID: p.ID, EventoID: p.EventoID, Status: string(p.Status), TotalCentavos: p.TotalCentavos,
-		ExpiraEm: p.ExpiraEm, Itens: itensResp,
+		ExpiraEm: p.ExpiraEm, MaxParcelas: service.MaxParcelas(p.TotalCentavos), Itens: itensResp,
 	}
 }
 
@@ -76,6 +79,22 @@ type itemRequest struct {
 	TipoIngressoID     int64 `json:"tipo_ingresso_id" binding:"required"`
 	Quantidade         int   `json:"quantidade" binding:"required,gt=0"`
 	GarantiaContratada bool  `json:"garantia_contratada"`
+	// Item 7.6: [{"<pergunta_id>": "resposta"}, ...], um objeto por ingresso.
+	Respostas []map[string]string `json:"respostas"`
+}
+
+// respostasPorUnidade converte as chaves (ids de pergunta em texto).
+func respostasPorUnidade(rs []map[string]string) []map[int64]string {
+	out := make([]map[int64]string, len(rs))
+	for i, r := range rs {
+		out[i] = map[int64]string{}
+		for k, v := range r {
+			if id, err := strconv.ParseInt(k, 10, 64); err == nil {
+				out[i][id] = v
+			}
+		}
+	}
+	return out
 }
 
 type criarPedidoRequest struct {
@@ -109,6 +128,7 @@ func (h *PedidoHandler) Criar(c *gin.Context) {
 	for i, ir := range req.Itens {
 		itensReq[i] = service.ItemRequisitado{
 			TipoIngressoID: ir.TipoIngressoID, Quantidade: ir.Quantidade, GarantiaContratada: ir.GarantiaContratada,
+			Respostas: respostasPorUnidade(ir.Respostas),
 		}
 	}
 
@@ -192,6 +212,7 @@ type cartaoRequest struct {
 	EmissorID       string `json:"issuer_id"`
 	DocumentoTipo   string `json:"documento_tipo"`
 	DocumentoNumero string `json:"documento_numero"`
+	Parcelas        int    `json:"installments"`
 }
 
 // Cartao é POST /pedidos/:id/cartao com o token do formulário do Mercado
@@ -208,7 +229,7 @@ func (h *PedidoHandler) Cartao(c *gin.Context) {
 	}
 	res, err := h.service.PagarCartao(c.GetInt64(middleware.ChaveContextoUsuarioID), pedidoID, service.DadosCartao{
 		Token: req.Token, BandeiraID: req.BandeiraID, EmissorID: req.EmissorID,
-		DocumentoTipo: req.DocumentoTipo, DocumentoNumero: req.DocumentoNumero,
+		DocumentoTipo: req.DocumentoTipo, DocumentoNumero: req.DocumentoNumero, Parcelas: req.Parcelas,
 	})
 	if err != nil {
 		h.responderErroPagamento(c, err)
@@ -251,6 +272,7 @@ func (h *PedidoHandler) responderErroPagamento(c *gin.Context, err error) {
 	case errors.Is(err, service.ErrReservaExpirada):
 		c.JSON(http.StatusGone, gin.H{"erro": "a reserva expirou. Volte ao evento para comprar de novo."})
 	case errors.Is(err, service.ErrPedidoNaoDisponivelParaPagamento), errors.Is(err, service.ErrDadosCartaoIncompletos),
+		errors.Is(err, service.ErrParcelasInvalidas),
 		errors.Is(err, service.ErrPagamentoNaoEncontradoNoPedido):
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"erro": err.Error()})
 	case errors.Is(err, service.ErrPedidoNaoPertenceAoUsuario), errors.Is(err, service.ErrPedidoNaoEncontrado):

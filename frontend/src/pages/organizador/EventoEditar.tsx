@@ -19,6 +19,7 @@ import { CriteriosCard, RankingCard } from '@/components/resultado-cards'
 import { SolicitacoesCard } from '@/components/solicitacoes-card'
 import { CuponsCard } from '@/components/cupons-card'
 import { DivulgacaoCard } from '@/components/divulgacao-card'
+import { PerguntasCard } from '@/components/perguntas-card'
 import { obterFinanceiroEvento } from '@/lib/financeiro'
 import { obterVendas } from '@/lib/vendas'
 import { CategoriaSelect } from '@/components/categoria-select'
@@ -307,6 +308,8 @@ export default function EventoEditar() {
       <AfiliadosCard eventoId={Number(id)} slug={evento.slug} />
 
       <DivulgacaoCard eventoId={Number(id)} slug={evento.slug} />
+
+      <PerguntasCard eventoId={Number(id)} tipos={tiposIngresso ?? []} />
 
       <CortesiasCard eventoId={Number(id)} tipos={tiposIngresso ?? []} />
 

@@ -24,4 +24,6 @@ export type Pedido = {
   itens: ItemPedido[]
   // Item 7.5: pixels do evento, para a "compra concluída".
   pixels?: { meta: string; ga4: string; tiktok: string }
+  // Item 7.6: até quantas vezes o cartão divide este pedido.
+  max_parcelas?: number
 }

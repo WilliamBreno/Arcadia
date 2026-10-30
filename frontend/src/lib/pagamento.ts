@@ -14,6 +14,7 @@ export type ResultadoCartao = {
 export type DadosCartao = {
   token: string
   payment_method_id: string
+  installments?: number
   issuer_id?: string
   documento_tipo?: string
   documento_numero?: string

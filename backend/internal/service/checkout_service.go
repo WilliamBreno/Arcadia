@@ -44,6 +44,8 @@ type ItemRequisitado struct {
 	TipoIngressoID     int64
 	Quantidade         int
 	GarantiaContratada bool
+	// Item 7.6: respostas às perguntas do organizador, uma por ingresso.
+	Respostas []map[int64]string
 }
 
 type CheckoutService struct {
@@ -196,6 +198,10 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 		if err := s.checarLimitePorConta(tx, evento, usuarioID, totalUnidades); err != nil {
 			return err
 		}
+		perguntas, err := PerguntasAtivas(tx, eventoID) // item 7.6
+		if err != nil {
+			return err
+		}
 		if err := s.pedidos.Criar(tx, pedido); err != nil {
 			return err
 		}
@@ -319,6 +325,16 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 				totalPedido += item.TotalCentavos
 				itensCriados = append(itensCriados, item)
 			}
+			{
+				novos := itensCriados[len(itensCriados)-ir.Quantidade:]
+				ids := make([]int64, len(novos))
+				for k := range novos {
+					ids[k] = novos[k].ID
+				}
+				if err := salvarRespostas(tx, perguntas, tipo.ID, ids, ir.Respostas); err != nil {
+					return err
+				}
+			}
 			if n := QuantasDaRevenda(ir.Quantidade, estoqueOrganizador); n > 0 {
 				novos := itensCriados[len(itensCriados)-ir.Quantidade:]
 				ids := make([]int64, 0, n)
@@ -429,6 +445,7 @@ func (s *CheckoutService) IniciarPagamento(usuarioID, pedidoID int64, metodo str
 		URLFalha:       s.frontendURL + "/pedidos/" + pedidoIDStr + "?status=falha",
 		URLPendente:    s.frontendURL + "/pedidos/" + pedidoIDStr + "?status=pendente",
 		URLNotificacao: s.backendURL + "/api/v1/webhooks/mercadopago",
+		MaxParcelas:    MaxParcelas(pedido.TotalCentavos),
 	}
 	if metodo == pagamento.MetodoPix && pedido.ExpiraEm != nil && time.Until(*pedido.ExpiraEm) < ValidadePix {
 		// O Pix vale no mínimo 30 minutos no MP: a reserva acompanha (7.1).

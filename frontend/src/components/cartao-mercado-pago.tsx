@@ -10,6 +10,8 @@ type Props = {
   publicKey: string
   pedidoId: number
   totalCentavos: number
+  // Item 7.6: até 12x, parcela mínima de R$ 20 (o servidor calcula).
+  maxParcelas?: number
   email?: string
   aoConfirmar: () => void
   aoFalhar: () => void
@@ -19,7 +21,7 @@ type Props = {
 // campos do cartão ficam num iframe do MP: o número nunca passa pelo Evve.
 // Se o banco pedir confirmação (3DS), mostra a tela do banco aqui mesmo.
 // Carregado sob demanda: o SDK só baixa quando a pessoa escolhe cartão.
-export default function CartaoMercadoPago({ publicKey, pedidoId, totalCentavos, email, aoConfirmar, aoFalhar }: Props) {
+export default function CartaoMercadoPago({ publicKey, pedidoId, totalCentavos, maxParcelas = 1, email, aoConfirmar, aoFalhar }: Props) {
   if (chaveIniciada !== publicKey) {
     initMercadoPago(publicKey, { locale: 'pt-BR' })
     chaveIniciada = publicKey
@@ -88,7 +90,7 @@ export default function CartaoMercadoPago({ publicKey, pedidoId, totalCentavos, 
         key={formKey}
         locale="pt-BR"
         initialization={{ amount: totalCentavos / 100, payer: email ? { email } : undefined }}
-        customization={{ paymentMethods: { maxInstallments: 1 } }}
+        customization={{ paymentMethods: { maxInstallments: Math.max(1, maxParcelas) } }}
         onError={() => aoFalhar()}
         onSubmit={async (dados) => {
           setMensagem(null)
@@ -96,6 +98,7 @@ export default function CartaoMercadoPago({ publicKey, pedidoId, totalCentavos, 
             const r = await pagarCartao(pedidoId, {
               token: dados.token,
               payment_method_id: dados.payment_method_id,
+              installments: dados.installments || 1,
               issuer_id: dados.issuer_id ? String(dados.issuer_id) : '',
               documento_tipo: dados.payer?.identification?.type,
               documento_numero: dados.payer?.identification?.number,

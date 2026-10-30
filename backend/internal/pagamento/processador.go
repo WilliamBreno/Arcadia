@@ -33,6 +33,8 @@ type NovaCobranca struct {
 	URLFalha       string
 	URLPendente    string
 	URLNotificacao string
+	// Item 7.6: máximo de parcelas oferecido no site do Mercado Pago (plano B).
+	MaxParcelas int
 }
 
 // Cobranca é o checkout criado: para onde mandar o comprador.
@@ -57,17 +59,19 @@ type Pagamento struct {
 // formulário seguro do processador (o número do cartão nunca passa pelo
 // Evve); o documento do titular vai direto ao processador e não é guardado.
 type NovoPagamento struct {
-	Referencia        string
-	Descricao         string
-	ValorCentavos     int64
-	Metodo            string
-	EmailPagador      string
-	ExpiraEm          time.Time // Pix: validade do QR
-	CartaoToken       string
-	BandeiraID        string // ex.: "visa", "master"
-	EmissorID         string
-	DocumentoTipo     string // "CPF"
-	DocumentoNumero   string
+	Referencia      string
+	Descricao       string
+	ValorCentavos   int64
+	Metodo          string
+	EmailPagador    string
+	ExpiraEm        time.Time // Pix: validade do QR
+	CartaoToken     string
+	BandeiraID      string // ex.: "visa", "master"
+	EmissorID       string
+	DocumentoTipo   string // "CPF"
+	DocumentoNumero string
+	// Item 7.6: parcelas no cartão (juros do comprador, cobrados pelo MP).
+	Parcelas          int
 	ChaveIdempotencia string
 	URLNotificacao    string
 }

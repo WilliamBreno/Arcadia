@@ -59,7 +59,7 @@ func (p *Processador) CriarCobranca(n pagamento.NovaCobranca) (*pagamento.Cobran
 		ExternalReference: n.Referencia,
 		BackURLs:          backURLs{Success: n.URLSucesso, Failure: n.URLFalha, Pending: n.URLPendente},
 		NotificationURL:   n.URLNotificacao,
-		PaymentMethods:    &metodosPagamento{ExcludedPaymentTypes: excluidos, Installments: 1},
+		PaymentMethods:    &metodosPagamento{ExcludedPaymentTypes: excluidos, Installments: max(n.MaxParcelas, 1)},
 	}
 	if !n.ExpiraEm.IsZero() {
 		// Validade do Pix (e da própria preference) = fim da reserva.
@@ -131,7 +131,7 @@ func requisicaoPagamento(n pagamento.NovoPagamento) CriarPagamentoRequest {
 	req.PaymentMethodID = n.BandeiraID
 	req.Token = n.CartaoToken
 	req.IssuerID = n.EmissorID
-	req.Installments = 1
+	req.Installments = max(n.Parcelas, 1)
 	req.ThreeDSecureMode = "optional"
 	if n.DocumentoNumero != "" {
 		tipo := n.DocumentoTipo

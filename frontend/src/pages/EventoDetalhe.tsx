@@ -23,6 +23,8 @@ import { Carregando } from '@/components/carregando'
 import { EntrarComCodigo } from '@/components/entrar-com-codigo'
 import { ControleFila } from '@/components/controle-fila'
 import { usePixels } from '@/lib/pixels'
+import { PerguntasCheckout } from '@/components/perguntas-checkout'
+import { faltando, respostasDoTipo, type RespostasCheckout } from '@/lib/perguntas'
 import { horaPrazo, minhaFila, type EntradaFila } from '@/lib/fila'
 
 export default function EventoDetalhe() {
@@ -37,6 +39,7 @@ export default function EventoDetalhe() {
   const [erroCupom, setErroCupom] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [comprando, setComprando] = useState(false)
+  const [respostas, setRespostas] = useState<RespostasCheckout>({}) // item 7.6
   // Item 7.2: quem não está logado entra com código aqui mesmo e a compra
   // continua sozinha, sem perder os ingressos escolhidos.
   const [pedirLogin, setPedirLogin] = useState<'comprar' | 'cupom' | 'fila' | null>(null)
@@ -220,6 +223,12 @@ export default function EventoDetalhe() {
       return
     }
     setErro(null)
+    const semResposta = faltando(data.perguntas ?? [], quantidades, respostas)
+    if (semResposta) {
+      setErro(`Responda "${semResposta.texto}" em cada ingresso.`)
+      document.getElementById('titulo-perguntas')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      return
+    }
     setComprando(true)
     dispararPixel({ tipo: 'iniciar', valor: resumo.total, itens: totalUnidades })
     try {
@@ -229,6 +238,7 @@ export default function EventoDetalhe() {
           tipo_ingresso_id: Number(tipoIngressoId),
           quantidade,
           garantia_contratada: garantia,
+          respostas: respostasDoTipo(Number(tipoIngressoId), quantidade, respostas),
         }))
 
       const pedido = await api<Pedido>(`/eventos/${slug}/pedidos`, {
@@ -429,6 +439,17 @@ export default function EventoDetalhe() {
             </Card>
           ))}
         </div>
+
+        {totalUnidades > 0 && (data.perguntas?.length ?? 0) > 0 && (
+          <PerguntasCheckout
+            perguntas={data.perguntas!}
+            ingressos={ingressos}
+            quantidades={quantidades}
+            respostas={respostas}
+            aoMudar={setRespostas}
+            organizador={organizador?.nome_publico}
+          />
+        )}
 
         {totalUnidades > 0 && (
           <div className="mt-4 flex flex-col gap-3 rounded-lg border border-border p-4">

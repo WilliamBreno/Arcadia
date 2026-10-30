@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 
 	"github.com/WilliamBreno/Arcadia/backend/internal/domain"
 	"github.com/WilliamBreno/Arcadia/backend/internal/repository"
@@ -24,6 +25,7 @@ type PublicoHandler struct {
 	taxas         *service.TaxasService
 	seguir        *service.SeguirService
 	avaliacoes    *service.AvaliacaoPublicoService
+	perguntasDB   *gorm.DB // item 7.6
 }
 
 // DefinirTaxas liga o cálculo de taxas por faixa (item 5.1).
@@ -342,6 +344,7 @@ func (h *PublicoHandler) ObterEvento(c *gin.Context) {
 		"taxas":             regraTaxas,
 		"vendas_encerradas": vendasEncerradas(evento, tipos, listaSessoes),
 		"pixels":            service.Pixels{Meta: evento.PixelMeta, GA4: evento.PixelGA4, TikTok: evento.PixelTikTok},
+		"perguntas":         h.perguntasDoEvento(evento.ID),
 	})
 }
 
@@ -426,4 +429,18 @@ func (h *PublicoHandler) contarSeguidores(organizadorID int64) int64 {
 	}
 	n, _ := h.seguir.ContarSeguidores(service.SeguirOrganizador, strconv.FormatInt(organizadorID, 10))
 	return n
+}
+
+// DefinirPerguntas liga as perguntas do checkout na página pública (item 7.6).
+func (h *PublicoHandler) DefinirPerguntas(db *gorm.DB) { h.perguntasDB = db }
+
+func (h *PublicoHandler) perguntasDoEvento(eventoID int64) []service.Pergunta {
+	if h.perguntasDB == nil {
+		return []service.Pergunta{}
+	}
+	ps, err := service.PerguntasAtivas(h.perguntasDB, eventoID)
+	if err != nil || ps == nil {
+		return []service.Pergunta{}
+	}
+	return ps
 }
