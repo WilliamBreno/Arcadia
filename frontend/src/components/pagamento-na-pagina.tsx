@@ -4,13 +4,13 @@ import { QRCodeSVG } from 'qrcode.react'
 import { lazy, Suspense, useEffect, useState } from 'react'
 
 import { api, ApiError } from '@/lib/api'
-import { gerarPix, obterConfigPagamento, tempoRestante, verificarPagamento, type PixNaTela } from '@/lib/pagamento'
+import { gerarPix, obterConfigPagamento, tempoRestante, verificarPagamento, type AlvoPagamento, type PixNaTela } from '@/lib/pagamento'
 import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
 
 const CartaoMercadoPago = lazy(() => import('@/components/cartao-mercado-pago'))
 
-type Props = { pedidoId: number; totalCentavos: number; maxParcelas?: number; aoConfirmar: () => void }
+type Props = { pedidoId: AlvoPagamento; totalCentavos: number; maxParcelas?: number; aoConfirmar: () => void }
 
 // Escolha do pagamento na página do pedido (item 7.1): Pix com QR na tela
 // (padrão) ou cartão no formulário seguro do Mercado Pago. Pagar no site do
@@ -67,9 +67,13 @@ export function PagamentoNaPagina({ pedidoId, totalCentavos, maxParcelas, aoConf
         ) : (
           <div className="flex flex-col gap-2">
             {cartaoFalhou && <p className="text-sm text-muted-foreground">O formulário do cartão não carregou aqui.</p>}
-            <Button size="lg" onClick={pagarNoSiteDoMP} disabled={redirecionando}>
-              {redirecionando ? 'Abrindo o Mercado Pago…' : 'Pagar com cartão no Mercado Pago'}
-            </Button>
+            {typeof pedidoId === 'number' ? (
+              <Button size="lg" onClick={pagarNoSiteDoMP} disabled={redirecionando}>
+                {redirecionando ? 'Abrindo o Mercado Pago…' : 'Pagar com cartão no Mercado Pago'}
+              </Button>
+            ) : (
+              <p className="text-sm text-muted-foreground">Cartão indisponível agora. Pague com Pix.</p>
+            )}
           </div>
         ))}
 
@@ -78,7 +82,7 @@ export function PagamentoNaPagina({ pedidoId, totalCentavos, maxParcelas, aoConf
           {erro}
         </p>
       )}
-      {metodo === 'cartao' && publicKey && !cartaoFalhou && (
+      {metodo === 'cartao' && publicKey && !cartaoFalhou && typeof pedidoId === 'number' && (
         <button
           type="button"
           onClick={pagarNoSiteDoMP}
@@ -110,7 +114,7 @@ function OpcaoMetodo({ ativo, aoEscolher, icone, children }: { ativo: boolean; a
   )
 }
 
-function BlocoPix({ pedidoId, aoConfirmar }: { pedidoId: number; aoConfirmar: () => void }) {
+function BlocoPix({ pedidoId, aoConfirmar }: { pedidoId: AlvoPagamento; aoConfirmar: () => void }) {
   const [pix, setPix] = useState<PixNaTela | null>(null)
   const [gerando, setGerando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)

@@ -255,6 +255,11 @@ func main() {
 	expositorHandler := handler.NovoExpositorHandler(expositorService, eventoRepo, organizadorHandler)
 	// Item 9.6: painel ao vivo, importados e credenciais.
 	diaHandler := handler.NovoDiaDoEventoHandler(checkinService, service.NovoDiaDoEventoService(db, eventoRepo, cfg.JWTSecret), organizadorHandler)
+	// Item 10.4: Plano Pro e destaque na vitrine (cobranças da Evve).
+	plataformaService := service.NovoPlataformaService(db, mpCliente, configPlataformaRepo, usuarioRepo, mailCliente, cfg.BackendURL, cfg.FrontendURL)
+	checkoutService.DefinirPlataforma(plataformaService)
+	cancelamentoService.DefinirDestaques(plataformaService)
+	plataformaHandler := handler.NovoPlataformaHandler(plataformaService, organizadorHandler, itemPedidoRepo, publicoHandler)
 	// Item 10.3: adicionais, pacotes e compra em grupo.
 	extrasHandler := handler.NovoExtrasHandler(checkoutService, checkinService, eventoRepo, organizadorHandler)
 	// Item 9.9: central de ajuda, verificação de ingresso e status.
@@ -312,6 +317,7 @@ func main() {
 		v1.GET("/status", ajudaHandler.Status)
 		v1.GET("/status/avisos", ajudaHandler.Avisos)
 		v1.GET("/eventos/:slug/extras", extrasHandler.Extras)
+		v1.GET("/patrocinados", plataformaHandler.Patrocinados)
 		v1.GET("/grupos/:token", middleware.AutenticacaoOpcional(jwtService), extrasHandler.VerGrupo)
 		v1.GET("/certificados/:codigo", posEventoHandler.Validar)
 		v1.GET("/certificados/:codigo/pdf", posEventoHandler.PDF)
@@ -563,6 +569,16 @@ func main() {
 		org.GET("/eventos/:id/portoes", diaHandler.OrgPortoes)
 		org.GET("/minha-funcao", organizadorHandler.MinhaFuncao)
 		org.GET("/eventos/:id/extras", extrasHandler.OrgListar)
+		org.GET("/pro", plataformaHandler.Situacao)
+		org.POST("/pro/cobrancas", plataformaHandler.ComprarPro)
+		org.GET("/destaques", plataformaHandler.MeusDestaques)
+		org.POST("/destaques", plataformaHandler.ComprarDestaque)
+		org.GET("/eventos/:id/destaques", plataformaHandler.Disponibilidade)
+		org.GET("/cobrancas/:id", plataformaHandler.Cobranca)
+		org.POST("/cobrancas/:id/pix", plataformaHandler.Pix)
+		org.POST("/cobrancas/:id/cartao", plataformaHandler.Cartao)
+		org.POST("/cobrancas/:id/verificar", plataformaHandler.Verificar)
+		org.GET("/relatorios.csv", plataformaHandler.RelatoriosCSV)
 		org.POST("/eventos/:id/adicionais", extrasHandler.SalvarAdicional)
 		org.PUT("/eventos/:id/adicionais/:aid", extrasHandler.SalvarAdicional)
 		org.DELETE("/eventos/:id/adicionais/:aid", extrasHandler.ExcluirAdicional)
@@ -623,6 +639,7 @@ func main() {
 		jobs.POST("/reprocessar-reembolsos", adminHandler.ReprocessarFalhas)
 		jobs.POST("/enviar-emails", jobHandler.EnviarEmails)
 		jobs.POST("/lembretes", seguirHandler.Lembretes)
+		jobs.POST("/pro-vencimento", plataformaHandler.AvisarVencimento)
 
 		admin := v1.Group("/admin", middleware.ExigirAutenticacao(jwtService), middleware.ExigirAdminPlataforma())
 		admin.GET("/repasses", repasseHandler.ListarAdmin)

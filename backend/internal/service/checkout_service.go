@@ -8,7 +8,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"strconv"
+	"strings"
 	"time"
 
 	"gorm.io/datatypes"
@@ -85,7 +87,11 @@ type CheckoutService struct {
 	avisoInscricao AvisoInscricao                       // item 8.4
 	avisoEspaco    AvisoEspaco                          // item 8.6
 	acessoPorta    func(usuarioID, eventoID int64) bool // item 9.4
+	plataforma     *PlataformaService                   // item 10.4
 }
+
+// DefinirPlataforma liga as cobranças da Evve (Pro e destaque, item 10.4).
+func (s *CheckoutService) DefinirPlataforma(p *PlataformaService) { s.plataforma = p }
 
 func NovoCheckoutService(
 	db *gorm.DB,
@@ -559,6 +565,13 @@ func (s *CheckoutService) ProcessarWebhook(mpPaymentID string) error {
 	if err != nil {
 		return err
 	}
+	// Item 10.4: Pro e destaque são cobranças da Evve, fora de pedido.
+	if strings.HasPrefix(pagamentoMP.Referencia, PrefixoRefPlataforma) {
+		if s.plataforma == nil {
+			return fmt.Errorf("cobrança da plataforma sem serviço: %s", pagamentoMP.Referencia)
+		}
+		return s.plataforma.Confirmar(pagamentoMP)
+	}
 
 	// Pagamento já registrado: a notificação é uma mudança de status
 	// (Pix pendente → aprovado, contestação aberta/perdida...). Antes do
@@ -666,8 +679,18 @@ func (s *CheckoutService) enviarEmailConfirmacao(pedido *domain.Pedido, itens []
 		return
 	}
 	intro := fmt.Sprintf("Seu pagamento (pedido #%d, total %s) foi aprovado. Seus ingressos estão abaixo — guarde este e-mail como garantia.", pedido.ID, formatarReais(pedido.TotalCentavos))
+	assunto := "Ingresso confirmado — " + evento.Titulo + " — " + s.nomePlataforma
+	// Item 10.4: no Pro, o e-mail leva o nome do organizador, não o do Evve.
+	if EhPro(s.db, evento.OrganizadorID) {
+		var nome string
+		s.db.Table("organizadores").Where("id = ?", evento.OrganizadorID).Pluck("nome_publico", &nome)
+		if nome != "" {
+			assunto = "Ingresso confirmado — " + evento.Titulo + " — " + nome
+			intro = "Ingresso emitido por " + html.EscapeString(nome) + ". " + intro
+		}
+	}
 	corpo, imagens := corpoEmailIngressos("Olá, "+itens[0].TitularNome+"!", intro, evento, pagos, s.qrSecret, s.frontendURL)
-	_ = s.mailCliente.EnviarComImagens(destinatario, "Ingresso confirmado — "+evento.Titulo+" — "+s.nomePlataforma, corpo, imagens)
+	_ = s.mailCliente.EnviarComImagens(destinatario, assunto, corpo, imagens)
 }
 
 // ExpirarReservas roda periodicamente (job protegido por X-Cron-Secret,

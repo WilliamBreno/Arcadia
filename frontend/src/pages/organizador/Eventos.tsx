@@ -51,6 +51,9 @@ export default function Eventos() {
           <Link to="/organizador/coproducoes" className={buttonVariants({ variant: 'outline' })}>
             Coproduções
           </Link>
+          <Link to="/organizador/pro" className={buttonVariants({ variant: 'outline' })}>
+            Evve Pro
+          </Link>
           <Link to="/organizador/repasses" className={buttonVariants({ variant: 'outline' })}>
             Repasses
           </Link>

@@ -9,6 +9,7 @@ on:
     - cron: "2-59/10 * * * *" # enviar e-mails da fila (cobre instância dormindo)
     - cron: "40 * * * *"    # lembretes 7 dias e 1 dia antes do evento
     - cron: "25 * * * *"    # repasse automático por Pix (item 9.1)
+    - cron: "0 12 * * *"    # aviso de vencimento do Evve Pro (item 10.4, 09h BRT)
   workflow_dispatch:
 
 jobs:
@@ -25,6 +26,7 @@ jobs:
             "2-59/10 * * * *") echo "nome=enviar-emails" >> "$GITHUB_OUTPUT" ;;
             "40 * * * *") echo "nome=lembretes" >> "$GITHUB_OUTPUT" ;;
             "25 * * * *") echo "nome=enviar-repasses" >> "$GITHUB_OUTPUT" ;;
+            "0 12 * * *") echo "nome=pro-vencimento" >> "$GITHUB_OUTPUT" ;;
             *) echo "nome=expirar-reservas" >> "$GITHUB_OUTPUT" ;;
           esac
       - name: Chamar API

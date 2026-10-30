@@ -24,13 +24,18 @@ export type DadosCartao = {
 // Mercado Pago (plano B); o Pix aparece na página de qualquer jeito.
 export const obterConfigPagamento = () => api<{ public_key: string }>('/pagamento/config', { semAuth: true })
 
-export const gerarPix = (pedidoId: number) => api<PixNaTela>(`/pedidos/${pedidoId}/pix`, { method: 'POST' })
+// Alvo do pagamento: o id do pedido ou, para as cobranças da Evve (Pro e
+// destaque, item 10.4), o caminho da cobrança ("/org/cobrancas/12").
+export type AlvoPagamento = number | string
+const rota = (alvo: AlvoPagamento) => (typeof alvo === 'number' ? `/pedidos/${alvo}` : alvo)
 
-export const pagarCartao = (pedidoId: number, dados: DadosCartao) =>
-  api<ResultadoCartao>(`/pedidos/${pedidoId}/cartao`, { method: 'POST', body: dados })
+export const gerarPix = (alvo: AlvoPagamento) => api<PixNaTela>(`${rota(alvo)}/pix`, { method: 'POST' })
 
-export const verificarPagamento = (pedidoId: number, pagamentoId?: string) =>
-  api(`/pedidos/${pedidoId}/verificar`, { method: 'POST', body: { pagamento_id: pagamentoId ?? '' } })
+export const pagarCartao = (alvo: AlvoPagamento, dados: DadosCartao) =>
+  api<ResultadoCartao>(`${rota(alvo)}/cartao`, { method: 'POST', body: dados })
+
+export const verificarPagamento = (alvo: AlvoPagamento, pagamentoId?: string) =>
+  api(`${rota(alvo)}/verificar`, { method: 'POST', body: { pagamento_id: pagamentoId ?? '' } })
 
 // "mm:ss" que falta até o fim do Pix.
 export function tempoRestante(expiraEm: string, agora: number) {

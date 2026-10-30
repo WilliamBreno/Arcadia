@@ -173,7 +173,7 @@ func (s *CRMService) Resumo(organizadorID int64) (*ResumoCRM, error) {
 	agora := time.Now().In(fusoPadrao())
 	r := &ResumoCRM{Contatos: len(cs)}
 	r.EnviadosMes, r.CampanhasHoje = s.usoDoMes(organizadorID, agora)
-	r.CotaRestante = CotaEmailsMes - r.EnviadosMes
+	r.CotaRestante = CotaEmailsDoMes(s.db, organizadorID) - r.EnviadosMes
 	if r.CotaRestante < 0 {
 		r.CotaRestante = 0
 	}
@@ -272,8 +272,8 @@ func (s *CRMService) Enviar(organizadorID, usuarioID int64, d DadosCampanha) (in
 		if hoje >= CampanhasPorDia {
 			return ErrCampanhasHoje
 		}
-		if enviados+len(cs) > CotaEmailsMes {
-			return fmt.Errorf("%w: restam %d este mês e o segmento tem %d pessoas", ErrCotaEmails, CotaEmailsMes-enviados, len(cs))
+		if cota := CotaEmailsDoMes(tx, organizadorID); enviados+len(cs) > cota { // 10.4: 10× no Pro
+			return fmt.Errorf("%w: restam %d este mês e o segmento tem %d pessoas", ErrCotaEmails, cota-enviados, len(cs))
 		}
 		return tx.Exec(`INSERT INTO campanhas_email (organizador_id, criado_por, assunto, corpo_texto, segmento, segmento_evento_id, destinatarios, enviada_em)
 			VALUES (?, ?, ?, ?, ?, ?, ?, now())`, organizadorID, usuarioID, d.Assunto, d.Corpo, d.Segmento, d.EventoID, len(cs)).Error

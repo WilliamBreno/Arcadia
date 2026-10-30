@@ -2,13 +2,13 @@ import { CardPayment, initMercadoPago, StatusScreen } from '@mercadopago/sdk-rea
 import { useEffect, useRef, useState } from 'react'
 
 import { ApiError } from '@/lib/api'
-import { pagarCartao, verificarPagamento, type ResultadoCartao } from '@/lib/pagamento'
+import { pagarCartao, verificarPagamento, type AlvoPagamento, type ResultadoCartao } from '@/lib/pagamento'
 
 let chaveIniciada = ''
 
 type Props = {
   publicKey: string
-  pedidoId: number
+  pedidoId: AlvoPagamento
   totalCentavos: number
   // Item 7.6: até 12x, parcela mínima de R$ 20 (o servidor calcula).
   maxParcelas?: number

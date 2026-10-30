@@ -33,6 +33,7 @@ type DecisaoCancelamento struct {
 }
 
 type CancelamentoService struct {
+	destaques      interface{ ReembolsarDestaquesDoEvento(int64) } // item 10.4
 	itensPedido    *repository.ItemPedidoRepository
 	pedidos        *repository.PedidoRepository
 	pagamentos     *repository.PagamentoRepository
@@ -50,6 +51,11 @@ type CancelamentoService struct {
 
 // DefinirRevenda liga a revenda oficial (item 7.4) ao cancelamento.
 func (s *CancelamentoService) DefinirRevenda(db *gorm.DB) { s.db = db }
+
+// DefinirDestaques: evento cancelado devolve os dias de destaque (item 10.4).
+func (s *CancelamentoService) DefinirDestaques(d interface{ ReembolsarDestaquesDoEvento(int64) }) {
+	s.destaques = d
+}
 
 func NovoCancelamentoService(
 	itensPedido *repository.ItemPedidoRepository,
@@ -449,6 +455,9 @@ func (s *CancelamentoService) CancelarEvento(organizadorID, eventoID int64, moti
 	}
 
 	sucessos, falhas = s.reembolsarItens(evento, itens, organizadorID, "evento cancelado pelo organizador")
+	if s.destaques != nil { // item 10.4
+		s.destaques.ReembolsarDestaquesDoEvento(eventoID)
+	}
 
 	agora := time.Now()
 	evento.Status = domain.StatusEventoCancelado

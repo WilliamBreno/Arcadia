@@ -36,6 +36,7 @@ import { DiaDoEventoCard } from '@/components/dia-evento-card'
 import { CertificadosCard } from '@/components/certificados-card'
 import { CoproducaoCard } from '@/components/coproducao-card'
 import { ExtrasCard } from '@/components/extras-card'
+import { DestaqueCard } from '@/components/destaque-card'
 import { GaleriaCard } from '@/components/galeria-card'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -373,6 +374,8 @@ export default function EventoEditar() {
       <CuponsCard eventoId={Number(id)} />
 
       <AfiliadosCard eventoId={Number(id)} slug={evento.slug} />
+
+      <DestaqueCard eventoId={Number(id)} publicado={evento.status === 'publicado'} />
 
       <DivulgacaoCard eventoId={Number(id)} slug={evento.slug} ingressos={tiposIngresso?.filter((t) => t.ativo).length ?? 1} />
 

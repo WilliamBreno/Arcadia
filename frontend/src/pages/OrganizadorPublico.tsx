@@ -1,5 +1,6 @@
 import { VoltarBotao } from '@/components/voltar-link'
 import { SeloVerificado } from '@/components/selo-verificado'
+import { SeloPro } from '@/components/selo-pro'
 import { useQuery } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 
@@ -33,6 +34,7 @@ export default function OrganizadorPublico() {
         )}
         <h1 className="text-2xl font-semibold text-foreground">{data.organizador.nome_publico}</h1>
         {data.organizador.verificado && <SeloVerificado className="mt-2" />}
+        {data.organizador.pro && <SeloPro className="mt-2 ml-1" />}
         <div className="mt-4 flex items-center gap-3">
           <BotaoSeguir tipo="organizador" alvo={String(data.organizador.id)} rotulo={data.organizador.nome_publico} />
           {data.seguidores > 0 && (

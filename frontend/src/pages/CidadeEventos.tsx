@@ -2,7 +2,8 @@ import { useQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 
-import { ApiError } from '@/lib/api'
+import { api, ApiError } from '@/lib/api'
+import type { EventoPublicoItem } from '@/lib/publico'
 import { listarEventos, obterDescoberta, obterDestaques, QUANDO } from '@/lib/descoberta'
 import { ChipLink } from '@/components/chip'
 import { BotaoSeguir } from '@/components/botao-seguir'
@@ -37,6 +38,14 @@ export default function CidadeEventos() {
     queryKey: ['destaques', slugCidade],
     enabled: !!cidade && !slugCategoria && !quando,
     queryFn: () => obterDestaques(slugCidade),
+  })
+
+  // Item 10.4: destaque pago do dia, marcado "Patrocinado".
+  const patrocinados = useQuery({
+    queryKey: ['patrocinados', slugCidade, slugCategoria ?? ''],
+    enabled: !!cidade && !quando,
+    queryFn: () =>
+      api<EventoPublicoItem[]>(`/patrocinados?${slugCategoria ? `categoria=${encodeURIComponent(slugCategoria)}` : `cidade=${encodeURIComponent(slugCidade)}`}`, { semAuth: true }),
   })
 
   const titulo = cidade
@@ -117,6 +126,9 @@ export default function CidadeEventos() {
       </div>
 
       <div className="mt-8">
+        {patrocinados.data && patrocinados.data.length > 0 && (
+          <TrilhoEventos titulo="Patrocinado" subtitulo="Destaque pago pelo organizador" eventos={patrocinados.data} etiqueta="Patrocinado" />
+        )}
         {destaques.data && (
           <>
             <TrilhoEventos titulo={`Em alta em ${cidade.cidade}`} subtitulo="Os mais comprados nos últimos 7 dias" eventos={destaques.data.em_alta} ranking />

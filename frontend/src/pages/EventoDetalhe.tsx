@@ -9,6 +9,7 @@ import { formatarCentavos } from '@/lib/evento'
 import { estiloTema } from '@/lib/tema'
 import { calcularItem } from '@/lib/taxas'
 import { SeloVerificado } from '@/components/selo-verificado'
+import { SeloPro } from '@/components/selo-pro'
 import { EvveGarante } from '@/components/evve-garante'
 import { AvaliacoesDoEvento } from '@/components/avaliacoes-evento'
 import { BotaoSeguir } from '@/components/botao-seguir'
@@ -352,6 +353,7 @@ export default function EventoDetalhe() {
             por {organizador.nome_publico}
           </Link>
           {organizador.verificado && <SeloVerificado />}
+          {organizador.pro && <SeloPro />}
           <BotaoSeguir tipo="organizador" alvo={String(organizador.id)} rotulo={organizador.nome_publico} />
         </p>
       )}
