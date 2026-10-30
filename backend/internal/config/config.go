@@ -58,6 +58,9 @@ type Config struct {
 	DBMaxConexoes int
 
 	CronSecret string
+
+	// SuporteEmail recebe as mensagens da central de ajuda (item 9.9).
+	SuporteEmail string
 }
 
 func getEnv(chave, padrao string) string {
@@ -127,6 +130,8 @@ func Carregar() Config {
 		DBMaxConexoes:                 getEnvInt("DB_MAX_CONEXOES", 20),
 
 		CronSecret: getEnv("CRON_SECRET", ""),
+
+		SuporteEmail: getEnv("SUPORTE_EMAIL", ""),
 	}
 	// Endereço público dos uploads: sem UPLOADS_BASE_URL, é o próprio site
 	// (FRONTEND_URL/api/v1/uploads, que a Vercel repassa para a API). Antes o
@@ -188,6 +193,9 @@ func (c Config) ValidarProducao() (erros []error, avisos []string) {
 	}
 	if c.AlertaWebhookURL == "" {
 		avisos = append(avisos, "ALERTA_WEBHOOK_URL vazio: erros 500 só aparecem no log (configure um webhook do Discord/Slack)")
+	}
+	if c.SuporteEmail == "" {
+		avisos = append(avisos, "SUPORTE_EMAIL vazio: as mensagens da central de ajuda ficam só no banco (veja em /admin/suporte)")
 	}
 	if c.ResendAPIKey == "" {
 		avisos = append(avisos, "RESEND_API_KEY vazio: e-mails (verificação, ingressos) só serão logados")

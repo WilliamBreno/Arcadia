@@ -36,6 +36,21 @@ func ExigirAutenticacao(jwtService *service.JWTService) gin.HandlerFunc {
 	}
 }
 
+// AutenticacaoOpcional: com um Bearer válido, põe o usuário no contexto;
+// sem ele (ou vencido), segue como visitante (item 9.9).
+func AutenticacaoOpcional(jwtService *service.JWTService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		partes := strings.SplitN(c.GetHeader("Authorization"), " ", 2)
+		if len(partes) == 2 && partes[0] == "Bearer" {
+			if claims, err := jwtService.ValidarAccessToken(partes[1]); err == nil {
+				c.Set(ChaveContextoUsuarioID, claims.UsuarioID)
+				c.Set(ChaveContextoPapelPlataforma, claims.PapelPlataforma)
+			}
+		}
+		c.Next()
+	}
+}
+
 // ExigirAdminPlataforma deve ser usado após ExigirAutenticacao.
 func ExigirAdminPlataforma() gin.HandlerFunc {
 	return func(c *gin.Context) {

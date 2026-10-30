@@ -5,6 +5,7 @@ const links = [
   { to: '/admin/organizadores', rotulo: 'Organizadores' },
   { to: '/admin/colecoes', rotulo: 'Coleções' },
   { to: '/admin/avaliacoes', rotulo: 'Avaliações' },
+  { to: '/admin/suporte', rotulo: 'Suporte e status' },
   { to: '/admin/relatorios', rotulo: 'Relatórios' },
 ]
 

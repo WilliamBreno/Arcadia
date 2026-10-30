@@ -255,6 +255,8 @@ func main() {
 	expositorHandler := handler.NovoExpositorHandler(expositorService, eventoRepo, organizadorHandler)
 	// Item 9.6: painel ao vivo, importados e credenciais.
 	diaHandler := handler.NovoDiaDoEventoHandler(checkinService, service.NovoDiaDoEventoService(db, eventoRepo, cfg.JWTSecret), organizadorHandler)
+	// Item 9.9: central de ajuda, verificação de ingresso e status.
+	ajudaHandler := handler.NovoAjudaHandler(service.NovoAjudaService(db, mailCliente, cfg.SuporteEmail, cfg.NomePlataforma, cfg.MercadoPagoBaseURL, cfg.MercadoPagoAccessToken), db)
 	// Item 9.8: coprodução com divisão de repasse.
 	coproducaoHandler := handler.NovoCoproducaoHandler(service.NovoCoproducaoService(db, mailCliente, cfg.FrontendURL), organizadorHandler)
 	// Item 9.7: certificados e pesquisa pós-evento.
@@ -303,6 +305,10 @@ func main() {
 		v1.GET("/divulgador/:token", afiliadoHandler.PainelDivulgador)
 		v1.GET("/eventos/:slug/expositores", expositorHandler.Publico)
 		v1.GET("/eventos/:slug/lugares", lugaresHandler.Publico)
+		v1.GET("/verificar-ingresso", middleware.LimitarPorJanela(limiteRepo, "verificar", 30, time.Minute), ajudaHandler.Verificar)
+		v1.POST("/suporte/contato", middleware.LimitarPorJanela(limiteRepo, "suporte", 5, 10*time.Minute), middleware.AutenticacaoOpcional(jwtService), ajudaHandler.Contato)
+		v1.GET("/status", ajudaHandler.Status)
+		v1.GET("/status/avisos", ajudaHandler.Avisos)
 		v1.GET("/certificados/:codigo", posEventoHandler.Validar)
 		v1.GET("/certificados/:codigo/pdf", posEventoHandler.PDF)
 		v1.POST("/certificados/:codigo/nome", posEventoHandler.CorrigirNome)
@@ -614,6 +620,10 @@ func main() {
 		admin.GET("/contestacoes", adminHandler.ListarContestacoes)
 		admin.GET("/colecoes", publicoHandler.ListarColecoesAdmin)
 		admin.GET("/avaliacoes", avaliacaoPublicoHandler.ListarAdmin)
+		admin.POST("/avisos-status", ajudaHandler.CriarAviso)
+		admin.POST("/avisos-status/:id/encerrar", ajudaHandler.EncerrarAviso)
+		admin.GET("/suporte", ajudaHandler.Contatos)
+		admin.POST("/suporte/:id/respondido", ajudaHandler.Respondido)
 		admin.POST("/avaliacoes/:id/ocultar", avaliacaoPublicoHandler.Ocultar)
 		admin.POST("/colecoes", publicoHandler.SalvarColecao)
 		admin.PUT("/colecoes/:id", publicoHandler.SalvarColecao)

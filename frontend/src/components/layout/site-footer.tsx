@@ -12,6 +12,15 @@ export function SiteFooter() {
         <Link to="/mapa" className="hover:text-foreground">
           Eventos perto de você
         </Link>
+        <Link to="/ajuda" className="hover:text-foreground">
+          Ajuda
+        </Link>
+        <Link to="/verificar" className="hover:text-foreground">
+          Verificar ingresso
+        </Link>
+        <Link to="/status" className="hover:text-foreground">
+          Status
+        </Link>
         <Link to="/cookies" className="hover:text-foreground">
           Cookies
         </Link>

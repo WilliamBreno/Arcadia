@@ -11,6 +11,10 @@ import Home from '@/pages/Home'
 import IngressoPublico from '@/pages/IngressoPublico'
 import Certificado from '@/pages/Certificado'
 import Pesquisa from '@/pages/Pesquisa'
+import Ajuda from '@/pages/Ajuda'
+import VerificarIngresso from '@/pages/VerificarIngresso'
+import Status from '@/pages/Status'
+import AdminSuporte from '@/pages/admin/AdminSuporte'
 import Inscricao from '@/pages/Inscricao'
 import Login from '@/pages/Login'
 import MeusEventos from '@/pages/MeusEventos'
@@ -81,6 +85,9 @@ function App() {
         <Route path="/ingresso/:codigo/:token" element={<IngressoPublico />} />
         <Route path="/certificado/:codigo" element={<Certificado />} />
         <Route path="/pesquisa/:token" element={<Pesquisa />} />
+        <Route path="/ajuda" element={<Ajuda />} />
+        <Route path="/verificar" element={<VerificarIngresso />} />
+        <Route path="/status" element={<Status />} />
         <Route path="/login" element={<Login />} />
         <Route path="/cadastro" element={<Cadastro />} />
 
@@ -114,6 +121,7 @@ function App() {
           <Route path="/admin/organizadores" element={<AdminOrganizadores />} />
           <Route path="/admin/colecoes" element={<AdminColecoes />} />
           <Route path="/admin/avaliacoes" element={<AdminAvaliacoes />} />
+          <Route path="/admin/suporte" element={<AdminSuporte />} />
           <Route path="/organizador/eventos/novo" element={<EventoNovo />} />
           <Route path="/organizador/eventos/:id" element={<EventoEditar />} />
           <Route path="/organizador/eventos/:id/credenciais/imprimir" element={<CredenciaisImprimir />} />
