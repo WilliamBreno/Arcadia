@@ -37,22 +37,23 @@ func (h *FichaHandler) eventoPorSlugDaURL(c *gin.Context) (int64, bool) {
 }
 
 type fichaResposta struct {
-	ID                 int64           `json:"id"`
-	Papel              string          `json:"papel"`
-	Nome               string          `json:"nome"`
-	NomeArtistico      string          `json:"nome_artistico"`
-	Instagram          string          `json:"instagram"`
-	DataNascimento     *time.Time      `json:"data_nascimento"`
-	FotoURL            string          `json:"foto_url"`
-	Telefone           string          `json:"telefone"`
-	Status             string          `json:"status"`
-	MotivoRejeicao     string          `json:"motivo_rejeicao,omitempty"`
-	OrdemApresentacao  *int            `json:"ordem_apresentacao"`
-	TipoApresentacao   *string         `json:"tipo_apresentacao"`
-	Dados              json.RawMessage `json:"dados"`
-	ResponsavelNome    string          `json:"responsavel_nome,omitempty"`
-	ResponsavelContato string          `json:"responsavel_contato,omitempty"`
-	PrazoPagamentoEm   *time.Time      `json:"prazo_pagamento_em,omitempty"` // item 8.4
+	ID                      int64           `json:"id"`
+	Papel                   string          `json:"papel"`
+	Nome                    string          `json:"nome"`
+	NomeArtistico           string          `json:"nome_artistico"`
+	Instagram               string          `json:"instagram"`
+	DataNascimento          *time.Time      `json:"data_nascimento"`
+	FotoURL                 string          `json:"foto_url"`
+	Telefone                string          `json:"telefone"`
+	Status                  string          `json:"status"`
+	MotivoRejeicao          string          `json:"motivo_rejeicao,omitempty"`
+	OrdemApresentacao       *int            `json:"ordem_apresentacao"`
+	TipoApresentacao        *string         `json:"tipo_apresentacao"`
+	Dados                   json.RawMessage `json:"dados"`
+	ResponsavelNome         string          `json:"responsavel_nome,omitempty"`
+	ResponsavelContato      string          `json:"responsavel_contato,omitempty"`
+	PrazoPagamentoEm        *time.Time      `json:"prazo_pagamento_em,omitempty"`         // item 8.4
+	ClassificadaPorEventoID *int64          `json:"classificada_por_evento_id,omitempty"` // item 8.5
 }
 
 func paraFichaResposta(f *domain.FichaParticipacao) fichaResposta {
@@ -66,22 +67,23 @@ func paraFichaResposta(f *domain.FichaParticipacao) fichaResposta {
 		dados = json.RawMessage(f.Dados)
 	}
 	return fichaResposta{
-		ID:                 f.ID,
-		Papel:              string(f.Papel),
-		Nome:               f.Nome,
-		NomeArtistico:      f.NomeArtistico,
-		Instagram:          f.Instagram,
-		DataNascimento:     f.DataNascimento,
-		FotoURL:            f.FotoURL,
-		Telefone:           f.Telefone,
-		Status:             string(f.Status),
-		MotivoRejeicao:     f.MotivoRejeicao,
-		OrdemApresentacao:  f.OrdemApresentacao,
-		TipoApresentacao:   tipoApresentacao,
-		Dados:              dados,
-		ResponsavelNome:    f.ResponsavelNome,
-		ResponsavelContato: f.ResponsavelContato,
-		PrazoPagamentoEm:   f.PrazoPagamentoEm,
+		ID:                      f.ID,
+		Papel:                   string(f.Papel),
+		Nome:                    f.Nome,
+		NomeArtistico:           f.NomeArtistico,
+		Instagram:               f.Instagram,
+		DataNascimento:          f.DataNascimento,
+		FotoURL:                 f.FotoURL,
+		Telefone:                f.Telefone,
+		Status:                  string(f.Status),
+		MotivoRejeicao:          f.MotivoRejeicao,
+		OrdemApresentacao:       f.OrdemApresentacao,
+		TipoApresentacao:        tipoApresentacao,
+		Dados:                   dados,
+		ResponsavelNome:         f.ResponsavelNome,
+		ResponsavelContato:      f.ResponsavelContato,
+		PrazoPagamentoEm:        f.PrazoPagamentoEm,
+		ClassificadaPorEventoID: f.ClassificadaPorEventoID,
 	}
 }
 

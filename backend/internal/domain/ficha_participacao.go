@@ -52,8 +52,10 @@ type FichaParticipacao struct {
 	ResponsavelNome           string
 	ResponsavelContato        string
 	AutorizacaoResponsavelURL string
-	PrazoPagamentoEm          *time.Time // item 8.4
-	CriadoEm                  time.Time
+	// Item 8.5: chegou à final pela seletiva deste evento.
+	ClassificadaPorEventoID *int64
+	PrazoPagamentoEm        *time.Time // item 8.4
+	CriadoEm                time.Time
 }
 
 func (FichaParticipacao) TableName() string {

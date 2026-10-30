@@ -28,6 +28,7 @@ import { CategoriaSelect } from '@/components/categoria-select'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { CircuitoCard } from '@/components/circuito-card'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Carregando } from '@/components/carregando'
@@ -352,6 +353,7 @@ export default function EventoEditar() {
 
       {evento.modo_participantes !== 'nenhum' && (
         <>
+          <CircuitoCard eventoId={Number(id)} />
           <CriteriosCard eventoId={Number(id)} />
           <RankingCard eventoId={Number(id)} />
           <VotacaoCard eventoId={Number(id)} />
@@ -867,6 +869,7 @@ type Ficha = {
   motivo_rejeicao?: string
   tipo_apresentacao: string | null
   prazo_pagamento_em?: string
+  classificada_por_evento_id?: number
 }
 
 const rotuloStatusFicha: Record<Ficha['status'], string> = {
@@ -960,6 +963,7 @@ function ParticipantesCard({ eventoId }: { eventoId: number }) {
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {f.papel} · {f.tipo_apresentacao ?? ''}
+                    {f.classificada_por_evento_id ? ' · classificado(a) na seletiva' : ''}
                     {f.status === 'rejeitado' && f.motivo_rejeicao ? ` · ${f.motivo_rejeicao}` : ''}
                     {f.status === 'aguardando_pagamento' && f.prazo_pagamento_em
                       ? ` · paga até ${new Date(f.prazo_pagamento_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}`

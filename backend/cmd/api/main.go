@@ -220,6 +220,10 @@ func main() {
 	// Item 8.4: inscrição paga de talento.
 	fichaService.DefinirInscricaoPaga(db, cancelamentoService)
 	checkoutService.DefinirAvisoInscricao(fichaService)
+	// Item 8.5: circuitos, ranking por temporada e seletivas.
+	circuitoService := service.NovoCircuitoService(db, avaliacaoService, fichaService, eventoRepo, talentoService)
+	avaliacaoService.DefinirAoLiberar(circuitoService.GravarResultado)
+	circuitoHandler := handler.NovoCircuitoHandler(circuitoService, eventoRepo, organizadorHandler)
 	perguntasHandler := handler.NovoPerguntasHandler(perguntasService, eventoRepo, organizadorHandler)
 	jobHandler.DefinirPerguntas(perguntasService)
 	publicoHandler.DefinirPerguntas(db)
@@ -248,6 +252,8 @@ func main() {
 	{
 		v1.GET("/eventos", publicoHandler.ListarEventos)
 		v1.GET("/eventos/:slug", publicoHandler.ObterEvento)
+		v1.GET("/eventos/:slug/circuito", circuitoHandler.DoEventoPublico)
+		v1.GET("/circuitos/:slug", circuitoHandler.Publico)
 		v1.GET("/organizadores/:slug", publicoHandler.ObterOrganizador)
 		v1.GET("/categorias", publicoHandler.Categorias)
 		// Item 6.2: descoberta (cidades, categorias, destaques e coleções).
@@ -435,6 +441,16 @@ func main() {
 
 		org.GET("/eventos/:id/participantes", fichaHandler.ListarDoOrganizador)
 		org.POST("/eventos/:id/participantes/:fichaId/aprovar", fichaHandler.Aprovar)
+		org.GET("/circuitos", circuitoHandler.Meus)
+		org.POST("/circuitos", circuitoHandler.Criar)
+		org.GET("/circuitos/abertos", circuitoHandler.Abertos)
+		org.POST("/circuitos/pedidos/:id/decidir", circuitoHandler.DecidirPedido)
+		org.GET("/eventos/:id/circuito", circuitoHandler.DoEvento)
+		org.POST("/eventos/:id/circuito", circuitoHandler.EntrarCircuito)
+		org.DELETE("/eventos/:id/circuito", circuitoHandler.SairCircuito)
+		org.POST("/eventos/:id/seletivas", circuitoHandler.CriarSeletiva)
+		org.DELETE("/eventos/:id/seletivas/:sid", circuitoHandler.RemoverSeletiva)
+		org.POST("/eventos/:id/seletivas/:sid/decidir", circuitoHandler.DecidirSeletiva)
 		org.POST("/eventos/:id/participantes/:fichaId/rejeitar", fichaHandler.Rejeitar)
 
 		org.GET("/eventos/:id/vendas", vendasHandler.Listar)

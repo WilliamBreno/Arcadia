@@ -43,6 +43,7 @@ type AvaliacaoService struct {
 	fichas     *repository.FichaParticipacaoRepository
 	papeis     *repository.PapelEventoRepository
 	avaliacoes *repository.AvaliacaoRepository
+	aoLiberar  func(eventoID int64) // item 8.5
 }
 
 func NovoAvaliacaoService(
@@ -293,8 +294,18 @@ func (s *AvaliacaoService) DefinirResultadoLiberado(organizadorID, eventoID int6
 	} else {
 		evento.ResultadoLiberadoEm = nil
 	}
-	return s.eventoRepo.Salvar(evento)
+	if err := s.eventoRepo.Salvar(evento); err != nil {
+		return err
+	}
+	// Item 8.5: grava o resultado (pontos do circuito) e classifica nas finais.
+	if liberar && s.aoLiberar != nil {
+		s.aoLiberar(eventoID)
+	}
+	return nil
 }
+
+// DefinirAoLiberar liga o que acontece quando o resultado é liberado (8.5).
+func (s *AvaliacaoService) DefinirAoLiberar(f func(eventoID int64)) { s.aoLiberar = f }
 
 // ResultadoPublico só responde depois que o organizador liberou.
 func (s *AvaliacaoService) ResultadoPublico(evento *domain.Evento) (map[string][]LinhaRanking, error) {

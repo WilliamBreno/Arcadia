@@ -21,6 +21,7 @@ import { ListaCronograma } from '@/components/cronograma-cards'
 import { ListaRanking } from '@/components/resultado-cards'
 import { MinhaDevolutiva, PremioPublico, VotacaoPublico, type LinhaVoto } from '@/components/concurso-publico'
 import { MinhaInscricao } from '@/components/minha-inscricao'
+import { SelosCircuito } from '@/components/selos-circuito'
 import { MeuQRParticipante } from '@/components/meu-qr-participante'
 import { Card, CardContent } from '@/components/ui/card'
 import { Carregando } from '@/components/carregando'
@@ -280,6 +281,7 @@ export default function EventoDetalhe() {
           <BotaoSeguir tipo="organizador" alvo={String(organizador.id)} rotulo={organizador.nome_publico} />
         </p>
       )}
+      {evento.modo_participantes !== 'nenhum' && <SelosCircuito slug={evento.slug} />}
       {evento.inicio_em && !eventoComecou && (
         <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
           <CalendarPlus className="size-4 text-muted-foreground" aria-hidden="true" />

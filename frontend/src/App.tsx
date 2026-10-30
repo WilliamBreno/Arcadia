@@ -23,6 +23,8 @@ import AdminOrganizadores from '@/pages/admin/AdminOrganizadores'
 import AdminColecoes from '@/pages/admin/AdminColecoes'
 import AdminAvaliacoes from '@/pages/admin/AdminAvaliacoes'
 import Cookies from '@/pages/Cookies'
+import CircuitoPublico from '@/pages/CircuitoPublico'
+import MeusCircuitos from '@/pages/organizador/Circuitos'
 import PerfilTalento from '@/pages/PerfilTalento'
 import MeuTalento from '@/pages/MeuTalento'
 import AutorizarPerfil from '@/pages/AutorizarPerfil'
@@ -56,6 +58,7 @@ function App() {
         <Route path="/eventos/:cidade" element={<CidadeEventos />} />
         <Route path="/eventos/:cidade/:categoria" element={<CidadeEventos />} />
         <Route path="/c/:slug" element={<ColecaoPublica />} />
+        <Route path="/circuitos/:slug" element={<CircuitoPublico />} />
         <Route path="/mapa" element={<MapaEventos />} />
         <Route path="/quanto-custa" element={<QuantoCusta />} />
         <Route path="/cookies" element={<Cookies />} />
@@ -86,6 +89,7 @@ function App() {
           <Route path="/organizador/equipe" element={<Equipe />} />
           <Route path="/organizador/api" element={<ApiKeys />} />
           <Route path="/organizador/relatorios" element={<Relatorios />} />
+          <Route path="/organizador/circuitos" element={<MeusCircuitos />} />
           <Route path="/admin/repasses" element={<AdminRepasses />} />
           <Route path="/admin/relatorios" element={<AdminRelatorios />} />
           <Route path="/admin/organizadores" element={<AdminOrganizadores />} />

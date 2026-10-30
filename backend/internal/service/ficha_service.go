@@ -183,6 +183,12 @@ func (s *FichaService) enviarEmailStatusFicha(ficha *domain.FichaParticipacao) {
 	default:
 		return
 	}
+	// Item 8.5: classificado na seletiva.
+	if ficha.ClassificadaPorEventoID != nil && ficha.Status != domain.StatusFichaRejeitado {
+		if sel, err := s.eventos.BuscarPorID(*ficha.ClassificadaPorEventoID); err == nil {
+			corpo = fmt.Sprintf(`<p>Parabéns! Você se classificou em <strong>%s</strong> e entrou direto na final, sem passar pela análise.</p>`, html.EscapeString(sel.Titulo)) + corpo
+		}
+	}
 	_ = s.mailCliente.Enviar(usuario.Email, assunto, corpo)
 }
 
@@ -267,6 +273,20 @@ func (s *FichaService) Aprovar(organizadorID, eventoID, fichaID int64) (*domain.
 	if err != nil {
 		return nil, err
 	}
+	return s.aprovar(ficha, eventoID)
+}
+
+// AprovarPeloSistema aprova sem o organizador (item 8.5: classificado na
+// seletiva entra na final já aprovado; paga a inscrição, se houver).
+func (s *FichaService) AprovarPeloSistema(fichaID int64) (*domain.FichaParticipacao, error) {
+	ficha, err := s.fichas.BuscarPorID(fichaID)
+	if err != nil {
+		return nil, ErrFichaNaoEncontrada
+	}
+	return s.aprovar(ficha, ficha.EventoID)
+}
+
+func (s *FichaService) aprovar(ficha *domain.FichaParticipacao, eventoID int64) (*domain.FichaParticipacao, error) {
 
 	// Item 8.4: inscrição paga. Aprovada, a pessoa tem 48 h para pagar; a
 	// vaga (e o papel de participante) só é confirmada com o pagamento.
