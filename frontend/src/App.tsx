@@ -26,6 +26,7 @@ import Cookies from '@/pages/Cookies'
 import CircuitoPublico from '@/pages/CircuitoPublico'
 import CandidaturaExpositor from '@/pages/CandidaturaExpositor'
 import Caravana from '@/pages/Caravana'
+import PainelDivulgador from '@/pages/PainelDivulgador'
 import MeusCircuitos from '@/pages/organizador/Circuitos'
 import PerfilTalento from '@/pages/PerfilTalento'
 import MeuTalento from '@/pages/MeuTalento'
@@ -61,6 +62,7 @@ function App() {
         <Route path="/eventos/:cidade/:categoria" element={<CidadeEventos />} />
         <Route path="/c/:slug" element={<ColecaoPublica />} />
         <Route path="/circuitos/:slug" element={<CircuitoPublico />} />
+        <Route path="/divulgador/:token" element={<PainelDivulgador />} />
         <Route path="/mapa" element={<MapaEventos />} />
         <Route path="/quanto-custa" element={<QuantoCusta />} />
         <Route path="/cookies" element={<Cookies />} />

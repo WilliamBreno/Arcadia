@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/WilliamBreno/Arcadia/backend/internal/domain"
 	"github.com/WilliamBreno/Arcadia/backend/internal/repository"
 )
@@ -16,11 +18,15 @@ var ErrAfiliadoNaoEncontrado = errors.New("afiliado não encontrado")
 type AfiliadoService struct {
 	eventos   *EventoService
 	afiliados *repository.AfiliadoRepository
+	db        *gorm.DB // item 9.2: saldo e pagamentos de comissão
 }
 
 func NovoAfiliadoService(e *EventoService, a *repository.AfiliadoRepository) *AfiliadoService {
 	return &AfiliadoService{eventos: e, afiliados: a}
 }
+
+// DefinirBanco liga a comissão de divulgadores (item 9.2).
+func (s *AfiliadoService) DefinirBanco(db *gorm.DB) { s.db = db }
 
 func gerarCodigoAfiliado() (string, error) {
 	const alfabeto = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -41,7 +47,7 @@ func (s *AfiliadoService) Listar(organizadorID, eventoID int64) ([]repository.Af
 	return s.afiliados.ListarComStats(eventoID)
 }
 
-func (s *AfiliadoService) Criar(organizadorID, eventoID int64, nome string) (*domain.Afiliado, error) {
+func (s *AfiliadoService) Criar(organizadorID, eventoID int64, nome string, regra ...RegraComissao) (*domain.Afiliado, error) {
 	if _, err := s.eventos.BuscarDoOrganizador(organizadorID, eventoID); err != nil {
 		return nil, err
 	}
@@ -53,7 +59,19 @@ func (s *AfiliadoService) Criar(organizadorID, eventoID int64, nome string) (*do
 	if err != nil {
 		return nil, err
 	}
-	a := &domain.Afiliado{EventoID: eventoID, Nome: nome, Codigo: codigo, Ativo: true, CriadoEm: time.Now()}
+	a := &domain.Afiliado{EventoID: eventoID, Nome: nome, Codigo: codigo, Ativo: true, CriadoEm: time.Now(), ComissaoTipo: domain.ComissaoNenhuma}
+	if len(regra) > 0 { // item 9.2
+		if err := validarRegra(regra[0]); err != nil {
+			return nil, err
+		}
+		a.ComissaoTipo = regra[0].Tipo
+		if regra[0].Tipo == domain.ComissaoPercentual {
+			a.ComissaoBP = regra[0].BP
+		}
+		if regra[0].Tipo == domain.ComissaoFixo {
+			a.ComissaoFixaCentavos = regra[0].FixaCentavos
+		}
+	}
 	return a, s.afiliados.Criar(a)
 }
 

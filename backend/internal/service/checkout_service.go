@@ -192,9 +192,11 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 			CriadoEm:  agora,
 		}
 		// ref inválido ou inativo é ignorado (não bloqueia a compra).
+		var afiliado *domain.Afiliado
 		if afiliadoCodigo != "" && s.afiliados != nil {
 			if af, errAf := s.afiliados.BuscarAtivoPorCodigo(tx, eventoID, afiliadoCodigo); errAf == nil {
 				pedido.AfiliadoID = &af.ID
+				afiliado = af
 			}
 		}
 		if err := s.checarLimitePorConta(tx, evento, usuarioID, totalUnidades); err != nil {
@@ -316,10 +318,12 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 					GarantiaContratada:     valores.GarantiaCentavos > 0,
 					GarantiaCentavos:       valores.GarantiaCentavos,
 					TotalCentavos:          valores.TotalCentavos,
-					Status:                 domain.StatusItemReservado,
-					Codigo:                 codigo,
-					QRToken:                s.gerarQRToken(codigo),
-					CriadoEm:               agora,
+					// Item 9.2: comissão do divulgador pela regra de agora.
+					ComissaoAfiliadoCentavos: afiliado.ComissaoDoItem(precoFinal),
+					Status:                   domain.StatusItemReservado,
+					Codigo:                   codigo,
+					QRToken:                  s.gerarQRToken(codigo),
+					CriadoEm:                 agora,
 				}
 				if err := s.itensPedido.Criar(tx, &item); err != nil {
 					return err
