@@ -34,6 +34,10 @@ type ItemPedido struct {
 	FichaID *int64
 	// Item 8.6: espaço de expositor (também não é ingresso).
 	ExpositorID *int64
+	// Item 9.5: cadeira marcada (nil = sem lugar marcado) e o rótulo
+	// gravado na compra ("Plateia · Fileira A · Lugar 5").
+	LugarID     *int64
+	LugarRotulo string
 	// Item 9.2: comissão do divulgador gravada na compra.
 	ComissaoAfiliadoCentavos int64
 	TotalCentavos            int64

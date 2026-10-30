@@ -46,6 +46,9 @@ type ItemRequisitado struct {
 	GarantiaContratada bool
 	// Item 7.6: respostas às perguntas do organizador, uma por ingresso.
 	Respostas []map[int64]string
+	// Item 9.5: cadeiras escolhidas no mapa, uma por ingresso (só nos
+	// tipos com lugar marcado).
+	LugarIDs []int64
 }
 
 type CheckoutService struct {
@@ -203,6 +206,10 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 		if err := s.checarLimitePorConta(tx, evento, usuarioID, totalUnidades); err != nil {
 			return err
 		}
+		escolhidos, err := conferirLugares(tx, eventoID, itensReq) // item 9.5
+		if err != nil {
+			return err
+		}
 		perguntas, err := PerguntasAtivas(tx, eventoID) // item 7.6
 		if err != nil {
 			return err
@@ -224,7 +231,8 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 
 		var totalPedido int64
 
-		for _, ir := range itensReq {
+		for idxReq, ir := range itensReq {
+			lugaresDoItem := escolhidos[idxReq]
 			tipo, err := s.itensPedido.BuscarTipoIngressoParaAtualizar(tx, ir.TipoIngressoID)
 			if err != nil || tipo.EventoID != eventoID {
 				return fmt.Errorf("tipo de ingresso não encontrado")
@@ -287,6 +295,10 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 			}
 			estoqueOrganizador := int64(tipo.Quantidade) - ativos - guardadas
 			disponivel := VagasParaComprar(int64(tipo.Quantidade)-ativos, aVenda, guardadas)
+			if len(lugaresDoItem) > 0 {
+				// 9.5: com lugar marcado não há revenda; vale o estoque do tipo.
+				disponivel = estoqueOrganizador
+			}
 			if int64(ir.Quantidade) > disponivel {
 				return fmt.Errorf("%w: %s (restam %d)", ErrEstoqueInsuficiente, tipo.Nome, disponivel)
 			}
@@ -326,7 +338,11 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 					QRToken:                  s.gerarQRToken(codigo),
 					CriadoEm:                 agora,
 				}
+				marcarLugar(&item, lugaresDoItem, i)
 				if err := s.itensPedido.Criar(tx, &item); err != nil {
+					if lugarJaOcupado(err) {
+						return ErrLugarOcupado
+					}
 					return err
 				}
 				totalPedido += item.TotalCentavos

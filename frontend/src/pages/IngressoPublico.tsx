@@ -13,6 +13,7 @@ type Ingresso = {
   qr_token: string
   titular_nome: string
   tipo_ingresso_nome: string
+  lugar?: string
   status: string
   evento_titulo: string
   evento_inicio_em: string | null
@@ -51,6 +52,7 @@ export default function IngressoPublico() {
           <p className="font-mono text-sm text-foreground">{data.codigo}</p>
           <p className="text-sm text-muted-foreground">
             {data.titular_nome} · {data.tipo_ingresso_nome}
+            {data.lugar ? ` · ${data.lugar}` : ''}
           </p>
         </CardContent>
       </Card>

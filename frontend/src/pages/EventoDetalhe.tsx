@@ -35,6 +35,8 @@ import { usePixels } from '@/lib/pixels'
 import { PerguntasCheckout } from '@/components/perguntas-checkout'
 import { faltando, respostasDoTipo, type RespostasCheckout } from '@/lib/perguntas'
 import { horaPrazo, minhaFila, type EntradaFila } from '@/lib/fila'
+import { EscolhaLugares } from '@/components/escolha-lugares'
+import type { Escolhas, SetorMapa } from '@/lib/lugares'
 
 export default function EventoDetalhe() {
   const { slug } = useParams()
@@ -51,6 +53,7 @@ export default function EventoDetalhe() {
   const [erro, setErro] = useState<string | null>(null)
   const [comprando, setComprando] = useState(false)
   const [respostas, setRespostas] = useState<RespostasCheckout>({}) // item 7.6
+  const [escolhas, setEscolhas] = useState<Escolhas>({}) // item 9.5
   // Item 7.2: quem não está logado entra com código aqui mesmo e a compra
   // continua sozinha, sem perder os ingressos escolhidos.
   const [pedirLogin, setPedirLogin] = useState<'comprar' | 'cupom' | 'fila' | null>(null)
@@ -113,6 +116,13 @@ export default function EventoDetalhe() {
         throw e
       }
     },
+  })
+
+  // Item 9.5: mapa de assentos e mesas (vazio = evento sem lugar marcado).
+  const mapa = useQuery({
+    queryKey: ['lugares', slug],
+    enabled: !!data,
+    queryFn: () => api<{ setores: SetorMapa[] }>(`/eventos/${slug}/lugares`, { semAuth: true }),
   })
 
   // Link do e-mail de carrinho (item 7.2): ?retomar=12:2,13:1 já escolhe os
@@ -182,12 +192,24 @@ export default function EventoDetalhe() {
     }
   }
 
-  const totalUnidades = Object.values(quantidades).reduce((a, b) => a + b, 0)
+  // Item 9.5: nos tipos com mapa, a quantidade é o número de cadeiras
+  // escolhidas (o + e − ficam só nos tipos sem lugar marcado).
+  const setores = mapa.data?.setores ?? []
+  const tiposComMapa = new Set(setores.flatMap((st) => st.tipo_ingresso_ids))
+  const quantidadesFinal: Record<number, number> = {}
+  for (const [id, qtd] of Object.entries(quantidades)) if (!tiposComMapa.has(Number(id)) && qtd > 0) quantidadesFinal[Number(id)] = qtd
+  for (const tipoId of Object.values(escolhas)) quantidadesFinal[tipoId] = (quantidadesFinal[tipoId] ?? 0) + 1
+  const lugaresDoTipo = (tipoId: number) =>
+    Object.entries(escolhas)
+      .filter(([, t]) => t === tipoId)
+      .map(([lugar]) => Number(lugar))
+
+  const totalUnidades = Object.values(quantidadesFinal).reduce((a, b) => a + b, 0)
   // Prévia com a mesma regra do servidor (item 5.1): taxa pela faixa do
   // preço com desconto, garantia de 5% (mín./teto); quem cobra é o servidor.
   const resumo = ingressos.reduce(
     (acc, i) => {
-      const qtd = quantidades[i.id] ?? 0
+      const qtd = quantidadesFinal[i.id] ?? 0
       if (qtd === 0) return acc
       const desconto = !cupom
         ? 0
@@ -237,7 +259,7 @@ export default function EventoDetalhe() {
       return
     }
     setErro(null)
-    const semResposta = faltando(data.perguntas ?? [], quantidades, respostas)
+    const semResposta = faltando(data.perguntas ?? [], quantidadesFinal, respostas)
     if (semResposta) {
       setErro(`Responda "${semResposta.texto}" em cada ingresso.`)
       document.getElementById('titulo-perguntas')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -246,13 +268,14 @@ export default function EventoDetalhe() {
     setComprando(true)
     dispararPixel({ tipo: 'iniciar', valor: resumo.total, itens: totalUnidades })
     try {
-      const itens = Object.entries(quantidades)
+      const itens = Object.entries(quantidadesFinal)
         .filter(([, qtd]) => qtd > 0)
         .map(([tipoIngressoId, quantidade]) => ({
           tipo_ingresso_id: Number(tipoIngressoId),
           quantidade,
           garantia_contratada: garantia,
           respostas: respostasDoTipo(Number(tipoIngressoId), quantidade, respostas),
+          ...(tiposComMapa.has(Number(tipoIngressoId)) ? { lugar_ids: lugaresDoTipo(Number(tipoIngressoId)) } : {}),
         }))
 
       const pedido = await api<Pedido>(`/eventos/${slug}/pedidos`, {
@@ -268,6 +291,14 @@ export default function EventoDetalhe() {
       navigate(`/pedidos/${pedido.id}`)
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : 'Erro ao criar pedido')
+      // Cadeira tomada por outra pessoa: recarrega o mapa e tira as ocupadas.
+      if (e instanceof ApiError && e.status === 409) {
+        const novo = await mapa.refetch()
+        const ocupados = new Set(
+          (novo.data?.setores ?? []).flatMap((st) => st.grupos.flatMap((g) => g.lugares.filter((l) => l.ocupado).map((l) => l.id))),
+        )
+        setEscolhas((atual) => Object.fromEntries(Object.entries(atual).filter(([id]) => !ocupados.has(Number(id)))))
+      }
     } finally {
       setComprando(false)
     }
@@ -436,6 +467,10 @@ export default function EventoDetalhe() {
                     aoMudar={atualizarFila}
                     pedirLogin={() => setPedirLogin('fila')}
                   />
+                ) : tiposComMapa.has(i.id) ? (
+                  <p className={`text-right text-sm text-muted-foreground ${precisaAprovacao || vendasEncerradas ? 'hidden' : ''}`}>
+                    {quantidadesFinal[i.id] ? `${quantidadesFinal[i.id]} no mapa` : 'Escolha no mapa'}
+                  </p>
                 ) : (
                   <div className={`flex items-center gap-2 ${precisaAprovacao || vendasEncerradas ? 'hidden' : ''}`}>
                     <Button
@@ -462,11 +497,15 @@ export default function EventoDetalhe() {
           ))}
         </div>
 
+        {setores.length > 0 && !precisaAprovacao && !vendasEncerradas && (
+          <EscolhaLugares setores={setores} tipos={ingressos} escolhas={escolhas} aoMudar={setEscolhas} />
+        )}
+
         {totalUnidades > 0 && (data.perguntas?.length ?? 0) > 0 && (
           <PerguntasCheckout
             perguntas={data.perguntas!}
             ingressos={ingressos}
-            quantidades={quantidades}
+            quantidades={quantidadesFinal}
             respostas={respostas}
             aoMudar={setRespostas}
             organizador={organizador?.nome_publico}

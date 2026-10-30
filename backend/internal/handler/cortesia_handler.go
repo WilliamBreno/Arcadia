@@ -179,7 +179,7 @@ func (h *CortesiaHandler) IngressoPublico(c *gin.Context) {
 	var inicio *time.Time = evento.InicioEm
 	c.JSON(http.StatusOK, gin.H{
 		"codigo": item.Codigo, "qr_token": item.QRToken, "titular_nome": item.TitularNome,
-		"tipo_ingresso_nome": tipo.Nome, "status": item.Status, "utilizado_em": item.UtilizadoEm,
+		"tipo_ingresso_nome": tipo.Nome, "status": item.Status, "utilizado_em": item.UtilizadoEm, "lugar": item.LugarRotulo,
 		"evento_titulo": evento.Titulo, "evento_slug": evento.Slug, "evento_inicio_em": inicio,
 	})
 }

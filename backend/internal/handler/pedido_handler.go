@@ -41,6 +41,7 @@ type itemPedidoResposta struct {
 	Codigo             string     `json:"codigo"`
 	QRToken            string     `json:"qr_token,omitempty"`
 	UtilizadoEm        *time.Time `json:"utilizado_em"`
+	Lugar              string     `json:"lugar,omitempty"` // item 9.5
 }
 
 func paraItemPedidoResposta(i *domain.ItemPedido) itemPedidoResposta {
@@ -48,7 +49,7 @@ func paraItemPedidoResposta(i *domain.ItemPedido) itemPedidoResposta {
 		ID: i.ID, TipoIngressoID: i.TipoIngressoID, TitularNome: i.TitularNome, TitularEmail: i.TitularEmail,
 		PrecoCentavos: i.PrecoCentavos, TaxaCentavos: i.TaxaPlataformaCentavos,
 		GarantiaContratada: i.GarantiaContratada, GarantiaCentavos: i.GarantiaCentavos, TaxaAbsorvida: i.TaxaAbsorvida, DescontoCentavos: i.DescontoCentavos, TotalCentavos: i.TotalCentavos,
-		Status: string(i.Status), Codigo: i.Codigo, QRToken: i.QRToken, UtilizadoEm: i.UtilizadoEm,
+		Status: string(i.Status), Codigo: i.Codigo, QRToken: i.QRToken, UtilizadoEm: i.UtilizadoEm, Lugar: i.LugarRotulo,
 	}
 }
 
@@ -91,6 +92,8 @@ type itemRequest struct {
 	GarantiaContratada bool  `json:"garantia_contratada"`
 	// Item 7.6: [{"<pergunta_id>": "resposta"}, ...], um objeto por ingresso.
 	Respostas []map[string]string `json:"respostas"`
+	// Item 9.5: cadeiras escolhidas no mapa, uma por ingresso.
+	LugarIDs []int64 `json:"lugar_ids"`
 }
 
 // respostasPorUnidade converte as chaves (ids de pergunta em texto).
@@ -138,11 +141,16 @@ func (h *PedidoHandler) Criar(c *gin.Context) {
 	for i, ir := range req.Itens {
 		itensReq[i] = service.ItemRequisitado{
 			TipoIngressoID: ir.TipoIngressoID, Quantidade: ir.Quantidade, GarantiaContratada: ir.GarantiaContratada,
-			Respostas: respostasPorUnidade(ir.Respostas),
+			Respostas: respostasPorUnidade(ir.Respostas), LugarIDs: ir.LugarIDs,
 		}
 	}
 
 	pedido, itens, err := h.service.Reservar(usuarioID, evento.ID, itensReq, comprador.Nome, comprador.Email, req.Cupom, req.Ref)
+	if errors.Is(err, service.ErrLugarOcupado) {
+		// 409: a tela recarrega o mapa e pede outra cadeira.
+		c.JSON(http.StatusConflict, gin.H{"erro": err.Error()})
+		return
+	}
 	if err != nil {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"erro": err.Error()})
 		return

@@ -2,6 +2,7 @@ export type ItemPedido = {
   id: number
   tipo_ingresso_id: number
   titular_nome: string
+  lugar?: string // item 9.5
   titular_email: string
   preco_centavos: number
   taxa_plataforma_centavos: number

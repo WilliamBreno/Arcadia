@@ -192,6 +192,8 @@ func PodeRevender(item *domain.ItemPedido, evento *domain.Evento, agora time.Tim
 	switch {
 	case item.Status != domain.StatusItemPago || item.Interno(): // 8.4/8.6: inscrição e espaço não se revendem
 		return ErrRevendaNaoPermitida
+	case item.LugarID != nil: // 9.5: o comprador da revenda precisaria da mesma cadeira
+		return errors.Join(ErrRevendaNaoPermitida, errors.New("ingresso com lugar marcado ainda não vai para a revenda; você pode transferir para outra pessoa"))
 	case item.Cortesia || item.PrecoCentavos <= 0:
 		return errors.Join(ErrRevendaNaoPermitida, errors.New("ingresso gratuito ou cortesia: é só cancelar a inscrição"))
 	case evento.Status != domain.StatusEventoPublicado:

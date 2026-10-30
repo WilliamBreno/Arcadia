@@ -69,6 +69,10 @@ func (s *CortesiaService) Emitir(organizadorID, usuarioID, eventoID, tipoID int6
 			return fmt.Errorf("%w: %s", ErrEstoqueInsuficiente, tipo.Nome)
 		}
 
+		lugares, err := lugaresAutomaticos(tx, tipo.ID, quantidade) // item 9.5
+		if err != nil {
+			return err
+		}
 		agora := time.Now()
 		pedido := &domain.Pedido{UsuarioID: usuarioID, EventoID: eventoID, Status: domain.StatusPedidoPago, CriadoEm: agora}
 		if err := s.pedidos.Criar(tx, pedido); err != nil {
@@ -84,7 +88,11 @@ func (s *CortesiaService) Emitir(organizadorID, usuarioID, eventoID, tipoID int6
 				Status: domain.StatusItemPago, Codigo: codigo, QRToken: assinarQR(s.qrSecret, codigo),
 				Cortesia: true, CriadoEm: agora,
 			}
+			marcarLugar(&item, lugares, i)
 			if err := s.itensPedido.Criar(tx, &item); err != nil {
+				if lugarJaOcupado(err) {
+					return ErrLugarOcupado
+				}
 				return err
 			}
 			itens = append(itens, item)

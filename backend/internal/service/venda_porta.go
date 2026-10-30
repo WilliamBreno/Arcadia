@@ -159,6 +159,10 @@ func (s *CheckoutService) VenderNaPorta(vendedorID, eventoID int64, itensReq []I
 				}
 				return fmt.Errorf("%w: %s (restam %d)", ErrEstoqueInsuficiente, tipo.Nome, livre)
 			}
+			lugares, err := lugaresAutomaticos(tx, tipo.ID, ir.Quantidade) // item 9.5
+			if err != nil {
+				return err
+			}
 			v := taxas.Calcular(tipo.PrecoCentavos, false)
 			for i := 0; i < ir.Quantidade; i++ {
 				codigo, err := gerarCodigoItem()
@@ -173,7 +177,11 @@ func (s *CheckoutService) VenderNaPorta(vendedorID, eventoID int64, itensReq []I
 				if metodo == MetodoPortaDinheiro {
 					item.Status, item.UtilizadoEm = domain.StatusItemUtilizado, &agora
 				}
+				marcarLugar(&item, lugares, i)
 				if err := s.itensPedido.Criar(tx, &item); err != nil {
+					if lugarJaOcupado(err) {
+						return ErrLugarOcupado
+					}
 					return err
 				}
 				if metodo == MetodoPortaDinheiro && item.TaxaPlataformaCentavos > 0 {

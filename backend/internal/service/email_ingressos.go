@@ -30,6 +30,9 @@ func corpoEmailIngressos(saudacao, intro string, evento *domain.Evento, itens []
 	for i, it := range itens {
 		fmt.Fprintf(&b, `<div style="border:1px solid #ddd;border-radius:8px;padding:12px;margin:12px 0;text-align:center">`)
 		fmt.Fprintf(&b, `<p style="margin:0 0 4px"><strong>%s</strong></p>`, html.EscapeString(it.TitularNome))
+		if it.LugarRotulo != "" { // item 9.5
+			fmt.Fprintf(&b, `<p style="margin:0 0 4px;font-size:16px"><strong>%s</strong></p>`, html.EscapeString(it.LugarRotulo))
+		}
 		fmt.Fprintf(&b, `<p style="margin:0 0 8px;font-family:monospace;font-size:16px">%s</p>`, html.EscapeString(it.Codigo))
 
 		if !evento.QRRotativo {

@@ -251,6 +251,7 @@ func main() {
 	checkoutService.DefinirAvisoEspaco(expositorService)
 	jobHandler.DefinirExpositores(expositorService)
 	expositorHandler := handler.NovoExpositorHandler(expositorService, eventoRepo, organizadorHandler)
+	lugaresHandler := handler.NovoLugaresHandler(service.NovoLugaresService(db, eventoRepo), organizadorHandler) // item 9.5
 	// Item 9.4: venda na porta (organizador e equipe de check-in).
 	checkoutService.DefinirAcessoPorta(checkinService.TemAcesso)
 	portaHandler := handler.NovoPortaHandler(checkoutService)
@@ -291,6 +292,7 @@ func main() {
 		v1.GET("/circuitos/:slug", circuitoHandler.Publico)
 		v1.GET("/divulgador/:token", afiliadoHandler.PainelDivulgador)
 		v1.GET("/eventos/:slug/expositores", expositorHandler.Publico)
+		v1.GET("/eventos/:slug/lugares", lugaresHandler.Publico)
 		v1.GET("/eventos/:slug/galeria", galeriaHandler.Publica)
 		v1.POST("/galeria/fotos/:id/remocao", galeriaHandler.PedirRemocao)
 		v1.GET("/organizadores/:slug", publicoHandler.ObterOrganizador)
@@ -519,6 +521,11 @@ func main() {
 		org.DELETE("/eventos/:id/fotografos/:usuarioId", galeriaHandler.RemoverFotografo)
 		org.GET("/eventos/:id/caravanas", caravanaHandler.DoOrganizador)
 		org.GET("/eventos/:id/expositores", expositorHandler.Painel)
+		org.GET("/eventos/:id/lugares", lugaresHandler.Painel)
+		org.POST("/eventos/:id/setores", lugaresHandler.CriarSetor)
+		org.PUT("/eventos/:id/setores/:sid", lugaresHandler.AtualizarSetor)
+		org.DELETE("/eventos/:id/setores/:sid", lugaresHandler.ExcluirSetor)
+		org.PUT("/eventos/:id/setores/:sid/mesas/:grupo", lugaresHandler.MesaInteira)
 		org.POST("/eventos/:id/tipos-espaco", expositorHandler.CriarTipo)
 		org.PUT("/eventos/:id/tipos-espaco/:tid", expositorHandler.AtualizarTipo)
 		org.DELETE("/eventos/:id/tipos-espaco/:tid", expositorHandler.ExcluirTipo)

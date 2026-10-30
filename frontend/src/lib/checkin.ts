@@ -9,6 +9,7 @@ export type ValidarCheckinResposta = {
   meia_entrada?: boolean
   codigo?: string
   utilizado_em?: string
+  lugar?: string // item 9.5
 }
 
 export type ItemBusca = {
@@ -19,6 +20,7 @@ export type ItemBusca = {
   status: string
   tipo_ingresso_nome: string
   meia_entrada: boolean
+  lugar?: string
 }
 
 export type ResumoCheckin = {

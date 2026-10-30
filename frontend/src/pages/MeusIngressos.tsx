@@ -54,6 +54,7 @@ export default function MeusIngressos() {
                 <p className="text-sm text-muted-foreground">
                   {i.evento_inicio_em && new Date(i.evento_inicio_em).toLocaleDateString('pt-BR')} · {i.titular_nome}
                 </p>
+                {i.lugar && <p className="text-sm font-medium text-foreground">{i.lugar}</p>}
                 <p className="text-xs text-muted-foreground">{rotulo(i)}</p>
               </div>
               <span className="font-mono text-xs text-muted-foreground">{i.codigo}</span>
@@ -75,6 +76,7 @@ export default function MeusIngressos() {
               </div>
               <p className="font-mono text-sm text-foreground">{selecionado.codigo}</p>
               <p className="text-sm text-muted-foreground">{selecionado.titular_nome}</p>
+              {selecionado.lugar && <p className="text-base font-semibold text-foreground">{selecionado.lugar}</p>}
               <p className="text-xs text-muted-foreground">{rotulo(selecionado)}</p>
               {selecionado.status === 'pago' && !revendaDe(selecionado.id) && (
                 <TransferirIngresso itemId={selecionado.id} onConcluido={() => setSelecionado(null)} />

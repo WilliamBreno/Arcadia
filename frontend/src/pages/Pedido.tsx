@@ -174,6 +174,7 @@ function ItemLinha({ item, pedidoId, inscricao, espaco }: { item: ItemPedido; pe
             {inscricao ? `Inscrição de participante · ${item.titular_nome}` : espaco ? `Espaço de expositor · ${item.titular_nome}` : item.titular_nome}{' '}
             <span className="text-xs text-muted-foreground">({rotuloStatusItem[item.status]})</span>
           </p>
+          {item.lugar && <p className="text-sm font-medium text-foreground">{item.lugar}</p>}
           <p className="text-xs text-muted-foreground">
             {item.total_centavos === 0 ? (
               'Gratuito, sem taxa'

@@ -31,6 +31,7 @@ import { Input } from '@/components/ui/input'
 import { CapaEvento } from '@/components/capa-evento'
 import { CircuitoCard } from '@/components/circuito-card'
 import { ExpositoresCard } from '@/components/expositores-card'
+import { LugaresCard } from '@/components/lugares-card'
 import { GaleriaCard } from '@/components/galeria-card'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -350,6 +351,8 @@ export default function EventoEditar() {
       <SessoesCard eventoId={Number(id)} />
 
       <TiposIngressoCard eventoId={Number(id)} tipos={tiposIngresso ?? []} />
+
+      <LugaresCard eventoId={Number(id)} tipos={tiposIngresso ?? []} />
 
       <VendasCard eventoId={Number(id)} />
 

@@ -21,4 +21,5 @@ export type MeuIngresso = {
   evento_titulo: string
   evento_slug: string
   evento_inicio_em: string | null
+  lugar?: string // item 9.5
 }

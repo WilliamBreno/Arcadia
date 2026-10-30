@@ -32,6 +32,7 @@ type validarCheckinResposta struct {
 	MeiaEntrada      bool   `json:"meia_entrada,omitempty"`
 	Codigo           string `json:"codigo,omitempty"`
 	UtilizadoEm      string `json:"utilizado_em,omitempty"`
+	Lugar            string `json:"lugar,omitempty"` // item 9.5
 }
 
 // Validar é POST /checkin/validar — o leitor de QR chama isso a cada
@@ -58,6 +59,7 @@ func (h *CheckinHandler) Validar(c *gin.Context) {
 	if resultado.Item != nil {
 		resp.TitularNome = resultado.Item.TitularNome
 		resp.Codigo = resultado.Item.Codigo
+		resp.Lugar = resultado.Item.LugarRotulo
 		if resultado.Item.UtilizadoEm != nil {
 			resp.UtilizadoEm = resultado.Item.UtilizadoEm.Format("15:04:05")
 		}
@@ -73,6 +75,7 @@ type buscaCheckinItem struct {
 	Status           string `json:"status"`
 	TipoIngressoNome string `json:"tipo_ingresso_nome"`
 	MeiaEntrada      bool   `json:"meia_entrada"`
+	Lugar            string `json:"lugar,omitempty"`
 }
 
 // Buscar é GET /checkin/eventos/:id/busca — busca manual por nome,
@@ -99,7 +102,7 @@ func (h *CheckinHandler) Buscar(c *gin.Context) {
 	for _, i := range itens {
 		resposta = append(resposta, buscaCheckinItem{
 			ID: i.ID, TitularNome: i.TitularNome, TitularEmail: i.TitularEmail,
-			Codigo: i.Codigo, Status: string(i.Status), TipoIngressoNome: i.TipoIngressoNome, MeiaEntrada: i.MeiaEntrada,
+			Codigo: i.Codigo, Status: string(i.Status), TipoIngressoNome: i.TipoIngressoNome, MeiaEntrada: i.MeiaEntrada, Lugar: i.LugarRotulo,
 		})
 	}
 	c.JSON(http.StatusOK, resposta)
