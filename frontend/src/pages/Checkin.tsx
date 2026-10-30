@@ -268,9 +268,15 @@ export default function Checkin() {
       <div className="mb-4 flex items-center justify-between gap-3">
         <h1 className="text-xl font-semibold text-foreground">Check-in</h1>
         {/* Item 8.3: a mesma equipe opera o camarim e o palco. */}
-        <Link to={`/palco/${id}`} className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground">
-          Palco e camarim
-        </Link>
+        <span className="flex gap-3">
+          {/* Item 9.4: venda na porta. */}
+          <Link to={`/porta/${id}`} className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground">
+            Vender na porta
+          </Link>
+          <Link to={`/palco/${id}`} className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground">
+            Palco e camarim
+          </Link>
+        </span>
       </div>
 
       <div className="mb-4 flex items-center justify-between rounded-lg border border-border px-4 py-2">

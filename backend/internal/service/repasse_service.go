@@ -111,6 +111,14 @@ func (s *RepasseService) calcular(eventoID int64) (Financeiro, error) {
 			f.BrutoCartaoCentavos += it.PrecoCentavos
 		}
 	}
+	// Item 9.4: venda em dinheiro na porta. O organizador já está com o
+	// dinheiro; só a taxa da Evve entra na conta (sai do repasse).
+	var taxaPorta int64
+	if err := s.db.Raw(`SELECT COALESCE(SUM(i.taxa_plataforma_centavos), 0) FROM itens_pedido i JOIN pedidos p ON p.id = i.pedido_id
+		WHERE p.evento_id = ? AND p.canal = 'porta' AND p.metodo_porta = 'dinheiro' AND i.status IN ('pago', 'utilizado')`, eventoID).Scan(&taxaPorta).Error; err != nil {
+		return Financeiro{}, err
+	}
+	f.TaxaAbsorvidaCentavos += taxaPorta
 	f.LiquidoCentavos = f.BrutoCentavos - f.TaxaProcessadorCentavos - f.TaxaAbsorvidaCentavos
 	return f, nil
 }
@@ -190,8 +198,8 @@ func (s *RepasseService) GerarRepasses() (int, error) {
 		if err != nil {
 			return criados, err
 		}
-		if f.BrutoCentavos == 0 {
-			continue
+		if f.BrutoCentavos == 0 && f.TaxaAbsorvidaCentavos == 0 {
+			continue // nada vendido (com taxa de porta em dinheiro, gera o saldo devedor)
 		}
 		reserva, reservaAte, err := s.reservaDoEvento(e, f, liberarEm)
 		if err != nil {

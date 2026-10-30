@@ -62,7 +62,7 @@ func ParametroRetomar(itens []ItemRetomar) string {
 // Enviar roda no job de expirar reservas (a cada 5 minutos).
 func (s *RecuperacaoCarrinhoService) Enviar(agora time.Time) (int, error) {
 	var pedidos []domain.Pedido
-	if err := s.db.Where("status = ? AND total_centavos > 0 AND recuperacao_em IS NULL AND expira_em BETWEEN ? AND ?",
+	if err := s.db.Where("status = ? AND total_centavos > 0 AND recuperacao_em IS NULL AND canal = 'online' AND expira_em BETWEEN ? AND ?",
 		domain.StatusPedidoExpirado, agora.Add(-JanelaRecuperacao), agora.Add(-EsperaRecuperacao)).
 		Order("id").Limit(200).Find(&pedidos).Error; err != nil {
 		return 0, err

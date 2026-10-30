@@ -104,6 +104,20 @@ func (s *CheckoutService) emailPagador(usuarioID int64) string {
 	return ""
 }
 
+// emailPagadorDoPedido: na porta (item 9.4) o pedido é da conta de sistema;
+// vai o e-mail do comprador, se ele deu, ou o de quem vendeu.
+func (s *CheckoutService) emailPagadorDoPedido(p *domain.Pedido) string {
+	if p.Canal == domain.CanalPorta {
+		var email string
+		s.db.Table("itens_pedido").Where("pedido_id = ? AND titular_email <> ''", p.ID).Limit(1).Pluck("titular_email", &email)
+		if email == "" && p.VendidoPor != nil {
+			email = s.emailPagador(*p.VendidoPor)
+		}
+		return email
+	}
+	return s.emailPagador(p.UsuarioID)
+}
+
 func (s *CheckoutService) descricaoCobranca(pedido *domain.Pedido) string {
 	if e, err := s.eventos.BuscarPorID(pedido.EventoID); err == nil {
 		return "Ingressos: " + e.Titulo
@@ -140,7 +154,7 @@ func (s *CheckoutService) GerarPix(usuarioID, pedidoID int64) (*PixNaTela, error
 			Descricao:         s.descricaoCobranca(&pedido),
 			ValorCentavos:     pedido.TotalCentavos,
 			Metodo:            pagamento.MetodoPix,
-			EmailPagador:      s.emailPagador(pedido.UsuarioID),
+			EmailPagador:      s.emailPagadorDoPedido(&pedido),
 			ExpiraEm:          agora.Add(ValidadePix),
 			ChaveIdempotencia: "pix-" + ref + "-" + strconv.FormatInt(agora.Unix()/60, 10),
 			URLNotificacao:    s.backendURL + "/api/v1/webhooks/mercadopago",
@@ -442,6 +456,9 @@ func (s *CheckoutService) confirmarPagamento(pedidoID int64, registro *domain.Pa
 		if err := confirmarExpositoresPagos(tx, expositores); err != nil { // item 8.6
 			return err
 		}
+		if err := marcarEntradaPorta(tx, &pedido, agora); err != nil { // item 9.4
+			return err
+		}
 		return tx.Save(&pedido).Error
 	})
 	if err != nil {
@@ -449,7 +466,11 @@ func (s *CheckoutService) confirmarPagamento(pedidoID int64, registro *domain.Pa
 	}
 	if emitiu {
 		if itens, err := s.itensPedido.ListarPorPedido(pedido.ID); err == nil {
-			s.enviarEmailConfirmacao(&pedido, itens, evento)
+			if pedido.Canal == domain.CanalPorta {
+				s.enviarIngressosPorta(&pedido, itens, evento) // item 9.4
+			} else {
+				s.enviarEmailConfirmacao(&pedido, itens, evento)
+			}
 		}
 	}
 	if emitiu && s.avisoEspaco != nil {

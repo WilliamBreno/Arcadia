@@ -26,6 +26,7 @@ import Cookies from '@/pages/Cookies'
 import CircuitoPublico from '@/pages/CircuitoPublico'
 import CandidaturaExpositor from '@/pages/CandidaturaExpositor'
 import Caravana from '@/pages/Caravana'
+import VendaPorta from '@/pages/VendaPorta'
 import PainelDivulgador from '@/pages/PainelDivulgador'
 import MeusCircuitos from '@/pages/organizador/Circuitos'
 import Crm from '@/pages/organizador/Crm'
@@ -79,6 +80,7 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/meu-talento" element={<MeuTalento />} />
           <Route path="/palco/:eventoId" element={<PalcoCamarim />} />
+          <Route path="/porta/:eventoId" element={<VendaPorta />} />
           <Route path="/e/:slug/inscricao" element={<Inscricao />} />
           <Route path="/e/:slug/expositor" element={<CandidaturaExpositor />} />
           <Route path="/caravana/:codigo" element={<Caravana />} />

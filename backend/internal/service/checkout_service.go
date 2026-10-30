@@ -72,8 +72,9 @@ type CheckoutService struct {
 	frontendURL    string
 	backendURL     string
 	nomePlataforma string
-	avisoInscricao AvisoInscricao // item 8.4
-	avisoEspaco    AvisoEspaco    // item 8.6
+	avisoInscricao AvisoInscricao                       // item 8.4
+	avisoEspaco    AvisoEspaco                          // item 8.6
+	acessoPorta    func(usuarioID, eventoID int64) bool // item 9.4
 }
 
 func NovoCheckoutService(

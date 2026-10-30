@@ -83,6 +83,9 @@ func gerarCodigoLogin() (string, error) {
 // conta no Evve.
 func (s *CodigoLoginService) Solicitar(email string) error {
 	email = NormalizarEmail(email)
+	if email == domain.EmailBilheteria { // item 9.4: conta de sistema, ninguém entra
+		return nil
+	}
 	codigo, err := gerarCodigoLogin()
 	if err != nil {
 		return err

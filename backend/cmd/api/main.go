@@ -248,6 +248,9 @@ func main() {
 	checkoutService.DefinirAvisoEspaco(expositorService)
 	jobHandler.DefinirExpositores(expositorService)
 	expositorHandler := handler.NovoExpositorHandler(expositorService, eventoRepo, organizadorHandler)
+	// Item 9.4: venda na porta (organizador e equipe de check-in).
+	checkoutService.DefinirAcessoPorta(checkinService.TemAcesso)
+	portaHandler := handler.NovoPortaHandler(checkoutService)
 	// Item 9.3: CRM do organizador (e-mail para quem segue).
 	crmHandler := handler.NovoCRMHandler(service.NovoCRMService(db, organizadorRepo, seguirService, mailCliente, cfg.FrontendURL), organizadorHandler)
 	// Item 8.7: galeria oficial e caravanas.
@@ -393,6 +396,11 @@ func main() {
 		autenticado.POST("/eventos/:slug/meu-espaco/pagamento", expositorHandler.Pagar)
 		autenticado.PUT("/credenciais-expositor/:id", expositorHandler.RenomearCredencial)
 		autenticado.POST("/checkin/eventos/:id/credencial", expositorHandler.LerCredencial)
+		autenticado.GET("/checkin/eventos/:id/porta/tipos", portaHandler.Tipos)
+		autenticado.GET("/checkin/eventos/:id/porta/resumo", portaHandler.Resumo)
+		autenticado.POST("/checkin/eventos/:id/porta/vendas", portaHandler.Vender)
+		autenticado.POST("/checkin/eventos/:id/porta/vendas/:pid/pix", portaHandler.Pix)
+		autenticado.GET("/checkin/eventos/:id/porta/vendas/:pid", portaHandler.Situacao)
 		autenticado.POST("/eventos/:slug/inscricao/pagamento", pedidoHandler.PagarInscricao)
 		autenticado.GET("/eventos/:slug/participantes", fichaHandler.ListarParaJurado)
 		autenticado.GET("/eventos/:slug/participantes/:fichaId", fichaHandler.ObterParaJurado)

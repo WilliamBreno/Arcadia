@@ -29,8 +29,20 @@ type Pedido struct {
 	PixMPPaymentID *string
 	PixCopiaCola   *string
 	PixExpiraEm    *time.Time
-	CriadoEm       time.Time
+	// Item 9.4: venda na porta (canal "porta", quem vendeu e como pagou).
+	Canal       string `gorm:"default:online"`
+	VendidoPor  *int64
+	MetodoPorta *string
+	CriadoEm    time.Time
 }
+
+const (
+	CanalOnline = "online"
+	CanalPorta  = "porta"
+	// EmailBilheteria é o usuário de sistema dono dos pedidos da porta
+	// (sem senha; o domínio .invalid nunca recebe e-mail).
+	EmailBilheteria = "bilheteria@sistema.evve.invalid"
+)
 
 func (Pedido) TableName() string {
 	return "pedidos"
