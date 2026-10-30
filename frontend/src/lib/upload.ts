@@ -62,3 +62,51 @@ export async function reduzirFoto(arquivo: File, lado = 2048): Promise<File> {
     return arquivo
   }
 }
+
+// Capa do evento: tamanho ideal 1600 × 900 px (16:9).
+export const CAPA_LARGURA = 1600
+export const CAPA_ALTURA = 900
+
+export type CapaAjustada = { arquivo: File; original: { w: number; h: number }; final: { w: number; h: number }; corte: string; pequena: boolean }
+
+// ajustarCapa recorta o centro da foto no formato 16:9 e reduz para no
+// máximo 1600 × 900 (JPEG 85%), para a capa ficar igual na página do evento
+// e nos cards. Avisa se a foto original for pequena (pode ficar borrada).
+export async function ajustarCapa(arquivo: File): Promise<CapaAjustada> {
+  const bitmap = await createImageBitmap(arquivo)
+  const { width: w, height: h } = bitmap
+  const alvo = CAPA_LARGURA / CAPA_ALTURA
+  let sx = 0
+  let sy = 0
+  let sw = w
+  let sh = h
+  let corte = 'nenhum corte'
+  if (w / h > alvo + 0.01) {
+    sw = Math.round(h * alvo)
+    sx = Math.round((w - sw) / 2)
+    corte = 'laterais cortadas'
+  } else if (w / h < alvo - 0.01) {
+    sh = Math.round(w / alvo)
+    sy = Math.round((h - sh) / 2)
+    corte = 'partes de cima e de baixo cortadas'
+  }
+  const fw = Math.min(CAPA_LARGURA, sw)
+  const fh = Math.round(fw / alvo)
+  const canvas = document.createElement('canvas')
+  canvas.width = fw
+  canvas.height = fh
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Seu navegador não conseguiu ajustar a imagem.')
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, fw, fh)
+  bitmap.close()
+  const blob = await new Promise<Blob | null>((ok) => canvas.toBlob(ok, 'image/jpeg', 0.85))
+  if (!blob) throw new Error('Não foi possível ajustar a imagem.')
+  return {
+    arquivo: new File([blob], 'capa.jpg', { type: 'image/jpeg' }),
+    original: { w, h },
+    final: { w: fw, h: fh },
+    corte,
+    pequena: sw < 1200,
+  }
+}

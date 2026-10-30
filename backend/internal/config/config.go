@@ -89,7 +89,7 @@ const jwtSecretPadrao = "dev-secret-troque-em-producao"
 
 // Carregar lê as variáveis de ambiente e retorna a configuração da aplicação.
 func Carregar() Config {
-	return Config{
+	c := Config{
 		Porta:          getEnv("PORTA", getEnv("PORT", "8080")), // Render/Heroku injetam PORT
 		NomePlataforma: getEnv("NOME_PLATAFORMA", "Evve"),
 		AmbienteApp:    getEnv("AMBIENTE_APP", "development"),
@@ -106,9 +106,9 @@ func Carregar() Config {
 		ResendAPIKey:   getEnv("RESEND_API_KEY", ""),
 		EmailRemetente: getEnv("EMAIL_REMETENTE", "Evve <no-reply@evve.local>"),
 
-		StorageDriver:  getEnv("STORAGE_DRIVER", "disco"),
+		StorageDriver:  getEnv("STORAGE_DRIVER", "banco"),
 		UploadsDir:     getEnv("UPLOADS_DIR", "./uploads"),
-		UploadsBaseURL: getEnv("UPLOADS_BASE_URL", "http://localhost:8080/uploads"),
+		UploadsBaseURL: getEnv("UPLOADS_BASE_URL", ""),
 		S3Endpoint:     getEnv("S3_ENDPOINT", ""),
 		S3Bucket:       getEnv("S3_BUCKET", ""),
 		S3AccessKey:    getEnv("S3_ACCESS_KEY", ""),
@@ -128,6 +128,14 @@ func Carregar() Config {
 
 		CronSecret: getEnv("CRON_SECRET", ""),
 	}
+	// Endereço público dos uploads: sem UPLOADS_BASE_URL, é o próprio site
+	// (FRONTEND_URL/api/v1/uploads, que a Vercel repassa para a API). Antes o
+	// padrão era localhost e, em produção, a capa ia para o banco com um link
+	// que nenhum navegador abre.
+	if c.UploadsBaseURL == "" || (strings.Contains(c.UploadsBaseURL, "localhost") && strings.HasPrefix(c.FrontendURL, "https://")) {
+		c.UploadsBaseURL = strings.TrimSuffix(c.FrontendURL, "/") + "/api/v1/uploads"
+	}
+	return c
 }
 
 // ValidarProducao recusa configuração insegura quando AMBIENTE_APP=production
@@ -152,8 +160,11 @@ func (c Config) ValidarProducao() (erros []error, avisos []string) {
 	if strings.Contains(c.DatabaseURL, "localhost") {
 		erros = append(erros, fmt.Errorf("DATABASE_URL aponta para localhost"))
 	}
-	if c.StorageDriver != "s3" {
-		erros = append(erros, fmt.Errorf("STORAGE_DRIVER precisa ser s3 em produção (disco local some a cada deploy)"))
+	if c.StorageDriver != "s3" && c.StorageDriver != "banco" {
+		erros = append(erros, fmt.Errorf("STORAGE_DRIVER precisa ser s3 ou banco em produção (disco local some a cada deploy)"))
+	}
+	if strings.Contains(c.UploadsBaseURL, "localhost") {
+		erros = append(erros, fmt.Errorf("UPLOADS_BASE_URL aponta para localhost (as imagens não abririam)"))
 	}
 	if c.MercadoPagoBaseURL != "" {
 		erros = append(erros, fmt.Errorf("MERCADOPAGO_BASE_URL é só para testes locais e não pode estar definida em produção"))

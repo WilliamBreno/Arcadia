@@ -109,8 +109,11 @@ func main() {
 			Endpoint: cfg.S3Endpoint, Bucket: cfg.S3Bucket, AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey,
 			Regiao: cfg.S3Regiao, BaseURL: cfg.UploadsBaseURL, UsarSSL: cfg.S3UsarSSL,
 		})
-	} else {
+	} else if cfg.StorageDriver == "disco" {
 		armazenamento, err = storage.NovoDiscoLocal(cfg.UploadsDir, cfg.UploadsBaseURL)
+	} else {
+		// Padrão: no banco (não some a cada deploy, como o disco do servidor).
+		armazenamento = storage.NovoBanco(db, cfg.UploadsBaseURL)
 	}
 	if err != nil {
 		slog.Error("erro ao preparar armazenamento de uploads", "erro", err)
@@ -274,9 +277,9 @@ func main() {
 	}))
 
 	router.GET("/healthz", handler.Healthz)
-	if cfg.StorageDriver != "s3" {
-		router.Static("/uploads", cfg.UploadsDir)
-	}
+	// Uploads: do banco (padrão) e, para arquivos antigos, da pasta local.
+	router.GET("/uploads/:nome", handler.ServirUpload(db, cfg.UploadsDir))
+	router.GET("/api/v1/uploads/:nome", handler.ServirUpload(db, cfg.UploadsDir))
 
 	limiteAuth := middleware.LimitarPorJanela(limiteRepo, "auth", 60, time.Minute)
 

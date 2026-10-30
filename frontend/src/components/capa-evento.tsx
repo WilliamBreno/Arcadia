@@ -2,21 +2,29 @@ import { ImagePlus } from 'lucide-react'
 import { useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
-import { enviarArquivo, reduzirFoto } from '@/lib/upload'
+import { CAPA_ALTURA, CAPA_LARGURA, ajustarCapa, enviarArquivo } from '@/lib/upload'
 
 // Capa do evento: aparece no topo da página do evento e nos cards da
-// vitrine (16:9). A imagem é reduzida no navegador antes de subir.
+// vitrine (16:9). A imagem é recortada e reduzida no navegador antes de subir.
 export function CapaEvento({ valor, aoMudar }: { valor: string; aoMudar: (url: string) => void }) {
   const entrada = useRef<HTMLInputElement>(null)
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  const [aviso, setAviso] = useState<string | null>(null)
 
   const escolher = async (arquivo?: File) => {
     if (!arquivo) return
     setErro(null)
+    setAviso(null)
     setEnviando(true)
     try {
-      aoMudar(await enviarArquivo(await reduzirFoto(arquivo, 1920)))
+      const capa = await ajustarCapa(arquivo)
+      aoMudar(await enviarArquivo(capa.arquivo))
+      const partes = [`Sua foto tinha ${capa.original.w} × ${capa.original.h} px e virou ${capa.final.w} × ${capa.final.h} px`]
+      if (capa.corte !== 'nenhum corte') partes.push(`(${capa.corte} para ficar no formato 16:9)`)
+      let texto = partes.join(' ') + '.'
+      if (capa.pequena) texto += ' A foto é pequena e pode ficar borrada em telas grandes; se tiver uma maior, prefira.'
+      setAviso(texto)
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não foi possível enviar a imagem.')
     } finally {
@@ -43,29 +51,35 @@ export function CapaEvento({ valor, aoMudar }: { valor: string; aoMudar: (url: s
         ) : (
           <span className="flex flex-col items-center gap-2">
             <ImagePlus className="size-6" aria-hidden="true" />
-            {enviando ? 'Enviando…' : 'Escolher imagem'}
+            {enviando ? 'Ajustando e enviando…' : 'Escolher imagem'}
           </span>
         )}
-        {valor && enviando && <span className="absolute inset-0 flex items-center justify-center bg-black/50 text-white">Enviando…</span>}
+        {valor && enviando && <span className="absolute inset-0 flex items-center justify-center bg-black/50 text-white">Ajustando e enviando…</span>}
       </button>
       <input
         ref={entrada}
         type="file"
-        accept="image/jpeg,image/png"
+        accept="image/jpeg,image/png,image/webp"
         className="sr-only"
         tabIndex={-1}
         aria-hidden="true"
         onChange={(e) => escolher(e.target.files?.[0])}
       />
       <p id="capa-ajuda" className="text-xs text-muted-foreground">
-        Horizontal, de preferência 1600 × 900 px (JPEG ou PNG). Aparece no topo da página do evento e nos cards da vitrine.
+        Tamanho ideal: {CAPA_LARGURA} × {CAPA_ALTURA} px, na horizontal (formato 16:9). Se a sua foto tiver outro formato, a gente recorta o
+        centro e reduz automaticamente. Deixe o principal no meio da imagem. Aparece no topo da página do evento e nos cards da vitrine.
       </p>
+      {aviso && (
+        <p role="status" className="text-xs text-foreground">
+          {aviso}
+        </p>
+      )}
       {valor && (
         <div className="flex gap-2">
           <Button type="button" size="sm" variant="outline" disabled={enviando} onClick={() => entrada.current?.click()}>
             Trocar imagem
           </Button>
-          <Button type="button" size="sm" variant="ghost" disabled={enviando} onClick={() => aoMudar('')}>
+          <Button type="button" size="sm" variant="ghost" disabled={enviando} onClick={() => { aoMudar(''); setAviso(null) }}>
             Remover
           </Button>
         </div>
