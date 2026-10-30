@@ -209,6 +209,10 @@ func main() {
 	talentoService := service.NovoPerfilTalentoService(db, avaliacaoService, mailCliente, cfg.FrontendURL, cfg.NomePlataforma)
 	talentoHandler := handler.NovoTalentoHandler(talentoService)
 	avaliacaoHandler.DefinirPerfis(talentoService, db)
+	// Item 8.2: voto do público e devolutiva dos jurados.
+	concursoService := service.NovoConcursoPublicoService(db)
+	avaliacaoHandler.DefinirConcurso(concursoService)
+	concursoHandler := handler.NovoConcursoPublicoHandler(concursoService, avaliacaoService, talentoService, eventoRepo, organizadorHandler)
 	perguntasHandler := handler.NovoPerguntasHandler(perguntasService, eventoRepo, organizadorHandler)
 	jobHandler.DefinirPerguntas(perguntasService)
 	publicoHandler.DefinirPerguntas(db)
@@ -250,6 +254,7 @@ func main() {
 		v1.GET("/talentos/autorizacao", talentoHandler.VerAutorizacao)
 		v1.POST("/talentos/autorizacao", talentoHandler.Decidir)
 		v1.GET("/talentos/:slug", talentoHandler.Publico)
+		v1.GET("/eventos/:slug/votacao", concursoHandler.Votacao)
 		// Item 7.1: chave pública do formulário de cartão (vazia = plano B).
 		v1.GET("/pagamento/config", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"public_key": cfg.MercadoPagoPublicKey})
@@ -292,6 +297,9 @@ func main() {
 		autenticado.GET("/eventos/:slug/fila", filaHandler.Minhas)
 		autenticado.GET("/me/revendas", revendaHandler.Minhas)
 		autenticado.GET("/me/talento", talentoHandler.Meu)
+		autenticado.GET("/eventos/:slug/meus-votos", concursoHandler.MeusVotos)
+		autenticado.POST("/eventos/:slug/votos", concursoHandler.Votar)
+		autenticado.GET("/eventos/:slug/minha-devolutiva", concursoHandler.MinhaDevolutiva)
 		autenticado.PUT("/me/talento", talentoHandler.Salvar)
 		autenticado.POST("/me/talento/participacoes/:ficha", talentoHandler.Ocultar)
 		autenticado.POST("/itens/:id/revenda", revendaHandler.Anunciar)
@@ -392,6 +400,9 @@ func main() {
 		org.GET("/eventos/:id/pixels", pixelsHandler.Obter)
 		org.PUT("/eventos/:id/pixels", pixelsHandler.Salvar)
 		org.GET("/eventos/:id/perguntas", perguntasHandler.Listar)
+		org.GET("/eventos/:id/votacao", concursoHandler.Situacao)
+		org.POST("/eventos/:id/votacao", concursoHandler.DefinirVotacao)
+		org.POST("/eventos/:id/devolutiva", concursoHandler.DefinirDevolutiva)
 		org.POST("/eventos/:id/perguntas", perguntasHandler.Salvar)
 		org.PUT("/eventos/:id/perguntas/:pergunta", perguntasHandler.Salvar)
 		org.DELETE("/eventos/:id/perguntas/:pergunta", perguntasHandler.Remover)

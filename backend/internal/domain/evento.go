@@ -71,10 +71,14 @@ type Evento struct {
 	QRRotativo              bool
 	CorTema                 string
 	// Item 7.5: pixels de anúncio do organizador (só os IDs).
-	PixelMeta                 string
-	PixelGA4                  string `gorm:"column:pixel_ga4"`
-	PixelTikTok               string `gorm:"column:pixel_tiktok"`
-	ResultadoLiberadoEm       *time.Time
+	PixelMeta           string
+	PixelGA4            string `gorm:"column:pixel_ga4"`
+	PixelTikTok         string `gorm:"column:pixel_tiktok"`
+	ResultadoLiberadoEm *time.Time
+	// Item 8.2: voto do público e devolutiva dos jurados.
+	VotacaoAbertaEm           *time.Time
+	VotacaoFechadaEm          *time.Time
+	DevolutivaLiberadaEm      *time.Time
 	PoliticaCancelamentoTexto string
 	MaxItensPorPedido         int
 	MaxIngressosPorConta      int // 0 = sem limite (item 5.3)

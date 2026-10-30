@@ -16,6 +16,7 @@ import { CortesiasCard } from '@/components/cortesias-card'
 import { SessoesCard, rotuloSessao, type Sessao } from '@/components/sessoes-card'
 import { CronogramaCard, OrdemApresentacaoCard } from '@/components/cronograma-cards'
 import { CriteriosCard, RankingCard } from '@/components/resultado-cards'
+import { VotacaoCard } from '@/components/concurso-publico'
 import { SolicitacoesCard } from '@/components/solicitacoes-card'
 import { CuponsCard } from '@/components/cupons-card'
 import { DivulgacaoCard } from '@/components/divulgacao-card'
@@ -323,6 +324,7 @@ export default function EventoEditar() {
         <>
           <CriteriosCard eventoId={Number(id)} />
           <RankingCard eventoId={Number(id)} />
+          <VotacaoCard eventoId={Number(id)} />
         </>
       )}
 

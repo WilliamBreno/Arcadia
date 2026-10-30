@@ -18,6 +18,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
 import { ListaCronograma } from '@/components/cronograma-cards'
 import { ListaRanking } from '@/components/resultado-cards'
+import { MinhaDevolutiva, PremioPublico, VotacaoPublico, type LinhaVoto } from '@/components/concurso-publico'
 import { Card, CardContent } from '@/components/ui/card'
 import { Carregando } from '@/components/carregando'
 import { EntrarComCodigo } from '@/components/entrar-com-codigo'
@@ -78,7 +79,10 @@ export default function EventoDetalhe() {
     retry: false,
     queryFn: async () => {
       try {
-        return await api<{ ranking: Record<string, { posicao: number; nome: string; nota_final: number }[]> }>(
+        return await api<{
+          ranking: Record<string, { posicao: number; nome: string; nota_final: number; perfil_slug?: string }[]>
+          publico?: Record<string, LinhaVoto[]>
+        }>(
           `/eventos/${slug}/resultado`,
           { semAuth: true },
         )
@@ -555,9 +559,14 @@ export default function EventoDetalhe() {
           <CardContent className="py-4">
             <h2 className="mb-2 text-lg font-semibold text-foreground">Resultado do concurso</h2>
             <ListaRanking ranking={resultado.ranking} />
+            {resultado.publico && <PremioPublico publico={resultado.publico} />}
           </CardContent>
         </Card>
       )}
+
+      {/* Item 8.2: voto da plateia (com a votação aberta) e devolutiva do participante. */}
+      <VotacaoPublico slug={evento.slug} />
+      <MinhaDevolutiva slug={evento.slug} />
 
       {(evento.modo_participantes === 'inscricao_aberta' || evento.modo_participantes === 'ambos') && (
         <div className="mt-6 flex items-center justify-between rounded-lg border border-border p-4">

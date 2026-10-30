@@ -20,7 +20,11 @@ type AvaliacaoHandler struct {
 	service            *service.AvaliacaoService
 	perfis             *service.PerfilTalentoService
 	db                 *gorm.DB
+	concurso           *service.ConcursoPublicoService
 }
+
+// DefinirConcurso liga o prêmio do público ao resultado (item 8.2).
+func (h *AvaliacaoHandler) DefinirConcurso(c *service.ConcursoPublicoService) { h.concurso = c }
 
 func NovoAvaliacaoHandler(o *OrganizadorHandler, e *repository.EventoRepository, s *service.AvaliacaoService) *AvaliacaoHandler {
 	return &AvaliacaoHandler{organizadorHandler: o, eventos: e, service: s}
@@ -257,7 +261,14 @@ func (h *AvaliacaoHandler) ResultadoPublico(c *gin.Context) {
 	}
 	resp := paraRankingResposta(r, true)
 	h.ligarPerfis(r, resp)
-	c.JSON(http.StatusOK, gin.H{"ranking": resp})
+	saida := gin.H{"ranking": resp}
+	// Item 8.2: prêmio do público, quando a votação já foi encerrada.
+	if h.concurso != nil && service.PremioPublicoVisivel(evento) {
+		if cont, err := h.concurso.Contagem(evento.ID, h.perfis); err == nil {
+			saida["publico"] = cont
+		}
+	}
+	c.JSON(http.StatusOK, saida)
 }
 
 // DefinirPerfis liga o nome no resultado ao perfil público do talento (8.1).

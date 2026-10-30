@@ -40,7 +40,7 @@ export function ListaRanking({ ranking }: { ranking: Ranking }) {
           <p className="mb-1 text-sm font-medium text-foreground">{rotuloTipo[tipo] ?? tipo}</p>
           {ranking[tipo].map((l, i) => (
             <div
-              key={`${tipo}-${l.ficha_id ?? i}`}
+              key={`${tipo}-${l.ficha_id || i}`}
               className="flex items-center justify-between border-b border-border py-1 text-sm"
             >
               <span className="text-foreground">

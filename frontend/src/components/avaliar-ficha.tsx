@@ -76,7 +76,7 @@ export function AvaliarFicha({ slug, fichaId }: { slug: string; fichaId: number 
             onChange={(e) => setValores({ ...valores, [c.id]: { nota: e.target.value, comentario: valores[c.id]?.comentario ?? '' } })}
           />
           <Input
-            placeholder="Comentário (privado)"
+            placeholder="Comentário (o participante pode ver, sem seu nome)"
             disabled={finalizada}
             value={valores[c.id]?.comentario ?? ''}
             onChange={(e) => setValores({ ...valores, [c.id]: { nota: valores[c.id]?.nota ?? '', comentario: e.target.value } })}
