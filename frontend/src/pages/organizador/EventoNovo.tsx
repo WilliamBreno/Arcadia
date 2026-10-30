@@ -6,6 +6,7 @@ import { z } from 'zod'
 
 import { api, ApiError } from '@/lib/api'
 import type { Evento } from '@/lib/evento'
+import { CapaEvento } from '@/components/capa-evento'
 import { CategoriaSelect } from '@/components/categoria-select'
 import { Carregando } from '@/components/carregando'
 import { VoltarLink } from '@/components/voltar-link'
@@ -29,6 +30,7 @@ export default function EventoNovo() {
   // Título digitado na página "Quanto custa" (item 6.3) chega pela URL.
   const [params] = useSearchParams()
   const [erro, setErro] = useState<string | null>(null)
+  const [capa, setCapa] = useState('')
 
   const { organizador, carregando } = useOrganizador()
   const {
@@ -43,7 +45,7 @@ export default function EventoNovo() {
   const aoEnviar = async (dados: FormValues) => {
     setErro(null)
     try {
-      const evento = await api<Evento>('/org/eventos', { method: 'POST', body: dados })
+      const evento = await api<Evento>('/org/eventos', { method: 'POST', body: { ...dados, capa_url: capa } })
       navigate(`/organizador/eventos/${evento.id}`, { replace: true })
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : 'Erro ao criar evento')
@@ -113,6 +115,7 @@ export default function EventoNovo() {
               </select>
               <p className="text-xs text-muted-foreground">{DESCRICAO_TIPO_ACESSO[tipoAcesso]}</p>
             </div>
+            <CapaEvento valor={capa} aoMudar={setCapa} />
             {erro && <p className="text-sm text-destructive">{erro}</p>}
             <Button type="submit" disabled={isSubmitting}>
               Continuar

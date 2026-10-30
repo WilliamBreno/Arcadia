@@ -28,6 +28,7 @@ import { CategoriaSelect } from '@/components/categoria-select'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { CapaEvento } from '@/components/capa-evento'
 import { CircuitoCard } from '@/components/circuito-card'
 import { ExpositoresCard } from '@/components/expositores-card'
 import { GaleriaCard } from '@/components/galeria-card'
@@ -76,6 +77,8 @@ export default function EventoEditar() {
   const queryClient = useQueryClient()
   const [erro, setErro] = useState<string | null>(null)
   const [problemasPublicacao, setProblemasPublicacao] = useState<string[] | null>(null)
+  // Capa: undefined = sem mudança (vale a do evento).
+  const [capaEditada, setCapaEditada] = useState<string | undefined>(undefined)
 
   const { data: evento } = useQuery({
     queryKey: ['org-evento', id],
@@ -114,10 +117,22 @@ export default function EventoEditar() {
 
   const salvarBasico = async ({ inscricao_reais, ...dados }: FormBasico) => {
     setErro(null)
+    if (!evento) return
     try {
       await api(`/org/eventos/${id}`, {
         method: 'PUT',
         body: {
+          // A API troca o evento inteiro: o que não está neste formulário vai
+          // como está hoje (antes, salvar apagava capa, capacidade, política
+          // de cancelamento e o prazo de inscrição de talentos).
+          capa_url: capaEditada ?? evento.capa_url,
+          timezone: evento.timezone,
+          capacidade_total: evento.capacidade_total,
+          inscricao_talentos_inicio: evento.inscricao_talentos_inicio,
+          inscricao_talentos_fim: evento.inscricao_talentos_fim,
+          politica_cancelamento_texto: evento.politica_cancelamento_texto,
+          max_itens_por_pedido: evento.max_itens_por_pedido,
+          garantia_habilitada: evento.garantia_habilitada,
           ...dados,
           inscricao_talento_centavos: Math.round(Number(inscricao_reais || 0) * 100),
           local_id: dados.local_id ? Number(dados.local_id) : null,
@@ -125,6 +140,7 @@ export default function EventoEditar() {
           fim_em: paraISO(dados.fim_em),
         },
       })
+      setCapaEditada(undefined)
       queryClient.invalidateQueries({ queryKey: ['org-evento', id] })
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : 'Erro ao salvar')
@@ -172,6 +188,8 @@ export default function EventoEditar() {
               <Label htmlFor="descricao">Descrição</Label>
               <Textarea id="descricao" rows={4} {...register('descricao')} />
             </div>
+            <CapaEvento valor={capaEditada ?? evento.capa_url} aoMudar={setCapaEditada} />
+            {capaEditada !== undefined && <p className="-mt-2 text-xs text-muted-foreground">Clique em "Salvar" para aplicar a nova capa.</p>}
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="categoria">Categoria</Label>

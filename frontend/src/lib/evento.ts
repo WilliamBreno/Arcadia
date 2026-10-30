@@ -16,6 +16,8 @@ export type Evento = {
   modo_participantes: 'nenhum' | 'convite' | 'inscricao_aberta' | 'ambos'
   // Item 8.4: valor da inscrição de talento (0 = gratuita).
   inscricao_talento_centavos: number
+  inscricao_talentos_inicio: string | null
+  inscricao_talentos_fim: string | null
   capacidade_total: number | null
   garantia_habilitada: boolean
   taxa_paga_por: 'comprador' | 'organizador'
