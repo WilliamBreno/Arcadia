@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button'
 import { ListaCronograma } from '@/components/cronograma-cards'
 import { ListaRanking } from '@/components/resultado-cards'
 import { MinhaDevolutiva, PremioPublico, VotacaoPublico, type LinhaVoto } from '@/components/concurso-publico'
+import { MeuQRParticipante } from '@/components/meu-qr-participante'
 import { Card, CardContent } from '@/components/ui/card'
 import { Carregando } from '@/components/carregando'
 import { EntrarComCodigo } from '@/components/entrar-com-codigo'
@@ -567,6 +568,7 @@ export default function EventoDetalhe() {
       {/* Item 8.2: voto da plateia (com a votação aberta) e devolutiva do participante. */}
       <VotacaoPublico slug={evento.slug} />
       <MinhaDevolutiva slug={evento.slug} />
+      <MeuQRParticipante slug={evento.slug} />
 
       {(evento.modo_participantes === 'inscricao_aberta' || evento.modo_participantes === 'ambos') && (
         <div className="mt-6 flex items-center justify-between rounded-lg border border-border p-4">

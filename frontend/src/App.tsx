@@ -26,6 +26,8 @@ import Cookies from '@/pages/Cookies'
 import PerfilTalento from '@/pages/PerfilTalento'
 import MeuTalento from '@/pages/MeuTalento'
 import AutorizarPerfil from '@/pages/AutorizarPerfil'
+import PalcoCamarim from '@/pages/PalcoCamarim'
+import Telao from '@/pages/Telao'
 import WidgetEvento from '@/pages/WidgetEvento'
 import CidadeEventos from '@/pages/CidadeEventos'
 import ColecaoPublica from '@/pages/ColecaoPublica'
@@ -46,6 +48,8 @@ function App() {
     <Routes>
       {/* Item 7.5: widget para colar no site do organizador (sem cabeçalho). */}
       <Route path="/widget/e/:slug" element={<WidgetEvento />} />
+      {/* Item 8.3: telão em tela cheia, aberto por link secreto. */}
+      <Route path="/telao/:token" element={<Telao />} />
       <Route element={<SiteLayout />}>
         <Route path="/" element={<Home />} />
         <Route path="/e/:slug" element={<EventoDetalhe />} />
@@ -66,6 +70,7 @@ function App() {
 
         <Route element={<ProtectedRoute />}>
           <Route path="/meu-talento" element={<MeuTalento />} />
+          <Route path="/palco/:eventoId" element={<PalcoCamarim />} />
           <Route path="/e/:slug/inscricao" element={<Inscricao />} />
           <Route path="/e/:slug/jurado" element={<AreaJurado />} />
           <Route path="/pedidos/:id" element={<Pedido />} />

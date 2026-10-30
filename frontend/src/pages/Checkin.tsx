@@ -1,6 +1,6 @@
 import { Html5Qrcode } from 'html5-qrcode'
 import { useEffect, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 
 import { ApiError } from '@/lib/api'
 import { buscarCheckin, resumoCheckin, validarCheckin, type ItemBusca, type ResumoCheckin, type ValidarCheckinResposta } from '@/lib/checkin'
@@ -237,7 +237,13 @@ export default function Checkin() {
 
   return (
     <main className="mx-auto max-w-md px-4 py-8">
-      <h1 className="mb-4 text-xl font-semibold text-foreground">Check-in</h1>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold text-foreground">Check-in</h1>
+        {/* Item 8.3: a mesma equipe opera o camarim e o palco. */}
+        <Link to={`/palco/${id}`} className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground">
+          Palco e camarim
+        </Link>
+      </div>
 
       <div className="mb-4 flex items-center justify-between rounded-lg border border-border px-4 py-2">
         <span className="text-sm text-muted-foreground">Entradas</span>

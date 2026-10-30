@@ -3,6 +3,8 @@ package service
 import (
 	"errors"
 	"fmt"
+	"html"
+	"strings"
 	"time"
 
 	"gorm.io/datatypes"
@@ -72,7 +74,11 @@ type FichaService struct {
 	eventos     *repository.EventoRepository
 	usuarios    *repository.UsuarioRepository
 	mailCliente *mail.Cliente
+	frontendURL string // item 8.3: link do QR de participante no e-mail
 }
+
+// DefinirFrontendURL liga o link do QR de participante no e-mail de aprovação (8.3).
+func (s *FichaService) DefinirFrontendURL(u string) { s.frontendURL = strings.TrimRight(u, "/") }
 
 func NovoFichaService(
 	fichas *repository.FichaParticipacaoRepository,
@@ -100,14 +106,18 @@ func (s *FichaService) enviarEmailStatusFicha(ficha *domain.FichaParticipacao) {
 	switch ficha.Status {
 	case domain.StatusFichaAprovado:
 		assunto = "Inscrição aprovada — " + evento.Titulo
-		corpo = fmt.Sprintf(`<p>Olá, %s!</p><p>Sua inscrição como %s em <strong>%s</strong> foi aprovada.</p>`, ficha.Nome, ficha.Papel, evento.Titulo)
+		corpo = fmt.Sprintf(`<p>Olá, %s!</p><p>Sua inscrição como %s em <strong>%s</strong> foi aprovada.</p>`, html.EscapeString(ficha.Nome), ficha.Papel, html.EscapeString(evento.Titulo))
+		if ficha.Papel == domain.PapelParticipante && s.frontendURL != "" {
+			// Item 8.3: o QR do camarim fica na página do evento, para a pessoa logada.
+			corpo += fmt.Sprintf(`<p>No dia, mostre seu <strong>QR de participante</strong> na entrada do camarim. Ele fica na página do evento, com você conectado: <a href="%s/e/%s#meu-qr">abrir meu QR</a>.</p>`, s.frontendURL, evento.Slug)
+		}
 	case domain.StatusFichaRejeitado:
 		assunto = "Inscrição não aprovada — " + evento.Titulo
 		motivo := ""
 		if ficha.MotivoRejeicao != "" {
-			motivo = fmt.Sprintf("<p>Motivo: %s</p>", ficha.MotivoRejeicao)
+			motivo = fmt.Sprintf("<p>Motivo: %s</p>", html.EscapeString(ficha.MotivoRejeicao))
 		}
-		corpo = fmt.Sprintf(`<p>Olá, %s!</p><p>Sua inscrição como %s em <strong>%s</strong> não foi aprovada.</p>%s`, ficha.Nome, ficha.Papel, evento.Titulo, motivo)
+		corpo = fmt.Sprintf(`<p>Olá, %s!</p><p>Sua inscrição como %s em <strong>%s</strong> não foi aprovada.</p>%s`, html.EscapeString(ficha.Nome), ficha.Papel, html.EscapeString(evento.Titulo), motivo)
 	default:
 		return
 	}

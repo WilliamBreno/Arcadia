@@ -325,6 +325,18 @@ export default function EventoEditar() {
           <CriteriosCard eventoId={Number(id)} />
           <RankingCard eventoId={Number(id)} />
           <VotacaoCard eventoId={Number(id)} />
+          <Link
+            to={`/palco/${id}`}
+            className="mt-6 flex items-center justify-between gap-3 rounded-xl border border-border p-4 transition-colors hover:border-foreground/30"
+          >
+            <span>
+              <span className="block font-medium text-foreground">Palco, telão e camarim</span>
+              <span className="block text-sm text-muted-foreground">No dia: chamar participantes, controlar o telão e receber no camarim.</span>
+            </span>
+            <span aria-hidden="true" className="text-muted-foreground">
+              →
+            </span>
+          </Link>
         </>
       )}
 
