@@ -33,6 +33,7 @@ import { CircuitoCard } from '@/components/circuito-card'
 import { ExpositoresCard } from '@/components/expositores-card'
 import { LugaresCard } from '@/components/lugares-card'
 import { DiaDoEventoCard } from '@/components/dia-evento-card'
+import { CertificadosCard } from '@/components/certificados-card'
 import { GaleriaCard } from '@/components/galeria-card'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -356,6 +357,8 @@ export default function EventoEditar() {
       <LugaresCard eventoId={Number(id)} tipos={tiposIngresso ?? []} />
 
       <DiaDoEventoCard eventoId={Number(id)} />
+
+      <CertificadosCard eventoId={Number(id)} />
 
       <VendasCard eventoId={Number(id)} />
 

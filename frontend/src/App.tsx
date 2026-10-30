@@ -9,6 +9,8 @@ import Convite from '@/pages/Convite'
 import EventoDetalhe from '@/pages/EventoDetalhe'
 import Home from '@/pages/Home'
 import IngressoPublico from '@/pages/IngressoPublico'
+import Certificado from '@/pages/Certificado'
+import Pesquisa from '@/pages/Pesquisa'
 import Inscricao from '@/pages/Inscricao'
 import Login from '@/pages/Login'
 import MeusEventos from '@/pages/MeusEventos'
@@ -76,6 +78,8 @@ function App() {
         <Route path="/o/:slug" element={<OrganizadorPublico />} />
         <Route path="/convite/:token" element={<Convite />} />
         <Route path="/ingresso/:codigo/:token" element={<IngressoPublico />} />
+        <Route path="/certificado/:codigo" element={<Certificado />} />
+        <Route path="/pesquisa/:token" element={<Pesquisa />} />
         <Route path="/login" element={<Login />} />
         <Route path="/cadastro" element={<Cadastro />} />
 

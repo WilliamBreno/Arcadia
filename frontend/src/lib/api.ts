@@ -69,3 +69,6 @@ export async function baixarArquivo(caminho: string, nomeArquivo: string) {
   a.click()
   URL.revokeObjectURL(url)
 }
+
+// urlApi: endereço completo de uma rota pública (para links de download).
+export const urlApi = (caminho: string) => `${BASE_URL}${caminho}`

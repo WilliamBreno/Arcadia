@@ -76,7 +76,11 @@ type AvaliacaoPublicoService struct {
 	db          *gorm.DB
 	mail        *mail.Cliente
 	frontendURL string
+	posEvento   *PosEventoService // item 9.7
 }
+
+// DefinirPosEvento liga o e-mail pós-evento completo (item 9.7).
+func (s *AvaliacaoPublicoService) DefinirPosEvento(p *PosEventoService) { s.posEvento = p }
 
 func NovoAvaliacaoPublicoService(db *gorm.DB, m *mail.Cliente, frontendURL string) *AvaliacaoPublicoService {
 	return &AvaliacaoPublicoService{db: db, mail: m, frontendURL: strings.TrimRight(frontendURL, "/")}
@@ -246,6 +250,11 @@ func deveConvidar(e *domain.Evento, agora time.Time) bool {
 // ConvidarParaAvaliar manda o e-mail "Como foi?" a quem fez check-in (uma
 // vez por pessoa e evento). Roda junto do job de lembretes.
 func (s *AvaliacaoPublicoService) ConvidarParaAvaliar(agora time.Time) (int, error) {
+	// Item 9.7: o e-mail pós-evento passou a levar também a pesquisa e os
+	// certificados (um e-mail só por pessoa).
+	if s.posEvento != nil {
+		return s.posEvento.Processar(agora)
+	}
 	var eventos []domain.Evento
 	if err := s.db.Where("status = ? AND inicio_em BETWEEN ? AND ?", domain.StatusEventoPublicado, agora.AddDate(0, 0, -40), agora).
 		Find(&eventos).Error; err != nil {

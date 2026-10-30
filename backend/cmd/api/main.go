@@ -254,6 +254,10 @@ func main() {
 	expositorHandler := handler.NovoExpositorHandler(expositorService, eventoRepo, organizadorHandler)
 	// Item 9.6: painel ao vivo, importados e credenciais.
 	diaHandler := handler.NovoDiaDoEventoHandler(checkinService, service.NovoDiaDoEventoService(db, eventoRepo, cfg.JWTSecret), organizadorHandler)
+	// Item 9.7: certificados e pesquisa pós-evento.
+	posEventoService := service.NovoPosEventoService(db, mailCliente, cfg.JWTSecret, cfg.FrontendURL, cfg.NomePlataforma)
+	avaliacaoPublicoService.DefinirPosEvento(posEventoService)
+	posEventoHandler := handler.NovoPosEventoHandler(posEventoService, eventoRepo, usuarioRepo, organizadorHandler)
 	lugaresHandler := handler.NovoLugaresHandler(service.NovoLugaresService(db, eventoRepo), organizadorHandler) // item 9.5
 	// Item 9.4: venda na porta (organizador e equipe de check-in).
 	checkoutService.DefinirAcessoPorta(checkinService.TemAcesso)
@@ -296,6 +300,11 @@ func main() {
 		v1.GET("/divulgador/:token", afiliadoHandler.PainelDivulgador)
 		v1.GET("/eventos/:slug/expositores", expositorHandler.Publico)
 		v1.GET("/eventos/:slug/lugares", lugaresHandler.Publico)
+		v1.GET("/certificados/:codigo", posEventoHandler.Validar)
+		v1.GET("/certificados/:codigo/pdf", posEventoHandler.PDF)
+		v1.POST("/certificados/:codigo/nome", posEventoHandler.CorrigirNome)
+		v1.GET("/pesquisa/:token", posEventoHandler.Pesquisa)
+		v1.POST("/pesquisa/:token", posEventoHandler.Responder)
 		v1.GET("/eventos/:slug/galeria", galeriaHandler.Publica)
 		v1.POST("/galeria/fotos/:id/remocao", galeriaHandler.PedirRemocao)
 		v1.GET("/organizadores/:slug", publicoHandler.ObterOrganizador)
@@ -434,6 +443,8 @@ func main() {
 		autenticado.GET("/checkin/eventos/:id/resumo", checkinHandler.Resumo)
 		autenticado.GET("/checkin/eventos/:id/busca", checkinHandler.Buscar)
 		autenticado.GET("/checkin/eventos/:id/portoes", diaHandler.Portoes)
+		autenticado.GET("/me/certificados", posEventoHandler.Meus)
+		autenticado.POST("/me/certificados/:codigo/nome", posEventoHandler.CorrigirNomeLogado)
 		autenticado.POST("/checkin/eventos/:id/importado", diaHandler.Importado)
 		autenticado.POST("/checkin/eventos/:id/credencial-evento", diaHandler.Credencial)
 		autenticado.GET("/checkin/eventos/:id/ao-vivo", diaHandler.AoVivo)
@@ -530,6 +541,10 @@ func main() {
 		org.GET("/eventos/:id/expositores", expositorHandler.Painel)
 		org.GET("/eventos/:id/lugares", lugaresHandler.Painel)
 		org.GET("/eventos/:id/portoes", diaHandler.OrgPortoes)
+		org.GET("/eventos/:id/certificados", posEventoHandler.OrgResumo)
+		org.PUT("/eventos/:id/certificados/config", posEventoHandler.OrgSalvarConfig)
+		org.POST("/eventos/:id/certificados/emitir", posEventoHandler.OrgEmitir)
+		org.GET("/eventos/:id/pesquisa", posEventoHandler.OrgPesquisa)
 		org.PUT("/eventos/:id/portoes", diaHandler.DefinirPortoes)
 		org.GET("/eventos/:id/importados", diaHandler.Importados)
 		org.POST("/eventos/:id/importados", diaHandler.Importar)
