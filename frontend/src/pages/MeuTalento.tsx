@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
+import { VoltarLink } from '@/components/voltar-link'
 import { api, ApiError } from '@/lib/api'
 import { idade, rotuloTipo, type DadosPerfil, type MeuPerfil } from '@/lib/talento'
 import { UploadImagem } from '@/components/upload-imagem'
@@ -73,6 +74,7 @@ export default function MeuTalento() {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-12">
+      <VoltarLink to="/meus-eventos">Voltar aos meus eventos</VoltarLink>
       <h1 className="text-2xl font-semibold text-foreground">Meu perfil de talento</h1>
       <p className="mt-1 text-muted-foreground">
         Uma página sua, para compartilhar, com seus personagens e colocações nos concursos que usam o Evve.

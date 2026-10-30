@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router-dom'
 import { z } from 'zod'
 
+import { VoltarLink } from '@/components/voltar-link'
 import { api, ApiError } from '@/lib/api'
 import type { Local } from '@/lib/organizador'
 import { MapaPicker } from '@/components/mapa-picker'
@@ -78,6 +79,7 @@ export default function LocalForm() {
 
   return (
     <main className="mx-auto max-w-lg px-4 py-12">
+      <VoltarLink to="/organizador/locais">Voltar aos locais</VoltarLink>
       <Card>
         <CardHeader>
           <CardTitle>{editando ? 'Editar local' : 'Novo local'}</CardTitle>

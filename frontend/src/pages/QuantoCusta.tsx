@@ -3,6 +3,7 @@ import { ShieldCheck } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
+import { VoltarBotao } from '@/components/voltar-link'
 import { Surgir } from '@/components/surgir'
 
 import { api } from '@/lib/api'
@@ -404,6 +405,9 @@ export default function QuantoCusta() {
   return (
     <main className="bg-muted">
       <div className="px-3 py-10 sm:px-6 sm:py-16">
+        <div className="mx-auto max-w-5xl">
+          <VoltarBotao fallback="/" />
+        </div>
         <Surgir>
           <Ingresso tabela={tabela} />
         </Surgir>

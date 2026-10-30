@@ -2,6 +2,7 @@ import { Html5Qrcode } from 'html5-qrcode'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
+import { VoltarBotao } from '@/components/voltar-link'
 import { ApiError } from '@/lib/api'
 import { buscarCheckin, resumoCheckin, validarCheckin, type ItemBusca, type ResumoCheckin, type ValidarCheckinResposta } from '@/lib/checkin'
 import {
@@ -237,6 +238,7 @@ export default function Checkin() {
 
   return (
     <main className="mx-auto max-w-md px-4 py-8">
+      <VoltarBotao fallback="/meus-eventos" />
       <div className="mb-4 flex items-center justify-between gap-3">
         <h1 className="text-xl font-semibold text-foreground">Check-in</h1>
         {/* Item 8.3: a mesma equipe opera o camarim e o palco. */}

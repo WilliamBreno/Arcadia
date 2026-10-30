@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 
+import { VoltarLink } from '@/components/voltar-link'
 import { formatarCentavos } from '@/lib/evento'
 import { obterExtrato } from '@/lib/financeiro'
 import { Card, CardContent } from '@/components/ui/card'
@@ -11,6 +12,7 @@ export default function Repasses() {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-12">
+      <VoltarLink to="/organizador/eventos">Voltar ao painel</VoltarLink>
       <h1 className="mb-2 text-2xl font-semibold text-foreground">Repasses</h1>
       <p className="mb-6 text-sm text-muted-foreground">
         A receber: <strong className="text-foreground">{formatarCentavos(data?.a_receber_centavos ?? 0)}</strong>

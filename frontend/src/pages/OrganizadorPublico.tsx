@@ -1,3 +1,4 @@
+import { VoltarBotao } from '@/components/voltar-link'
 import { SeloVerificado } from '@/components/selo-verificado'
 import { useQuery } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
@@ -25,6 +26,7 @@ export default function OrganizadorPublico() {
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-12">
+      <VoltarBotao fallback="/" />
       <div className="mb-8 flex flex-col items-center text-center">
         {data.organizador.logo_url && (
           <img src={data.organizador.logo_url} alt="" className="mb-4 size-20 rounded-full object-cover" />

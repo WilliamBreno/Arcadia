@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 
+import { VoltarLink } from '@/components/voltar-link'
 import { api, ApiError } from '@/lib/api'
 import type { Local } from '@/lib/organizador'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -21,6 +22,7 @@ export default function Locais() {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-12">
+      <VoltarLink to="/organizador/eventos">Voltar ao painel</VoltarLink>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-foreground">Locais</h1>
         <Link to="/organizador/locais/novo" className={buttonVariants()}>

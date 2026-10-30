@@ -7,6 +7,7 @@ import { z } from 'zod'
 
 import { Link } from 'react-router-dom'
 
+import { VoltarLink } from '@/components/voltar-link'
 import { api, ApiError } from '@/lib/api'
 import { adicionarStaff, listarStaff, removerStaff, type Staff } from '@/lib/checkin'
 import { formatarCentavos, type Evento, type TipoIngresso } from '@/lib/evento'
@@ -142,6 +143,7 @@ export default function EventoEditar() {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-12">
+      <VoltarLink to="/organizador/eventos">Voltar aos meus eventos</VoltarLink>
       <h1 className="mb-6 text-2xl font-semibold text-foreground">
         {evento.titulo} <span className="text-sm font-normal text-muted-foreground">({evento.status})</span>
       </h1>

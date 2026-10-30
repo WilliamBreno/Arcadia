@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 
+import { VoltarBotao } from '@/components/voltar-link'
 import { aoMudarEscolha, lerEscolha, salvarEscolha } from '@/lib/consentimento'
 import { Button } from '@/components/ui/button'
 
@@ -20,6 +21,7 @@ export default function Cookies() {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-12">
+      <VoltarBotao fallback="/" />
       <h1 className="text-3xl font-bold text-foreground">Cookies e pixels</h1>
 
       <section className="mt-8">

@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 
+import { VoltarLink } from '@/components/voltar-link'
 import { api, ApiError } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -38,6 +39,7 @@ export default function Equipe() {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-12">
+      <VoltarLink to="/organizador/eventos">Voltar ao painel</VoltarLink>
       <h1 className="mb-2 text-2xl font-semibold text-foreground">Equipe</h1>
       <p className="mb-6 text-sm text-muted-foreground">
         Gestores (precisam ter conta na plataforma) criam e editam eventos, ingressos, cupons, participantes, convites, staff e fazem check-in.

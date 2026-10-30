@@ -4,6 +4,7 @@ import { SiteFooter } from '@/components/layout/site-footer'
 import { SiteHeader } from '@/components/layout/site-header'
 import { BannerCookies } from '@/components/banner-cookies'
 import { RotaDosPixels } from '@/components/rota-dos-pixels'
+import { TopoAoNavegar } from '@/components/layout/topo-ao-navegar'
 
 export function SiteLayout() {
   return (
@@ -15,6 +16,7 @@ export function SiteLayout() {
       <SiteFooter />
       <BannerCookies />
       <RotaDosPixels />
+      <TopoAoNavegar />
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
+import { VoltarLink } from '@/components/voltar-link'
 import { api, ApiError } from '@/lib/api'
 import { UploadAudio } from '@/components/upload-audio'
 import { UploadImagem } from '@/components/upload-imagem'
@@ -93,6 +94,7 @@ export default function Inscricao() {
 
   return (
     <main className="mx-auto max-w-lg px-4 py-12">
+      <VoltarLink to={`/e/${slug}`}>Voltar ao evento</VoltarLink>
       <Card>
         <CardHeader>
           <CardTitle>Inscrição de participante</CardTitle>

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 
+import { VoltarLink } from '@/components/voltar-link'
 import { api, ApiError } from '@/lib/api'
 import { formatarCentavos } from '@/lib/evento'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -42,6 +43,7 @@ export default function Relatorios() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
+      <VoltarLink to="/organizador/eventos">Voltar ao painel</VoltarLink>
       <h1 className="mb-6 text-2xl font-semibold text-foreground">Relatórios</h1>
 
       <div className="mb-6 grid grid-cols-3 gap-4">

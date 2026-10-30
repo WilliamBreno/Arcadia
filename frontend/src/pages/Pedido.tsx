@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 
+import { VoltarLink } from '@/components/voltar-link'
 import { api, ApiError } from '@/lib/api'
 import type { ItemPedido, Pedido as PedidoTipo } from '@/lib/checkout'
 import { formatarCentavos } from '@/lib/evento'
@@ -67,6 +68,7 @@ export default function Pedido() {
 
   return (
     <main className="mx-auto max-w-lg px-4 py-12">
+      <VoltarLink to={pedido.evento_slug ? `/e/${pedido.evento_slug}` : '/meus-ingressos'}>{pedido.evento_slug ? 'Voltar ao evento' : 'Voltar aos meus ingressos'}</VoltarLink>
       {banner && (
         <div className={`mb-6 rounded-lg border p-3 text-sm ${banner.classe}`}>
           {banner.texto}{' '}

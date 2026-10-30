@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { QRCodeSVG } from 'qrcode.react'
 import { useParams } from 'react-router-dom'
 
+import { VoltarBotao } from '@/components/voltar-link'
 import { api, ApiError } from '@/lib/api'
 import { useQR } from '@/lib/use-qr'
 import { Card, CardContent } from '@/components/ui/card'
@@ -35,6 +36,7 @@ export default function IngressoPublico() {
   const ativo = data.status === 'pago'
   return (
     <main className="mx-auto max-w-sm px-4 py-12">
+      <VoltarBotao fallback="/" />
       <Card>
         <CardContent className="flex flex-col items-center gap-3 py-6 text-center">
           <p className="text-lg font-semibold text-foreground">{data.evento_titulo}</p>

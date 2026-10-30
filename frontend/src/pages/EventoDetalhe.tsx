@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
+import { VoltarBotao } from '@/components/voltar-link'
 import { api, ApiError } from '@/lib/api'
 import type { Pedido } from '@/lib/checkout'
 import { formatarCentavos } from '@/lib/evento'
@@ -261,6 +262,7 @@ export default function EventoDetalhe() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12" style={estiloTema(evento.cor_tema)}>
+      <VoltarBotao fallback="/" />
       {evento.capa_url && <img src={evento.capa_url} alt="" className="mb-6 aspect-video w-full rounded-xl object-cover" />}
 
       <p className="text-sm font-medium text-primary">

@@ -3,6 +3,7 @@ import { Medal, Share2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
+import { VoltarBotao } from '@/components/voltar-link'
 import { api, ApiError } from '@/lib/api'
 import { rotuloTipo, type PerfilPublico } from '@/lib/talento'
 import { Button } from '@/components/ui/button'
@@ -70,6 +71,7 @@ export default function PerfilTalento() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-10">
+      <VoltarBotao fallback="/" />
       <header className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-end sm:text-left">
         {p.foto_url ? (
           <img src={p.foto_url} alt={`Foto de ${p.nome_artistico}`} className="size-32 shrink-0 rounded-full object-cover" />

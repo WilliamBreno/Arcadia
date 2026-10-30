@@ -62,6 +62,8 @@ type pedidoResposta struct {
 	Pixels        *service.Pixels      `json:"pixels,omitempty"`
 	// Item 7.6: até quantas vezes o cartão pode dividir este pedido.
 	MaxParcelas int `json:"max_parcelas"`
+	// Endereço do evento, para o botão "Voltar ao evento".
+	EventoSlug string `json:"evento_slug,omitempty"`
 }
 
 func paraPedidoResposta(p *domain.Pedido, itens []domain.ItemPedido) pedidoResposta {
@@ -159,6 +161,7 @@ func (h *PedidoHandler) Obter(c *gin.Context) {
 	// do evento (se o visitante aceitou os cookies).
 	if e, err := h.eventos.BuscarPorID(pedido.EventoID); err == nil {
 		resp.Pixels = &service.Pixels{Meta: e.PixelMeta, GA4: e.PixelGA4, TikTok: e.PixelTikTok}
+		resp.EventoSlug = e.Slug
 	}
 	c.JSON(http.StatusOK, resp)
 }

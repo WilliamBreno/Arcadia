@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 
+import { VoltarLink } from '@/components/voltar-link'
 import { api, ApiError } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -40,6 +41,7 @@ export default function ApiKeys() {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-12">
+      <VoltarLink to="/organizador/eventos">Voltar ao painel</VoltarLink>
       <h1 className="mb-2 text-2xl font-semibold text-foreground">API para integrações</h1>
       <p className="mb-4 text-sm text-muted-foreground">
         Somente leitura, escopo dos seus eventos. Use a chave só em servidores (nunca em site ou app). Envie no header <code>X-API-Key</code>.

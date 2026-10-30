@@ -3,6 +3,7 @@ import { Html5Qrcode } from 'html5-qrcode'
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 
+import { VoltarBotao } from '@/components/voltar-link'
 import { ApiError } from '@/lib/api'
 import {
   chamar,
@@ -76,6 +77,7 @@ export default function PalcoCamarim() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6">
+      <VoltarBotao fallback={`/checkin/${eventoId}`} />
       <h1 className="text-2xl font-semibold text-foreground">Palco e camarim</h1>
       <div role="tablist" aria-label="Seções" className="mt-4 grid grid-cols-2 gap-2">
         {(['palco', 'camarim'] as const).map((a) => (

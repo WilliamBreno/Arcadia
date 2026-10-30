@@ -18,6 +18,7 @@ export type ItemPedido = {
 export type Pedido = {
   id: number
   evento_id: number
+  evento_slug?: string
   status: 'aberto' | 'aguardando_pagamento' | 'pago' | 'expirado' | 'cancelado' | 'reembolsado_parcial' | 'reembolsado'
   total_centavos: number
   expira_em: string | null

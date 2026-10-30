@@ -1,5 +1,6 @@
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { VoltarBotao } from '@/components/voltar-link'
 import '@/lib/leaflet-icones'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
@@ -69,6 +70,7 @@ export default function MapaEventos() {
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10">
+      <VoltarBotao fallback="/" />
       <h1 className="text-3xl font-bold text-foreground text-balance sm:text-4xl">Eventos perto de você</h1>
       <p className="mt-1 text-muted-foreground">
         {usandoLocalizacao ? 'A partir da sua localização.' : 'Mostrando Maceió. Use sua localização para ver o que está mais perto.'}

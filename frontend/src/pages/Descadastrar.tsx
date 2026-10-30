@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
+import { VoltarBotao } from '@/components/voltar-link'
 import { api, ApiError } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 
@@ -35,6 +36,7 @@ export default function Descadastrar() {
 
   return (
     <main className="mx-auto max-w-md px-4 py-16">
+      <VoltarBotao fallback="/" rotulo="Ir para o início" />
       <h1 className="text-2xl font-bold text-foreground">Avisos por e-mail</h1>
       {feito && carrinho ? (
         <p className="mt-4 text-foreground" role="status">
