@@ -203,6 +203,7 @@ func main() {
 	checkinService.DefinirRevenda(db)
 	jobHandler.DefinirRevenda(revendaService)
 	revendaHandler := handler.NovoRevendaHandler(revendaService)
+	pixelsHandler := handler.NovoPixelsHandler(db, eventoRepo, organizadorHandler) // item 7.5
 	filaHandler := handler.NovoFilaEsperaHandler(filaService, eventoRepo, organizadorHandler)
 	jobHandler.DefinirRecuperacao(service.NovoRecuperacaoCarrinhoService(db, mailCliente, seguirService, cfg.FrontendURL, cfg.NomePlataforma))
 
@@ -373,6 +374,8 @@ func main() {
 		org.POST("/eventos/:id/solicitacoes/:solicitacaoId", plateiaHandler.Decidir)
 		org.GET("/eventos/:id/cupons", cupomHandler.Listar)
 		org.GET("/eventos/:id/fila", filaHandler.Resumo)
+		org.GET("/eventos/:id/pixels", pixelsHandler.Obter)
+		org.PUT("/eventos/:id/pixels", pixelsHandler.Salvar)
 		org.POST("/eventos/:id/cupons", cupomHandler.Criar)
 		org.DELETE("/eventos/:id/cupons/:cupomId", cupomHandler.Desativar)
 

@@ -18,6 +18,7 @@ import { CronogramaCard, OrdemApresentacaoCard } from '@/components/cronograma-c
 import { CriteriosCard, RankingCard } from '@/components/resultado-cards'
 import { SolicitacoesCard } from '@/components/solicitacoes-card'
 import { CuponsCard } from '@/components/cupons-card'
+import { DivulgacaoCard } from '@/components/divulgacao-card'
 import { obterFinanceiroEvento } from '@/lib/financeiro'
 import { obterVendas } from '@/lib/vendas'
 import { CategoriaSelect } from '@/components/categoria-select'
@@ -304,6 +305,8 @@ export default function EventoEditar() {
       <CuponsCard eventoId={Number(id)} />
 
       <AfiliadosCard eventoId={Number(id)} slug={evento.slug} />
+
+      <DivulgacaoCard eventoId={Number(id)} slug={evento.slug} />
 
       <CortesiasCard eventoId={Number(id)} tipos={tiposIngresso ?? []} />
 

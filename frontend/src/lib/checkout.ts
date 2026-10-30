@@ -22,4 +22,6 @@ export type Pedido = {
   total_centavos: number
   expira_em: string | null
   itens: ItemPedido[]
+  // Item 7.5: pixels do evento, para a "compra concluída".
+  pixels?: { meta: string; ga4: string; tiktok: string }
 }

@@ -75,6 +75,8 @@ export type EventoDetalhe = {
   }[]
   taxas: RegraTaxas
   vendas_encerradas: boolean
+  // Item 7.5: IDs dos pixels de anúncio do organizador (vazios = desligados).
+  pixels?: { meta: string; ga4: string; tiktok: string }
   sessoes: { id: number; titulo: string; inicio_em: string; fim_em: string | null; status: 'ativa' | 'cancelada' }[]
   cronograma: { id: number; titulo: string; descricao: string; local: string; inicio_em: string; fim_em: string | null }[]
 }

@@ -22,6 +22,8 @@ import AdminRepasses from '@/pages/admin/AdminRepasses'
 import AdminOrganizadores from '@/pages/admin/AdminOrganizadores'
 import AdminColecoes from '@/pages/admin/AdminColecoes'
 import AdminAvaliacoes from '@/pages/admin/AdminAvaliacoes'
+import Cookies from '@/pages/Cookies'
+import WidgetEvento from '@/pages/WidgetEvento'
 import CidadeEventos from '@/pages/CidadeEventos'
 import ColecaoPublica from '@/pages/ColecaoPublica'
 import MapaEventos from '@/pages/MapaEventos'
@@ -39,6 +41,8 @@ import Perfil from '@/pages/organizador/Perfil'
 function App() {
   return (
     <Routes>
+      {/* Item 7.5: widget para colar no site do organizador (sem cabeçalho). */}
+      <Route path="/widget/e/:slug" element={<WidgetEvento />} />
       <Route element={<SiteLayout />}>
         <Route path="/" element={<Home />} />
         <Route path="/e/:slug" element={<EventoDetalhe />} />
@@ -47,6 +51,7 @@ function App() {
         <Route path="/c/:slug" element={<ColecaoPublica />} />
         <Route path="/mapa" element={<MapaEventos />} />
         <Route path="/quanto-custa" element={<QuantoCusta />} />
+        <Route path="/cookies" element={<Cookies />} />
         <Route path="/descadastrar" element={<Descadastrar />} />
         <Route path="/o/:slug" element={<OrganizadorPublico />} />
         <Route path="/convite/:token" element={<Convite />} />

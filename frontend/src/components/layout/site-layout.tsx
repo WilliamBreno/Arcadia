@@ -2,6 +2,8 @@ import { Outlet } from 'react-router-dom'
 
 import { SiteFooter } from '@/components/layout/site-footer'
 import { SiteHeader } from '@/components/layout/site-header'
+import { BannerCookies } from '@/components/banner-cookies'
+import { RotaDosPixels } from '@/components/rota-dos-pixels'
 
 export function SiteLayout() {
   return (
@@ -11,6 +13,8 @@ export function SiteLayout() {
         <Outlet />
       </div>
       <SiteFooter />
+      <BannerCookies />
+      <RotaDosPixels />
     </div>
   )
 }

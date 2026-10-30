@@ -58,6 +58,7 @@ type pedidoResposta struct {
 	TotalCentavos int64                `json:"total_centavos"`
 	ExpiraEm      *time.Time           `json:"expira_em"`
 	Itens         []itemPedidoResposta `json:"itens"`
+	Pixels        *service.Pixels      `json:"pixels,omitempty"`
 }
 
 func paraPedidoResposta(p *domain.Pedido, itens []domain.ItemPedido) pedidoResposta {
@@ -133,7 +134,13 @@ func (h *PedidoHandler) Obter(c *gin.Context) {
 		h.responderErro(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, paraPedidoResposta(pedido, itens))
+	resp := paraPedidoResposta(pedido, itens)
+	// Item 7.5: a página do pedido dispara a "compra concluída" nos pixels
+	// do evento (se o visitante aceitou os cookies).
+	if e, err := h.eventos.BuscarPorID(pedido.EventoID); err == nil {
+		resp.Pixels = &service.Pixels{Meta: e.PixelMeta, GA4: e.PixelGA4, TikTok: e.PixelTikTok}
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 // Pagar é POST /pedidos/:id/pagar — cria a cobrança no processador e

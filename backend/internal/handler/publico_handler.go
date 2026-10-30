@@ -341,6 +341,7 @@ func (h *PublicoHandler) ObterEvento(c *gin.Context) {
 		"ingressos":         tiposResposta,
 		"taxas":             regraTaxas,
 		"vendas_encerradas": vendasEncerradas(evento, tipos, listaSessoes),
+		"pixels":            service.Pixels{Meta: evento.PixelMeta, GA4: evento.PixelGA4, TikTok: evento.PixelTikTok},
 	})
 }
 

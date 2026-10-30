@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 
 import { api, ApiError } from '@/lib/api'
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Carregando } from '@/components/carregando'
 import { PagamentoNaPagina } from '@/components/pagamento-na-pagina'
+import { usePixels } from '@/lib/pixels'
 
 type DecisaoCancelamento = { pode: boolean; motivo: string; valor_reembolso_centavos: number }
 
@@ -38,6 +39,26 @@ export default function Pedido() {
     queryFn: () => api<PedidoTipo>(`/pedidos/${id}`),
     refetchInterval: (query) => (query.state.data?.status === 'aguardando_pagamento' ? 5000 : false),
   })
+
+  // Item 7.5: "compra concluída" nos pixels do evento, uma vez por pedido
+  // neste navegador (e só com consentimento).
+  const dispararPixel = usePixels(pedido?.pixels)
+  useEffect(() => {
+    if (!pedido || pedido.status !== 'pago' || pedido.total_centavos <= 0) return
+    const chave = `evve-pixel-compra-${pedido.id}`
+    try {
+      if (localStorage.getItem(chave)) return
+    } catch {
+      // sem armazenamento: segue (o ID do evento evita contar em dobro na Meta e no GA4)
+    }
+    const qtd = pedido.itens.filter((i) => i.status === 'pago').length
+    if (dispararPixel({ tipo: 'comprar', valor: pedido.total_centavos, itens: qtd, pedido: String(pedido.id) }) === false) return
+    try {
+      localStorage.setItem(chave, '1')
+    } catch {
+      // ignora
+    }
+  }, [pedido, dispararPixel])
 
   if (isLoading) return <Carregando />
   if (!pedido) return null

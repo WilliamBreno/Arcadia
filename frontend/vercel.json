@@ -1,21 +1,81 @@
 {
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://arcadia-production-d5a5.up.railway.app/api/:path*" },
-    { "source": "/sitemap.xml", "destination": "https://arcadia-production-d5a5.up.railway.app/api/v1/seo/sitemap.xml" },
-    { "source": "/robots.txt", "destination": "https://arcadia-production-d5a5.up.railway.app/api/v1/seo/robots.txt" },
-    { "source": "/((?!api/|assets/|sw\\.js).*)", "destination": "/index.html" }
+    {
+      "source": "/api/:path*",
+      "destination": "https://arcadia-production-d5a5.up.railway.app/api/:path*"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "https://arcadia-production-d5a5.up.railway.app/api/v1/seo/sitemap.xml"
+    },
+    {
+      "source": "/robots.txt",
+      "destination": "https://arcadia-production-d5a5.up.railway.app/api/v1/seo/robots.txt"
+    },
+    {
+      "source": "/((?!api/|assets/|sw\\.js).*)",
+      "destination": "/index.html"
+    }
   ],
   "headers": [
     {
-      "source": "/(.*)",
+      "source": "/((?!widget/).*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Permissions-Policy", "value": "camera=(self), microphone=(), geolocation=(self)" },
-        { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(self), microphone=(), geolocation=(self)"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains"
+        }
       ]
     },
-    { "source": "/sw.js", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }
+    {
+      "source": "/widget/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(self), microphone=(), geolocation=(self)"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "frame-ancestors *"
+        }
+      ]
+    },
+    {
+      "source": "/sw.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
+    }
   ]
 }

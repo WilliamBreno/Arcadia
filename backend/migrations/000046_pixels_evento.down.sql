@@ -1,0 +1,1 @@
+ALTER TABLE eventos DROP COLUMN IF EXISTS pixel_tiktok, DROP COLUMN IF EXISTS pixel_ga4, DROP COLUMN IF EXISTS pixel_meta;

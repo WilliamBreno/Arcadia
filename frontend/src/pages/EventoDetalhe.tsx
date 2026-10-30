@@ -22,6 +22,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Carregando } from '@/components/carregando'
 import { EntrarComCodigo } from '@/components/entrar-com-codigo'
 import { ControleFila } from '@/components/controle-fila'
+import { usePixels } from '@/lib/pixels'
 import { horaPrazo, minhaFila, type EntradaFila } from '@/lib/fila'
 
 export default function EventoDetalhe() {
@@ -111,6 +112,14 @@ export default function EventoDetalhe() {
     }
     if (Object.keys(escolha).length > 0) setQuantidades(escolha)
   }, [data, searchParams])
+
+  // Item 7.5: pixels do organizador (só com consentimento).
+  const dispararPixel = usePixels(data?.pixels)
+  const pixelVisto = useRef('')
+  useEffect(() => {
+    if (!data || pixelVisto.current === data.evento.slug) return
+    if (dispararPixel({ tipo: 'ver' }) !== false) pixelVisto.current = data.evento.slug
+  }, [data, dispararPixel])
 
   // Item 7.3: onde a pessoa está na lista de espera dos ingressos esgotados.
   const fila = useQuery({
@@ -212,6 +221,7 @@ export default function EventoDetalhe() {
     }
     setErro(null)
     setComprando(true)
+    dispararPixel({ tipo: 'iniciar', valor: resumo.total, itens: totalUnidades })
     try {
       const itens = Object.entries(quantidades)
         .filter(([, qtd]) => qtd > 0)

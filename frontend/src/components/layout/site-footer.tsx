@@ -12,6 +12,9 @@ export function SiteFooter() {
         <Link to="/mapa" className="hover:text-foreground">
           Eventos perto de você
         </Link>
+        <Link to="/cookies" className="hover:text-foreground">
+          Cookies
+        </Link>
         <span>
           © {new Date().getFullYear()} {NOME_PLATAFORMA}
         </span>
