@@ -9,6 +9,8 @@ const (
 	TipoReembolsoArrependimento  TipoReembolso = "arrependimento"
 	TipoReembolsoEventoCancelado TipoReembolso = "evento_cancelado"
 	TipoReembolsoManual          TipoReembolso = "manual"
+	// Item 7.4: o ingresso foi vendido na revenda oficial.
+	TipoReembolsoRevenda TipoReembolso = "revenda"
 )
 
 type StatusReembolso string

@@ -302,6 +302,7 @@ func (s *CheckoutService) confirmarPagamento(pedidoID int64, registro *domain.Pa
 		evento   *domain.Evento
 		emitiu   bool
 		devolver string
+		vendidas []int64 // anúncios da revenda vendidos neste pagamento (7.4)
 	)
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&pedido, pedidoID).Error; err != nil {
@@ -370,6 +371,16 @@ func (s *CheckoutService) confirmarPagamento(pedidoID int64, registro *domain.Pa
 		}
 		pedido.Status = domain.StatusPedidoPago
 		emitiu = true
+		pagos := make([]int64, 0, len(itens))
+		for _, it := range itens {
+			if it.Status == domain.StatusItemPago {
+				pagos = append(pagos, it.ID)
+			}
+		}
+		var err2 error
+		if vendidas, err2 = fecharVendas(tx, pagos); err2 != nil { // item 7.4
+			return err2
+		}
 		return tx.Save(&pedido).Error
 	})
 	if err != nil {
@@ -379,6 +390,9 @@ func (s *CheckoutService) confirmarPagamento(pedidoID int64, registro *domain.Pa
 		if itens, err := s.itensPedido.ListarPorPedido(pedido.ID); err == nil {
 			s.enviarEmailConfirmacao(&pedido, itens, evento)
 		}
+	}
+	if len(vendidas) > 0 && s.revenda != nil {
+		s.revenda.Liquidar(vendidas)
 	}
 	if devolver != "" {
 		slog.Warn("pagamento será devolvido", "pedido_id", pedido.ID, "pagamento", registro.MPPaymentID, "motivo", devolver)
@@ -402,6 +416,7 @@ func (s *CheckoutService) reabrirReserva(tx *gorm.DB, pedido *domain.Pedido) (bo
 	for _, it := range itens {
 		porTipo[it.TipoIngressoID]++
 	}
+	daRevenda := map[int64]int{} // item 7.4: quantos vêm de anúncios da revenda
 	for tipoID, precisa := range porTipo {
 		tipo, err := s.itensPedido.BuscarTipoIngressoParaAtualizar(tx, tipoID)
 		if err != nil {
@@ -415,7 +430,24 @@ func (s *CheckoutService) reabrirReserva(tx *gorm.DB, pedido *domain.Pedido) (bo
 		if err != nil {
 			return false, err
 		}
-		if int64(tipo.Quantidade)-ativos-guardadas < precisa {
+		aVenda, err := RevendasAVenda(tx, tipoID)
+		if err != nil {
+			return false, err
+		}
+		estoque := int64(tipo.Quantidade) - ativos - guardadas
+		if VagasParaComprar(int64(tipo.Quantidade)-ativos, aVenda, guardadas) < precisa {
+			return false, nil
+		}
+		daRevenda[tipoID] = QuantasDaRevenda(int(precisa), estoque)
+	}
+	for tipoID, n := range daRevenda {
+		var ids []int64
+		for _, it := range itens {
+			if it.TipoIngressoID == tipoID && len(ids) < n {
+				ids = append(ids, it.ID)
+			}
+		}
+		if err := reivindicarRevendas(tx, tipoID, ids); err != nil {
 			return false, nil
 		}
 	}

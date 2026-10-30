@@ -28,6 +28,7 @@ const corPorResultado: Record<ValidarCheckinResposta['resultado'], string> = {
   nao_encontrado: 'bg-red-600 border-red-700',
   qr_expirado: 'bg-orange-500 border-orange-600',
   fora_da_sessao: 'bg-orange-500 border-orange-600',
+  em_revenda: 'bg-orange-500 border-orange-600',
   requer_internet: 'bg-orange-500 border-orange-600',
 }
 
@@ -39,6 +40,7 @@ const tituloPorResultado: Record<ValidarCheckinResposta['resultado'], string> = 
   nao_encontrado: '❌ Código não encontrado',
   qr_expirado: '⏱️ QR desatualizado — peça para abrir o ingresso de novo',
   fora_da_sessao: '⛔ Ingresso não vale para esta sessão/horário',
+  em_revenda: '⛔ Ingresso sendo revendido agora — peça para retirar da revenda ou aguardar',
   requer_internet: '📶 QR dinâmico: precisa de internet para validar',
 }
 

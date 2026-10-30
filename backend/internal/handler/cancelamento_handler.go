@@ -69,6 +69,8 @@ func (h *CancelamentoHandler) responderErro(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, service.ErrItemNaoPertenceAoUsuario):
 		c.JSON(http.StatusForbidden, gin.H{"erro": "item não pertence a este usuário"})
+	case errors.Is(err, service.ErrRevendaEmAndamento):
+		c.JSON(http.StatusConflict, gin.H{"erro": err.Error()})
 	case errors.Is(err, service.ErrItemNaoEncontrado), errors.Is(err, service.ErrPagamentoNaoEncontrado):
 		c.JSON(http.StatusNotFound, gin.H{"erro": "item não encontrado"})
 	default:

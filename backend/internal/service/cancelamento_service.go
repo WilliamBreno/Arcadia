@@ -3,7 +3,10 @@ package service
 import (
 	"errors"
 	"fmt"
+	"html"
 	"time"
+
+	"gorm.io/gorm"
 
 	"github.com/WilliamBreno/Arcadia/backend/internal/domain"
 	"github.com/WilliamBreno/Arcadia/backend/internal/mail"
@@ -40,7 +43,12 @@ type CancelamentoService struct {
 	mailCliente    *mail.Cliente
 	nomePlataforma string
 	promotor       PromotorListaEspera
+	// Item 7.4: e-mail de quem revendeu e bloqueio de cancelar durante a revenda.
+	db *gorm.DB
 }
+
+// DefinirRevenda liga a revenda oficial (item 7.4) ao cancelamento.
+func (s *CancelamentoService) DefinirRevenda(db *gorm.DB) { s.db = db }
 
 func NovoCancelamentoService(
 	itensPedido *repository.ItemPedidoRepository,
@@ -219,10 +227,16 @@ func (s *CancelamentoService) Cancelar(itemID, usuarioID int64) (*domain.ItemPed
 	if err != nil {
 		return nil, err
 	}
-
 	decisao := s.avaliar(ctx)
 	if !decisao.Pode {
 		return nil, fmt.Errorf("%w: %s", ErrCancelamentoNaoPermitido, decisao.Motivo)
+	}
+	// Item 7.4: cancelar tira o ingresso da revenda; se alguém está pagando
+	// por ele agora, espera.
+	if s.db != nil {
+		if err := retirarSeLivre(s.db, itemID); err != nil {
+			return nil, err
+		}
 	}
 
 	var itemCancelado *domain.ItemPedido
@@ -345,6 +359,9 @@ func (s *CancelamentoService) cancelarSemReembolso(item *domain.ItemPedido, even
 }
 
 func (s *CancelamentoService) enviarEmailCancelamento(item *domain.ItemPedido, evento *domain.Evento, decisao DecisaoCancelamento) {
+	if decisao.Tipo == domain.TipoReembolsoRevenda {
+		return // a revenda manda o próprio e-mail, para quem vendeu (devolverRevenda)
+	}
 	if item.TitularEmail == "" {
 		return
 	}
@@ -444,4 +461,53 @@ func (s *CancelamentoService) reembolsarItens(evento *domain.Evento, itens []dom
 		sucessos++
 	}
 	return sucessos, falhas
+}
+
+// devolverRevenda estorna ao vendedor o preço do ingresso revendido (item
+// 7.4). O ingresso já foi invalidado ao fechar a venda; aqui sai o dinheiro.
+func (s *CancelamentoService) devolverRevenda(a *Revenda) error {
+	item, err := s.itensPedido.BuscarPorID(a.ItemID)
+	if err != nil {
+		return err
+	}
+	pedido, err := s.pedidos.BuscarPorID(item.PedidoID)
+	if err != nil {
+		return err
+	}
+	evento, err := s.eventos.BuscarPorID(pedido.EventoID)
+	if err != nil {
+		return err
+	}
+	pag, err := s.pagamentos.BuscarAprovadoPorPedido(pedido.ID)
+	if err != nil {
+		return ErrPagamentoNaoEncontrado
+	}
+	ctx := &contextoCancelamento{item: item, pedido: pedido, evento: evento, pagamento: pag}
+	decisao := DecisaoCancelamento{Pode: true, Motivo: MotivoRevendido, Tipo: domain.TipoReembolsoRevenda, ValorReembolsoCentavos: a.ValorDevolverCentavos}
+	if _, err := s.executarReembolso(ctx, decisao, a.VendedorID, nil); err != nil {
+		return err
+	}
+	s.avisarRevendido(a, item, evento, pag.Metodo)
+	return nil
+}
+
+func (s *CancelamentoService) avisarRevendido(a *Revenda, item *domain.ItemPedido, evento *domain.Evento, metodo string) {
+	if s.db == nil {
+		return
+	}
+	var u struct{ Nome, Email string }
+	s.db.Table("usuarios").Select("nome, email").Where("id = ?", a.VendedorID).Scan(&u)
+	if u.Email == "" {
+		return
+	}
+	prazo := "O Pix volta para a sua conta em instantes."
+	if metodo == pagamento.MetodoCartao {
+		prazo = "No cartão, o estorno aparece na fatura em até duas faturas, conforme o banco."
+	}
+	corpo := fmt.Sprintf(`<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#111">`+
+		`<p>Olá, %s! Seu ingresso (código <strong>%s</strong>) para <strong>%s</strong> foi vendido na revenda oficial.</p>`+
+		`<p>Devolvemos <strong>%s</strong>, o preço que você pagou pelo ingresso. %s</p>`+
+		`<p>Esse ingresso não vale mais para entrar: o QR Code foi trocado pelo do novo dono.</p></div>`,
+		html.EscapeString(primeiroNome(u.Nome)), item.Codigo, html.EscapeString(evento.Titulo), formatarReais(a.ValorDevolverCentavos), prazo)
+	_ = s.mailCliente.Enviar(u.Email, "Seu ingresso foi revendido — "+evento.Titulo, corpo)
 }

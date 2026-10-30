@@ -161,7 +161,12 @@ func (s *FilaEsperaService) livres(tx *gorm.DB, t *domain.TipoIngresso) (int64, 
 	if err != nil {
 		return 0, err
 	}
-	return int64(t.Quantidade) - ativos - guardadas, nil
+	// Item 7.4: anúncios da revenda também são vagas para a fila.
+	aVenda, err := RevendasAVenda(tx, t.ID)
+	if err != nil {
+		return 0, err
+	}
+	return VagasParaComprar(int64(t.Quantidade)-ativos, aVenda, guardadas), nil
 }
 
 // Entrar põe a pessoa na fila de um tipo esgotado.

@@ -15,7 +15,11 @@ type JobHandler struct {
 	mail     *mail.Cliente
 	carrinho *service.RecuperacaoCarrinhoService
 	fila     *service.FilaEsperaService
+	revenda  *service.RevendaService
 }
+
+// DefinirRevenda liga a revenda oficial (item 7.4) ao job de reservas.
+func (h *JobHandler) DefinirRevenda(r *service.RevendaService) { h.revenda = r }
 
 // DefinirFila liga a lista de espera (item 7.3) ao job de reservas.
 func (h *JobHandler) DefinirFila(f *service.FilaEsperaService) { h.fila = f }
@@ -41,11 +45,15 @@ func (h *JobHandler) ExpirarReservas(c *gin.Context) {
 	if h.carrinho != nil {
 		carrinhos, _ = h.carrinho.Enviar(time.Now())
 	}
+	var revendasEncerradas int64
+	if h.revenda != nil {
+		revendasEncerradas, _ = h.revenda.Encerrar(time.Now())
+	}
 	convidados := 0
 	if h.fila != nil {
 		convidados, _ = h.fila.Processar(time.Now())
 	}
-	c.JSON(http.StatusOK, gin.H{"expirados": total, "devolucoes_tentadas": devolucoes, "carrinhos": carrinhos, "fila_convidados": convidados})
+	c.JSON(http.StatusOK, gin.H{"expirados": total, "devolucoes_tentadas": devolucoes, "carrinhos": carrinhos, "fila_convidados": convidados, "revendas_encerradas": revendasEncerradas})
 }
 
 // EnviarEmails é o job POST /jobs/enviar-emails (item 5.5): esvazia a fila

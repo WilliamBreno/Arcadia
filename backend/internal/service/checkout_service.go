@@ -58,6 +58,7 @@ type CheckoutService struct {
 	tipos          *repository.TipoIngressoRepository
 	plateia        *PlateiaService
 	fila           *FilaEsperaService
+	revenda        *RevendaService
 	taxas          *TaxasService
 	usuarios       *repository.UsuarioRepository
 	sessoes        *repository.SessaoRepository
@@ -267,10 +268,14 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 			if err != nil {
 				return err
 			}
-			disponivel := int64(tipo.Quantidade) - ativos - guardadas
-			if disponivel < 0 {
-				disponivel = 0
+			// Item 7.4: ingressos na revenda oficial também estão à venda; o
+			// estoque do organizador vende primeiro.
+			aVenda, err := RevendasAVenda(tx, tipo.ID)
+			if err != nil {
+				return err
 			}
+			estoqueOrganizador := int64(tipo.Quantidade) - ativos - guardadas
+			disponivel := VagasParaComprar(int64(tipo.Quantidade)-ativos, aVenda, guardadas)
 			if int64(ir.Quantidade) > disponivel {
 				return fmt.Errorf("%w: %s (restam %d)", ErrEstoqueInsuficiente, tipo.Nome, disponivel)
 			}
@@ -313,6 +318,16 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 				}
 				totalPedido += item.TotalCentavos
 				itensCriados = append(itensCriados, item)
+			}
+			if n := QuantasDaRevenda(ir.Quantidade, estoqueOrganizador); n > 0 {
+				novos := itensCriados[len(itensCriados)-ir.Quantidade:]
+				ids := make([]int64, 0, n)
+				for k := 0; k < n; k++ {
+					ids = append(ids, novos[k].ID)
+				}
+				if err := reivindicarRevendas(tx, tipo.ID, ids); err != nil {
+					return err
+				}
 			}
 			if err := consumirConvite(tx, usuarioID, tipo.ID, pedido.ID); err != nil {
 				return err
@@ -581,6 +596,13 @@ func (s *CheckoutService) ExpirarReservas() (int, error) {
 			if err := tx.Where("pedido_id = ? AND status = ?", pedido.ID, domain.StatusItemReservado).Find(&itens).Error; err != nil {
 				return err
 			}
+			ids := make([]int64, 0, len(itens))
+			for j := range itens {
+				ids = append(ids, itens[j].ID)
+			}
+			if err := liberarRevendas(tx, ids); err != nil { // item 7.4
+				return err
+			}
 			for j := range itens {
 				itens[j].Status = domain.StatusItemExpirado
 				if err := tx.Save(&itens[j]).Error; err != nil {
@@ -614,6 +636,9 @@ func (s *CheckoutService) ExpirarReservas() (int, error) {
 	}
 	return total, nil
 }
+
+// DefinirRevenda liga a revenda oficial (item 7.4).
+func (s *CheckoutService) DefinirRevenda(r *RevendaService) { s.revenda = r }
 
 // DefinirFila liga a lista de espera de esgotado (item 7.3).
 func (s *CheckoutService) DefinirFila(f *FilaEsperaService) { s.fila = f }

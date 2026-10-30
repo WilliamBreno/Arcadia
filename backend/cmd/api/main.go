@@ -196,6 +196,13 @@ func main() {
 	seguirHandler.DefinirConvites(avaliacaoPublicoService)
 	// Item 7.2: e-mail de carrinho para quem reservou e não pagou.
 	jobHandler.DefinirFila(filaService)
+	// Item 7.4: revenda oficial ligada à lista de espera.
+	revendaService := service.NovoRevendaService(db, itemPedidoRepo, cancelamentoService, filaService)
+	checkoutService.DefinirRevenda(revendaService)
+	cancelamentoService.DefinirRevenda(db)
+	checkinService.DefinirRevenda(db)
+	jobHandler.DefinirRevenda(revendaService)
+	revendaHandler := handler.NovoRevendaHandler(revendaService)
 	filaHandler := handler.NovoFilaEsperaHandler(filaService, eventoRepo, organizadorHandler)
 	jobHandler.DefinirRecuperacao(service.NovoRecuperacaoCarrinhoService(db, mailCliente, seguirService, cfg.FrontendURL, cfg.NomePlataforma))
 
@@ -270,6 +277,9 @@ func main() {
 		autenticado.GET("/me/eventos", contaHandler.MeusEventos)
 		autenticado.GET("/me/seguindo", seguirHandler.Meus)
 		autenticado.GET("/eventos/:slug/fila", filaHandler.Minhas)
+		autenticado.GET("/me/revendas", revendaHandler.Minhas)
+		autenticado.POST("/itens/:id/revenda", revendaHandler.Anunciar)
+		autenticado.DELETE("/itens/:id/revenda", revendaHandler.Retirar)
 		autenticado.POST("/eventos/:slug/fila", filaHandler.Entrar)
 		autenticado.DELETE("/eventos/:slug/fila/:tipo", filaHandler.Sair)
 		autenticado.GET("/eventos/:slug/minha-avaliacao", avaliacaoPublicoHandler.Minha)

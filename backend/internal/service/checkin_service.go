@@ -5,6 +5,8 @@ import (
 	"errors"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/WilliamBreno/Arcadia/backend/internal/domain"
 	"github.com/WilliamBreno/Arcadia/backend/internal/repository"
 )
@@ -21,6 +23,8 @@ const (
 	ResultadoNaoEncontrado ResultadoValidacao = "nao_encontrado"
 	ResultadoQRExpirado    ResultadoValidacao = "qr_expirado"
 	ResultadoForaDaSessao  ResultadoValidacao = "fora_da_sessao"
+	// Item 7.4: alguém está pagando por este ingresso na revenda agora.
+	ResultadoEmRevenda ResultadoValidacao = "em_revenda"
 )
 
 type ResultadoCheckin struct {
@@ -38,6 +42,7 @@ type CheckinService struct {
 	papeis        *repository.PapelEventoRepository
 	qrSecret      string
 	sessoes       *repository.SessaoRepository
+	revendaDB     *gorm.DB // item 7.4
 }
 
 func NovoCheckinService(
@@ -111,6 +116,16 @@ func (s *CheckinService) Validar(usuarioID, eventoID int64, codigo, qrToken stri
 		return &ResultadoCheckin{Resultado: ResultadoOutroEvento, Item: item, TipoIngressoNome: tipo.Nome, MeiaEntrada: tipo.MeiaEntrada}, nil
 	}
 
+	// Item 7.4: o dono veio usar o ingresso. Se estava na revenda, sai dela;
+	// se alguém está pagando por ele neste momento, não entra.
+	if s.revendaDB != nil && item.Status == domain.StatusItemPago {
+		if err := retirarSeLivre(s.revendaDB, item.ID); errors.Is(err, ErrRevendaEmAndamento) {
+			return &ResultadoCheckin{Resultado: ResultadoEmRevenda, Item: item, TipoIngressoNome: tipo.Nome}, nil
+		} else if err != nil {
+			return nil, err
+		}
+	}
+
 	// Evento com sessões: entrada por sessão (ingresso do evento todo entra uma vez em cada).
 	if sessoes, errS := s.sessoes.ListarPorEvento(eventoID); errS == nil && len(sessoes) > 0 {
 		return s.validarComSessoes(item, tipo, sessoes)
@@ -163,3 +178,6 @@ func (s *CheckinService) Resumo(usuarioID, eventoID int64) (repository.ResumoChe
 	}
 	return s.itensPedido.ResumoCheckin(eventoID)
 }
+
+// DefinirRevenda liga a checagem da revenda oficial no check-in (item 7.4).
+func (s *CheckinService) DefinirRevenda(db *gorm.DB) { s.revendaDB = db }

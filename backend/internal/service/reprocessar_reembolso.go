@@ -19,7 +19,10 @@ func (s *CancelamentoService) ReprocessarReembolso(reembolsoID, adminID int64) e
 		return ErrReembolsoNaoReprocessavel
 	}
 	item, err := s.itensPedido.BuscarPorID(reembolso.ItemID)
-	if err != nil || item.Status != domain.StatusItemPago {
+	// Revenda (item 7.4): o ingresso do vendedor já foi invalidado ao fechar
+	// a venda; o estorno dele continua devido.
+	revenda := reembolso.Tipo == domain.TipoReembolsoRevenda && item != nil && item.Status == domain.StatusItemCancelado
+	if err != nil || (item.Status != domain.StatusItemPago && !revenda) {
 		return ErrReembolsoNaoReprocessavel
 	}
 	pedido, err := s.pedidos.BuscarPorID(item.PedidoID)

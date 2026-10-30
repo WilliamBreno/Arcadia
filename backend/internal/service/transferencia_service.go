@@ -81,6 +81,12 @@ func (s *TransferenciaService) Transferir(itemID, usuarioID int64, nome, email s
 	if err := podeTransferir(item, evento, time.Now()); err != nil {
 		return nil, err
 	}
+	// Item 7.4: ingresso anunciado na revenda não pode ser transferido.
+	if a, err := AnuncioAtivo(s.db, item.ID); err != nil {
+		return nil, err
+	} else if a != nil {
+		return nil, fmt.Errorf("%w: o ingresso está na revenda oficial; retire da revenda antes de transferir", ErrTransferenciaNaoPermitida)
+	}
 
 	novoCodigo, err := gerarCodigoItem()
 	if err != nil {

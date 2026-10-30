@@ -7,6 +7,7 @@ import { api } from '@/lib/api'
 import { useQR } from '@/lib/use-qr'
 import type { MeuIngresso } from '@/lib/conta'
 import { TransferirIngresso } from '@/components/transferir-ingresso'
+import { RevenderIngresso, type MinhaRevenda } from '@/components/revender-ingresso'
 import { Card, CardContent } from '@/components/ui/card'
 import { Carregando } from '@/components/carregando'
 
@@ -23,6 +24,18 @@ export default function MeusIngressos() {
     queryFn: () => api<MeuIngresso[]>('/me/ingressos'),
   })
   const [selecionado, setSelecionado] = useState<MeuIngresso | null>(null)
+  // Item 7.4: situação na revenda oficial de cada ingresso.
+  const { data: revendas } = useQuery({
+    queryKey: ['minhas-revendas'],
+    queryFn: () => api<MinhaRevenda[]>('/me/revendas'),
+  })
+  const revendaDe = (id: number) => revendas?.find((r) => r.item_id === id)
+  const rotulo = (i: MeuIngresso) => {
+    const r = revendaDe(i.id)
+    if (r?.status === 'vendida') return 'Revendido'
+    if (r?.status === 'a_venda' || r?.status === 'reservada') return 'Válido · à venda na revenda'
+    return rotuloStatus[i.status] ?? i.status
+  }
 
   if (isLoading) return <Carregando />
 
@@ -41,7 +54,7 @@ export default function MeusIngressos() {
                 <p className="text-sm text-muted-foreground">
                   {i.evento_inicio_em && new Date(i.evento_inicio_em).toLocaleDateString('pt-BR')} · {i.titular_nome}
                 </p>
-                <p className="text-xs text-muted-foreground">{rotuloStatus[i.status] ?? i.status}</p>
+                <p className="text-xs text-muted-foreground">{rotulo(i)}</p>
               </div>
               <span className="font-mono text-xs text-muted-foreground">{i.codigo}</span>
             </CardContent>
@@ -62,9 +75,16 @@ export default function MeusIngressos() {
               </div>
               <p className="font-mono text-sm text-foreground">{selecionado.codigo}</p>
               <p className="text-sm text-muted-foreground">{selecionado.titular_nome}</p>
-              <p className="text-xs text-muted-foreground">{rotuloStatus[selecionado.status] ?? selecionado.status}</p>
-              {selecionado.status === 'pago' && (
+              <p className="text-xs text-muted-foreground">{rotulo(selecionado)}</p>
+              {selecionado.status === 'pago' && !revendaDe(selecionado.id) && (
                 <TransferirIngresso itemId={selecionado.id} onConcluido={() => setSelecionado(null)} />
+              )}
+              {selecionado.status === 'pago' && selecionado.preco_centavos > 0 && (
+                <RevenderIngresso
+                  itemId={selecionado.id}
+                  precoCentavos={selecionado.preco_centavos}
+                  revenda={revendaDe(selecionado.id)}
+                />
               )}
               <Link
                 to={`/e/${selecionado.evento_slug}`}
