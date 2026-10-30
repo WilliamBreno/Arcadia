@@ -7,7 +7,7 @@
 // conteúdo principal (seo/render.ts). É o mesmo conteúdo que a pessoa vê
 // depois que a SPA carrega ("dynamic rendering"); para humanos nada muda.
 //
-// Páginas: /e/:slug (evento), /o/:slug (organizador), /eventos/:cidade,
+// Páginas: /e/:slug (evento), /o/:slug (organizador), /t/:slug (talento), /eventos/:cidade,
 // /eventos/:cidade/:categoria (com ?quando=) e /c/:slug (coleção).
 //
 // Configuração necessária no projeto Vercel: BACKEND_API_URL apontando para
@@ -16,14 +16,16 @@ import {
   renderizarEvento,
   renderizarLista,
   renderizarOrganizador,
+  renderizarTalento,
   textosCidade,
   type EventoSEO,
   type ListaSEO,
   type OrganizadorSEO,
+  type TalentoSEO,
 } from './seo/render.ts'
 
 export const config = {
-  matcher: ['/e/:slug*', '/o/:slug*', '/eventos/:path*', '/c/:slug*'],
+  matcher: ['/e/:slug*', '/o/:slug*', '/t/:slug*', '/eventos/:path*', '/c/:slug*'],
 }
 
 // Buscadores + redes sociais. Testado contra os user-agents oficiais.
@@ -89,6 +91,10 @@ export default async function middleware(request: Request): Promise<Response> {
       // Cidade ou categoria sem eventos: a tela mostra "ainda não há eventos";
       // não deixar o Google indexar uma página vazia.
       pronto = lista ? renderizarLista(html, lista, url.origin) : html.replace('</head>', '  <meta name="robots" content="noindex" />\n  </head>')
+    } else if (tipo === 't' && partes.length === 2) {
+      // Item 8.1: perfil do talento (o de menor sai com noindex).
+      const t = await json<TalentoSEO>(`${apiURL}/v1/talentos/${encodeURIComponent(slug)}`)
+      if (t) pronto = renderizarTalento(html, t, url.origin)
     } else if (tipo === 'c' && partes.length === 2) {
       const col = await json<{ slug: string; titulo: string; descricao: string; eventos: ItemLista[] }>(`${apiURL}/v1/colecoes/${encodeURIComponent(slug)}`)
       if (col) {

@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 
 	"github.com/WilliamBreno/Arcadia/backend/internal/domain"
 	"github.com/WilliamBreno/Arcadia/backend/internal/middleware"
@@ -17,6 +18,8 @@ type AvaliacaoHandler struct {
 	organizadorHandler *OrganizadorHandler
 	eventos            *repository.EventoRepository
 	service            *service.AvaliacaoService
+	perfis             *service.PerfilTalentoService
+	db                 *gorm.DB
 }
 
 func NovoAvaliacaoHandler(o *OrganizadorHandler, e *repository.EventoRepository, s *service.AvaliacaoService) *AvaliacaoHandler {
@@ -175,6 +178,8 @@ type linhaRankingResposta struct {
 	NomeArtistico string  `json:"nome_artistico"`
 	NotaFinal     float64 `json:"nota_final"`
 	Jurados       int     `json:"jurados"`
+	// Item 8.1: perfil público do talento (só quando visível).
+	PerfilSlug string `json:"perfil_slug,omitempty"`
 }
 
 func paraRankingResposta(r map[string][]service.LinhaRanking, publico bool) map[string][]linhaRankingResposta {
@@ -250,7 +255,45 @@ func (h *AvaliacaoHandler) ResultadoPublico(c *gin.Context) {
 		h.responderErro(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"ranking": paraRankingResposta(r, true)})
+	resp := paraRankingResposta(r, true)
+	h.ligarPerfis(r, resp)
+	c.JSON(http.StatusOK, gin.H{"ranking": resp})
+}
+
+// DefinirPerfis liga o nome no resultado ao perfil público do talento (8.1).
+func (h *AvaliacaoHandler) DefinirPerfis(p *service.PerfilTalentoService, db *gorm.DB) {
+	h.perfis, h.db = p, db
+}
+
+func (h *AvaliacaoHandler) ligarPerfis(r map[string][]service.LinhaRanking, resp map[string][]linhaRankingResposta) {
+	if h.perfis == nil || h.db == nil {
+		return
+	}
+	var fichas []int64
+	for _, ls := range r {
+		for _, l := range ls {
+			fichas = append(fichas, l.FichaID)
+		}
+	}
+	if len(fichas) == 0 {
+		return
+	}
+	var linhas []struct{ ID, UsuarioID int64 }
+	h.db.Table("fichas_participacao").Select("id, usuario_id").Where("id IN ? AND NOT oculta_no_perfil", fichas).Scan(&linhas)
+	dono := map[int64]int64{}
+	usuarios := make([]int64, 0, len(linhas))
+	for _, l := range linhas {
+		dono[l.ID] = l.UsuarioID
+		usuarios = append(usuarios, l.UsuarioID)
+	}
+	slugs := h.perfis.SlugsVisiveis(usuarios)
+	for tipo, ls := range r {
+		for i, l := range ls {
+			if slug, ok := slugs[dono[l.FichaID]]; ok {
+				resp[tipo][i].PerfilSlug = slug
+			}
+		}
+	}
 }
 
 // --- jurado ---

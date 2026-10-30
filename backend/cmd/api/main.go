@@ -205,6 +205,10 @@ func main() {
 	revendaHandler := handler.NovoRevendaHandler(revendaService)
 	pixelsHandler := handler.NovoPixelsHandler(db, eventoRepo, organizadorHandler) // item 7.5
 	perguntasService := service.NovoPerguntasService(db)                           // item 7.6
+	// Item 8.1: perfil público do talento.
+	talentoService := service.NovoPerfilTalentoService(db, avaliacaoService, mailCliente, cfg.FrontendURL, cfg.NomePlataforma)
+	talentoHandler := handler.NovoTalentoHandler(talentoService)
+	avaliacaoHandler.DefinirPerfis(talentoService, db)
 	perguntasHandler := handler.NovoPerguntasHandler(perguntasService, eventoRepo, organizadorHandler)
 	jobHandler.DefinirPerguntas(perguntasService)
 	publicoHandler.DefinirPerguntas(db)
@@ -243,6 +247,9 @@ func main() {
 		v1.GET("/destaques", publicoHandler.Destaques)
 		v1.GET("/colecoes", publicoHandler.Colecoes)
 		v1.GET("/eventos/:slug/avaliacoes", avaliacaoPublicoHandler.DoEvento)
+		v1.GET("/talentos/autorizacao", talentoHandler.VerAutorizacao)
+		v1.POST("/talentos/autorizacao", talentoHandler.Decidir)
+		v1.GET("/talentos/:slug", talentoHandler.Publico)
 		// Item 7.1: chave pública do formulário de cartão (vazia = plano B).
 		v1.GET("/pagamento/config", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"public_key": cfg.MercadoPagoPublicKey})
@@ -250,6 +257,7 @@ func main() {
 		v1.GET("/colecoes/:slug", publicoHandler.Colecao)
 		// Item 6.1: sitemap e robots (a Vercel reescreve /sitemap.xml e /robots.txt para cá).
 		seoHandler := handler.NovoSEOHandler(eventoRepo, cfg.FrontendURL)
+		seoHandler.DefinirTalentos(talentoService.ParaSitemap)
 		v1.GET("/seo/sitemap.xml", seoHandler.Sitemap)
 		v1.GET("/seo/robots.txt", seoHandler.Robots)
 		v1.GET("/eventos/:slug/resultado", avaliacaoHandler.ResultadoPublico)
@@ -283,6 +291,9 @@ func main() {
 		autenticado.GET("/me/seguindo", seguirHandler.Meus)
 		autenticado.GET("/eventos/:slug/fila", filaHandler.Minhas)
 		autenticado.GET("/me/revendas", revendaHandler.Minhas)
+		autenticado.GET("/me/talento", talentoHandler.Meu)
+		autenticado.PUT("/me/talento", talentoHandler.Salvar)
+		autenticado.POST("/me/talento/participacoes/:ficha", talentoHandler.Ocultar)
 		autenticado.POST("/itens/:id/revenda", revendaHandler.Anunciar)
 		autenticado.DELETE("/itens/:id/revenda", revendaHandler.Retirar)
 		autenticado.POST("/eventos/:slug/fila", filaHandler.Entrar)

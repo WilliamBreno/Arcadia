@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { api, ApiError } from '@/lib/api'
 import type { Criterio } from '@/components/avaliar-ficha'
@@ -8,9 +9,26 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
-type Ranking = Record<string, { posicao: number; ficha_id?: number; nome: string; nome_artistico?: string; nota_final: number; jurados?: number }[]>
+type Ranking = Record<
+  string,
+  {
+    posicao: number
+    ficha_id?: number
+    nome: string
+    nome_artistico?: string
+    nota_final: number
+    jurados?: number
+    perfil_slug?: string
+  }[]
+>
 
-const rotuloTipo: Record<string, string> = { cosplay: 'Cosplay', danca: 'Dança', canto: 'Canto', atuacao: 'Atuação', '': 'Sem categoria' }
+const rotuloTipo: Record<string, string> = {
+  cosplay: 'Cosplay',
+  danca: 'Dança',
+  canto: 'Canto',
+  atuacao: 'Atuação',
+  '': 'Sem categoria',
+}
 
 export function ListaRanking({ ranking }: { ranking: Ranking }) {
   const tipos = Object.keys(ranking)
@@ -21,9 +39,19 @@ export function ListaRanking({ ranking }: { ranking: Ranking }) {
         <div key={tipo}>
           <p className="mb-1 text-sm font-medium text-foreground">{rotuloTipo[tipo] ?? tipo}</p>
           {ranking[tipo].map((l, i) => (
-            <div key={`${tipo}-${l.ficha_id ?? i}`} className="flex items-center justify-between border-b border-border py-1 text-sm">
+            <div
+              key={`${tipo}-${l.ficha_id ?? i}`}
+              className="flex items-center justify-between border-b border-border py-1 text-sm"
+            >
               <span className="text-foreground">
-                {l.posicao}º · {l.nome}
+                {l.posicao}º ·{' '}
+                {l.perfil_slug ? (
+                  <Link to={`/t/${l.perfil_slug}`} className="underline underline-offset-4 hover:text-foreground">
+                    {l.nome}
+                  </Link>
+                ) : (
+                  l.nome
+                )}
                 {l.nome_artistico ? ` (${l.nome_artistico})` : ''}
               </span>
               <span className="text-muted-foreground">
@@ -42,7 +70,10 @@ export function CriteriosCard({ eventoId }: { eventoId: number }) {
   const queryClient = useQueryClient()
   const [form, setForm] = useState({ nome: '', peso: '1', min: '0', max: '10', passo: '1', tipo: '' })
   const [erro, setErro] = useState<string | null>(null)
-  const { data } = useQuery({ queryKey: ['org-criterios', eventoId], queryFn: () => api<Criterio[]>(`/org/eventos/${eventoId}/criterios`) })
+  const { data } = useQuery({
+    queryKey: ['org-criterios', eventoId],
+    queryFn: () => api<Criterio[]>(`/org/eventos/${eventoId}/criterios`),
+  })
   const invalidar = () => queryClient.invalidateQueries({ queryKey: ['org-criterios', eventoId] })
 
   const criar = async () => {
@@ -90,7 +121,8 @@ export function CriteriosCard({ eventoId }: { eventoId: number }) {
         {data?.map((c) => (
           <div key={c.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
             <span className="text-foreground">
-              {c.nome} · peso {c.peso} · {c.nota_min}–{c.nota_max} (passo {c.passo}){c.tipo_apresentacao ? ` · só ${rotuloTipo[c.tipo_apresentacao]}` : ''}
+              {c.nome} · peso {c.peso} · {c.nota_min}–{c.nota_max} (passo {c.passo})
+              {c.tipo_apresentacao ? ` · só ${rotuloTipo[c.tipo_apresentacao]}` : ''}
             </span>
             <Button variant="destructive" size="sm" onClick={() => excluir(c.id)}>
               Excluir
@@ -104,7 +136,14 @@ export function CriteriosCard({ eventoId }: { eventoId: number }) {
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="cr-peso">Peso</Label>
-            <Input id="cr-peso" type="number" min="0.1" step="0.1" value={form.peso} onChange={(e) => setForm({ ...form, peso: e.target.value })} />
+            <Input
+              id="cr-peso"
+              type="number"
+              min="0.1"
+              step="0.1"
+              value={form.peso}
+              onChange={(e) => setForm({ ...form, peso: e.target.value })}
+            />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="cr-min">Mín.</Label>
@@ -116,7 +155,14 @@ export function CriteriosCard({ eventoId }: { eventoId: number }) {
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="cr-passo">Passo</Label>
-            <Input id="cr-passo" type="number" min="0.1" step="0.1" value={form.passo} onChange={(e) => setForm({ ...form, passo: e.target.value })} />
+            <Input
+              id="cr-passo"
+              type="number"
+              min="0.1"
+              step="0.1"
+              value={form.passo}
+              onChange={(e) => setForm({ ...form, passo: e.target.value })}
+            />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="cr-tipo">Categoria</Label>
@@ -163,7 +209,8 @@ export function RankingCard({ eventoId }: { eventoId: number }) {
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <p className="text-xs text-muted-foreground">
-          Só notas finalizadas entram. Só você vê este ranking até liberar; o público vê nome artístico (ou primeiro nome + inicial) e a nota.
+          Só notas finalizadas entram. Só você vê este ranking até liberar; o público vê nome artístico (ou primeiro nome +
+          inicial) e a nota.
         </p>
         {data && <ListaRanking ranking={data.ranking} />}
         {data?.resultado_liberado_em ? (

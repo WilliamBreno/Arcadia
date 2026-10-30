@@ -17,7 +17,11 @@ import (
 type SEOHandler struct {
 	eventos     *repository.EventoRepository
 	frontendURL string
+	talentos    func() []string
 }
+
+// DefinirTalentos liga os perfis de talento ao sitemap (item 8.1).
+func (h *SEOHandler) DefinirTalentos(f func() []string) { h.talentos = f }
 
 func NovoSEOHandler(eventos *repository.EventoRepository, frontendURL string) *SEOHandler {
 	return &SEOHandler{eventos: eventos, frontendURL: strings.TrimRight(frontendURL, "/")}
@@ -76,7 +80,14 @@ func (h *SEOHandler) Sitemap(c *gin.Context) {
 		c.String(http.StatusInternalServerError, "erro ao gerar sitemap")
 		return
 	}
-	corpo, err := xml.MarshalIndent(montarSitemap(h.frontendURL, descoberta, eventos, organizadores), "", "  ")
+	mapa := montarSitemap(h.frontendURL, descoberta, eventos, organizadores)
+	// Item 8.1: perfis de talento visíveis de adultos (os de menores não vão ao Google).
+	if h.talentos != nil {
+		for _, slug := range h.talentos() {
+			mapa.URLs = append(mapa.URLs, urlSitemap{Loc: h.frontendURL + "/t/" + slug, ChangeFreq: "weekly"})
+		}
+	}
+	corpo, err := xml.MarshalIndent(mapa, "", "  ")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "erro ao gerar sitemap")
 		return

@@ -37,6 +37,20 @@ export default function MeusEventos() {
     <main className="mx-auto max-w-2xl px-4 py-12">
       <h1 className="mb-6 text-2xl font-semibold text-foreground">Meus eventos</h1>
 
+      {/* Item 8.1: atalho para o perfil público de talento. */}
+      <Link
+        to="/meu-talento"
+        className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-border p-4 transition-colors hover:border-foreground/30"
+      >
+        <span>
+          <span className="block font-medium text-foreground">Meu perfil de talento</span>
+          <span className="block text-sm text-muted-foreground">Sua página com personagens e colocações para compartilhar.</span>
+        </span>
+        <span aria-hidden="true" className="text-muted-foreground">
+          →
+        </span>
+      </Link>
+
       {eventos?.length === 0 && <p className="text-muted-foreground">Você ainda não tem nenhum papel em eventos.</p>}
 
       <div className="flex flex-col gap-3">

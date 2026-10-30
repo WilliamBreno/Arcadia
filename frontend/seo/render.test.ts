@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { jsonLdEvento, renderizarEvento, renderizarOrganizador, type EventoSEO } from './render.ts'
+import { jsonLdEvento, renderizarEvento, renderizarOrganizador, renderizarTalento, type EventoSEO, type TalentoSEO } from './render.ts'
 
 const HTML = `<!doctype html><html><head>
     <title>Evve — Eventos sem limites</title>
@@ -155,4 +155,29 @@ test('lista vazia não vai para o Google', async () => {
   const { renderizarLista } = await import('./render.ts')
   const html = renderizarLista(HTML, { titulo: 'X', descricao: 'Y', caminho: '/c/x', eventos: [], semIndexar: true }, 'https://evve.app')
   assert.match(html, /noindex/)
+})
+
+// Item 8.1: perfil de talento adulto vai ao Google; o de menor, não.
+const talento: TalentoSEO = {
+  slug: 'kira-cosplay',
+  nome_artistico: 'Kira Cosplay',
+  bio: 'Cosplayer de Maceió </script><script>alert(1)</script>',
+  instagram: 'kira.cos',
+  indexar: true,
+  participacoes: [{ evento_titulo: 'Geek Fest', evento_slug: 'geek-fest', tipo: 'cosplay', personagem: 'Nezuko', posicao: 1 }],
+}
+
+test('perfil de talento adulto: Person, sem noindex e sem injeção', () => {
+  const out = renderizarTalento(HTML, talento, 'https://evve.app')
+  assert.match(out, /"@type":"Person"/)
+  assert.match(out, /https:\/\/instagram.com\/kira.cos/)
+  assert.doesNotMatch(out, /noindex/)
+  assert.doesNotMatch(out, /<script>alert/)
+  assert.match(out, /Nezuko · 1º lugar/)
+})
+
+test('perfil de talento menor: noindex e sem dados estruturados', () => {
+  const out = renderizarTalento(HTML, { ...talento, indexar: false, instagram: undefined }, 'https://evve.app')
+  assert.match(out, /<meta name="robots" content="noindex, nofollow" \/>/)
+  assert.doesNotMatch(out, /application\/ld\+json/)
 })

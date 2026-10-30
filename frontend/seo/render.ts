@@ -221,6 +221,74 @@ export function renderizarOrganizador(html: string, d: OrganizadorSEO, base: str
   return aplicar(html, head, corpo)
 }
 
+// --- Perfil público do talento (item 8.1) ---
+
+export type TalentoSEO = {
+  slug: string
+  nome_artistico: string
+  bio: string
+  foto_url?: string
+  instagram?: string
+  tiktok?: string
+  youtube?: string
+  indexar: boolean
+  participacoes: { evento_titulo: string; evento_slug: string; tipo: string; personagem?: string; posicao?: number }[]
+}
+
+// Perfil de adulto: indexável, com schema.org Person. Perfil de menor (indexar
+// = false): "noindex" e sem dados estruturados (decisão do dono).
+export function renderizarTalento(html: string, t: TalentoSEO, base: string): string {
+  const url = `${base}/t/${t.slug}`
+  const podios = t.participacoes.filter((p) => p.posicao && p.posicao <= 3).length
+  const descricao = resumo(
+    t.bio || `${t.nome_artistico} no Evve: ${t.participacoes.length} concurso(s)${podios ? `, ${podios} pódio(s)` : ''}.`,
+  )
+  const sameAs = [
+    t.instagram ? `https://instagram.com/${t.instagram}` : '',
+    t.tiktok ? `https://www.tiktok.com/@${t.tiktok}` : '',
+    t.youtube ? `https://www.youtube.com/@${t.youtube}` : '',
+  ].filter(Boolean)
+  const head = [
+    `<title>${escapeHtml(`${t.nome_artistico} | Evve`)}</title>`,
+    `<meta name="description" content="${escapeHtml(descricao)}" />`,
+    `<link rel="canonical" href="${escapeHtml(url)}" />`,
+    `<meta property="og:type" content="profile" />`,
+    `<meta property="og:site_name" content="Evve" />`,
+    `<meta property="og:title" content="${escapeHtml(t.nome_artistico)}" />`,
+    `<meta property="og:description" content="${escapeHtml(descricao)}" />`,
+    `<meta property="og:url" content="${escapeHtml(url)}" />`,
+    `<meta property="og:image" content="${escapeHtml(t.foto_url || `${base}/brand/og.png`)}" />`,
+  ]
+  if (t.indexar) {
+    const ld = {
+      '@context': 'https://schema.org',
+      '@type': 'Person',
+      name: t.nome_artistico,
+      url,
+      ...(t.foto_url ? { image: t.foto_url } : {}),
+      ...(t.bio ? { description: resumo(t.bio, 5000) } : {}),
+      ...(sameAs.length ? { sameAs } : {}),
+    }
+    head.push(`<script type="application/ld+json">${jsonSeguro(ld)}</script>`)
+  } else {
+    head.push('<meta name="robots" content="noindex, nofollow" />')
+  }
+  const lista = t.participacoes
+    .map(
+      (p) =>
+        `<li><a href="/e/${escapeHtml(p.evento_slug)}">${escapeHtml(p.evento_titulo)}</a>${p.personagem ? ` · ${escapeHtml(p.personagem)}` : ''}${p.posicao ? ` · ${p.posicao}º lugar` : ''}</li>`,
+    )
+    .join('')
+  const corpo = [
+    '<main>',
+    `<h1>${escapeHtml(t.nome_artistico)}</h1>`,
+    t.bio ? `<p>${escapeHtml(t.bio)}</p>` : '',
+    lista ? `<h2>Concursos</h2><ul>${lista}</ul>` : '',
+    '</main>',
+  ].join('')
+  return aplicar(html, head, corpo)
+}
+
 // --- Páginas de lista: cidade, cidade + categoria e coleção (item 6.2) ---
 
 export type ListaSEO = {

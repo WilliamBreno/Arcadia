@@ -23,6 +23,9 @@ import AdminOrganizadores from '@/pages/admin/AdminOrganizadores'
 import AdminColecoes from '@/pages/admin/AdminColecoes'
 import AdminAvaliacoes from '@/pages/admin/AdminAvaliacoes'
 import Cookies from '@/pages/Cookies'
+import PerfilTalento from '@/pages/PerfilTalento'
+import MeuTalento from '@/pages/MeuTalento'
+import AutorizarPerfil from '@/pages/AutorizarPerfil'
 import WidgetEvento from '@/pages/WidgetEvento'
 import CidadeEventos from '@/pages/CidadeEventos'
 import ColecaoPublica from '@/pages/ColecaoPublica'
@@ -52,6 +55,8 @@ function App() {
         <Route path="/mapa" element={<MapaEventos />} />
         <Route path="/quanto-custa" element={<QuantoCusta />} />
         <Route path="/cookies" element={<Cookies />} />
+        <Route path="/t/:slug" element={<PerfilTalento />} />
+        <Route path="/autorizar-perfil" element={<AutorizarPerfil />} />
         <Route path="/descadastrar" element={<Descadastrar />} />
         <Route path="/o/:slug" element={<OrganizadorPublico />} />
         <Route path="/convite/:token" element={<Convite />} />
@@ -60,6 +65,7 @@ function App() {
         <Route path="/cadastro" element={<Cadastro />} />
 
         <Route element={<ProtectedRoute />}>
+          <Route path="/meu-talento" element={<MeuTalento />} />
           <Route path="/e/:slug/inscricao" element={<Inscricao />} />
           <Route path="/e/:slug/jurado" element={<AreaJurado />} />
           <Route path="/pedidos/:id" element={<Pedido />} />
