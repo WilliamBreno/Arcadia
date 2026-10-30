@@ -165,7 +165,7 @@ func (s *PosEventoService) Emitir(e *domain.Evento, agora time.Time) (int, error
 			(SELECT u.id FROM usuarios u WHERE lower(u.email) = lower(i.titular_email) LIMIT 1) AS usuario_id,
 			lower(i.titular_email) AS email, i.titular_nome AS nome, '' AS detalhe
 			FROM itens_pedido i JOIN pedidos p ON p.id = i.pedido_id
-			WHERE p.evento_id = ? AND i.status = 'utilizado' AND i.ficha_id IS NULL AND i.expositor_id IS NULL
+			WHERE p.evento_id = ? AND i.status = 'utilizado' AND i.ficha_id IS NULL AND i.expositor_id IS NULL AND NOT i.adicional
 			AND trim(i.titular_nome) <> '' AND i.titular_email LIKE '%@%'
 			AND NOT EXISTS (SELECT 1 FROM certificados c WHERE c.item_id = i.id)`},
 		// Participantes aprovados que estiveram lá (camarim/palco); se o
@@ -639,7 +639,7 @@ func (s *PosEventoService) Processar(agora time.Time) (int, error) {
 		}
 		var compradores []struct{ Nome, Email string }
 		s.db.Raw(`SELECT DISTINCT u.nome, u.email FROM itens_pedido i JOIN pedidos p ON p.id = i.pedido_id JOIN usuarios u ON u.id = p.usuario_id
-			WHERE p.evento_id = ? AND i.status = 'utilizado' AND NOT i.cortesia AND p.canal = 'online' AND i.ficha_id IS NULL AND i.expositor_id IS NULL`, e.ID).Scan(&compradores)
+			WHERE p.evento_id = ? AND i.status = 'utilizado' AND NOT i.cortesia AND p.canal = 'online' AND i.ficha_id IS NULL AND i.expositor_id IS NULL AND NOT i.adicional`, e.ID).Scan(&compradores)
 		for _, c := range compradores {
 			if d := pegar(c.Email, c.Nome); d != nil {
 				d.comprador, d.publico = true, true
@@ -647,7 +647,7 @@ func (s *PosEventoService) Processar(agora time.Time) (int, error) {
 		}
 		var titulares []struct{ Nome, Email string }
 		s.db.Raw(`SELECT DISTINCT i.titular_nome AS nome, i.titular_email AS email FROM itens_pedido i JOIN pedidos p ON p.id = i.pedido_id
-			WHERE p.evento_id = ? AND i.status = 'utilizado' AND i.ficha_id IS NULL AND i.expositor_id IS NULL`, e.ID).Scan(&titulares)
+			WHERE p.evento_id = ? AND i.status = 'utilizado' AND i.ficha_id IS NULL AND i.expositor_id IS NULL AND NOT i.adicional`, e.ID).Scan(&titulares)
 		for _, t := range titulares {
 			if d := pegar(t.Email, t.Nome); d != nil {
 				d.publico = true

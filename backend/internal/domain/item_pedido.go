@@ -38,6 +38,11 @@ type ItemPedido struct {
 	// gravado na compra ("Plateia · Fileira A · Lugar 5").
 	LugarID     *int64
 	LugarRotulo string
+	// Item 10.3: adicional (entregue no evento, não é ingresso), pacote e
+	// compra em grupo de onde o item veio.
+	Adicional bool
+	PacoteID  *int64
+	GrupoID   *int64
 	// Item 9.2: comissão do divulgador gravada na compra.
 	ComissaoAfiliadoCentavos int64
 	TotalCentavos            int64
@@ -55,4 +60,4 @@ func (ItemPedido) TableName() string {
 }
 
 // Interno: item que não é ingresso de plateia (inscrição 8.4, espaço 8.6).
-func (i *ItemPedido) Interno() bool { return i.FichaID != nil || i.ExpositorID != nil }
+func (i *ItemPedido) Interno() bool { return i.FichaID != nil || i.ExpositorID != nil || i.Adicional }

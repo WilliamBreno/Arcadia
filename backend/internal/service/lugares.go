@@ -380,7 +380,7 @@ func (s *LugaresService) conferirTipos(tx *gorm.DB, eventoID int64, ids []int64)
 	}
 	var n int64
 	if err := tx.Model(&domain.TipoIngresso{}).
-		Where("id IN ? AND evento_id = ? AND inscricao_talento = false AND espaco_expositor = false", lista, eventoID).
+		Where("id IN ? AND evento_id = ? AND inscricao_talento = false AND espaco_expositor = false AND adicional = false", lista, eventoID).
 		Count(&n).Error; err != nil {
 		return nil, err
 	}

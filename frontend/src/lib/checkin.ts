@@ -1,6 +1,6 @@
 import { api } from '@/lib/api'
 
-export type ResultadoCheckin = 'valido' | 'ja_utilizado' | 'cancelado' | 'outro_evento' | 'nao_encontrado' | 'qr_expirado' | 'fora_da_sessao' | 'requer_internet' | 'em_revenda' | 'credencial_invalida' | 'expositor' | 'credencial'
+export type ResultadoCheckin = 'valido' | 'ja_utilizado' | 'cancelado' | 'outro_evento' | 'nao_encontrado' | 'qr_expirado' | 'fora_da_sessao' | 'requer_internet' | 'em_revenda' | 'credencial_invalida' | 'expositor' | 'credencial' | 'adicional' | 'adicional_entregue'
 
 export type ValidarCheckinResposta = {
   resultado: ResultadoCheckin

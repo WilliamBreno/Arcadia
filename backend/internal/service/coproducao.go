@@ -59,7 +59,7 @@ func EventoComVenda(db *gorm.DB, eventoID int64) bool {
 	var n int64
 	db.Raw(`SELECT count(*) FROM itens_pedido i JOIN pedidos p ON p.id = i.pedido_id
 		WHERE p.evento_id = ? AND i.status IN ('reservado', 'pago', 'utilizado', 'reembolsado', 'cancelado')
-		AND (i.preco_centavos > 0 OR i.taxa_plataforma_centavos > 0) AND i.ficha_id IS NULL AND i.expositor_id IS NULL`, eventoID).Scan(&n)
+		AND (i.preco_centavos > 0 OR i.taxa_plataforma_centavos > 0) AND i.ficha_id IS NULL AND i.expositor_id IS NULL AND NOT i.adicional`, eventoID).Scan(&n)
 	return n > 0
 }
 

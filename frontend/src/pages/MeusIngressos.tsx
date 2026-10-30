@@ -1,3 +1,4 @@
+import { MeusAdicionais } from '@/components/meus-adicionais'
 import { MeusCertificados } from '@/components/meus-certificados'
 import { useQuery } from '@tanstack/react-query'
 import { QRCodeSVG } from 'qrcode.react'
@@ -112,6 +113,7 @@ export default function MeusIngressos() {
           </Card>
         </div>
       )}
+      <MeusAdicionais />
       <MeusCertificados />
     </main>
   )

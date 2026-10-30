@@ -95,7 +95,7 @@ func (s *CRMService) contatos(organizadorID int64, segmento string, eventoID *in
 		Where("sg.tipo = ? AND sg.alvo = ? AND u.receber_novidades AND u.email_verificado_em IS NOT NULL AND u.id <> ?",
 			SeguirOrganizador, strconv.FormatInt(organizadorID, 10), org.UsuarioID)
 	itemValido := `SELECT 1 FROM pedidos p JOIN itens_pedido i ON i.pedido_id = p.id
-		WHERE p.usuario_id = u.id AND p.evento_id = ? AND i.ficha_id IS NULL AND i.expositor_id IS NULL AND i.status IN ?`
+		WHERE p.usuario_id = u.id AND p.evento_id = ? AND i.ficha_id IS NULL AND i.expositor_id IS NULL AND NOT i.adicional AND i.status IN ?`
 	switch segmento {
 	case SegmentoCompraram:
 		q = q.Where("EXISTS ("+itemValido+")", *eventoID, []string{"pago", "utilizado"})
@@ -119,7 +119,7 @@ func (s *CRMService) contatos(organizadorID int64, segmento string, eventoID *in
 	}
 	s.db.Raw(`SELECT DISTINCT p.usuario_id, e.titulo FROM pedidos p JOIN eventos e ON e.id = p.evento_id
 		JOIN itens_pedido i ON i.pedido_id = p.id
-		WHERE e.organizador_id = ? AND p.usuario_id IN ? AND i.status IN ('pago','utilizado') AND i.ficha_id IS NULL AND i.expositor_id IS NULL
+		WHERE e.organizador_id = ? AND p.usuario_id IN ? AND i.status IN ('pago','utilizado') AND i.ficha_id IS NULL AND i.expositor_id IS NULL AND NOT i.adicional
 		ORDER BY e.titulo`, organizadorID, ids).Scan(&compras)
 	idx := map[int64]int{}
 	for i := range cs {

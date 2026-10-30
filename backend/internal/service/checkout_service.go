@@ -49,6 +49,13 @@ type ItemRequisitado struct {
 	// Item 9.5: cadeiras escolhidas no mapa, uma por ingresso (só nos
 	// tipos com lugar marcado).
 	LugarIDs []int64
+	// Item 10.3: pacote (no lugar do tipo) e parte de compra em grupo.
+	PacoteID   int64
+	GrupoToken string
+	// preenchidos ao abrir o pacote: preço rateado por unidade e origem.
+	precoPacote    *int64
+	pacoteID       *int64
+	pacotesPedidos int
 }
 
 type CheckoutService struct {
@@ -143,11 +150,35 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 		return nil, nil, ErrPrecisaAprovacao
 	}
 
-	totalUnidades := 0
+	// Item 10.3: pacote vira as suas partes, com o preço rateado.
+	itensReq, err = expandirPacotes(s.db, eventoID, itensReq)
+	if err != nil {
+		return nil, nil, err
+	}
+	// Adicional não conta como ingresso (limites por pedido e por conta) e
+	// só é vendido junto com pelo menos um ingresso.
+	totalUnidades, unidadesCupom := 0, 0
 	for _, ir := range itensReq {
-		totalUnidades += ir.Quantidade
+		if ir.Quantidade <= 0 {
+			continue
+		}
+		t, err := s.tipos.BuscarPorID(ir.TipoIngressoID)
+		if err != nil || t.EventoID != eventoID {
+			return nil, nil, fmt.Errorf("tipo de ingresso não encontrado")
+		}
+		if !t.Adicional {
+			totalUnidades += ir.Quantidade
+		}
+		if ir.precoPacote == nil {
+			unidadesCupom += ir.Quantidade
+		}
 	}
 	if totalUnidades == 0 {
+		for _, ir := range itensReq {
+			if ir.Quantidade > 0 {
+				return nil, nil, ErrAdicionalSemIngresso
+			}
+		}
 		return nil, nil, ErrPedidoVazio
 	}
 	if evento.MaxItensPorPedido > 0 && totalUnidades > evento.MaxItensPorPedido {
@@ -223,13 +254,16 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 		var cupom *domain.Cupom
 		if cupomCodigo != "" {
 			c, errCupom := s.cupons.BuscarPorCodigo(tx, eventoID, cupomCodigo, true)
-			if errCupom != nil || !cupomUtilizavel(c, totalUnidades, agora) {
+			if errCupom != nil || unidadesCupom == 0 || !cupomUtilizavel(c, unidadesCupom, agora) {
 				return ErrCupomInvalido
 			}
 			cupom = c
 		}
 
 		var totalPedido int64
+		if err := conferirEstoquePacotes(tx, itensReq); err != nil { // item 10.3
+			return err
+		}
 
 		for idxReq, ir := range itensReq {
 			lugaresDoItem := escolhidos[idxReq]
@@ -255,7 +289,7 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 					return fmt.Errorf("%w: %s (o evento ou o dia deste ingresso já terminou)", ErrVendasEncerradas, tipo.Nome)
 				}
 			}
-			if ir.Quantidade < tipo.MinPorPedido || (tipo.MaxPorPedido > 0 && ir.Quantidade > tipo.MaxPorPedido) {
+			if ir.precoPacote == nil && ir.GrupoToken == "" && (ir.Quantidade < tipo.MinPorPedido || (tipo.MaxPorPedido > 0 && ir.Quantidade > tipo.MaxPorPedido)) {
 				return fmt.Errorf("%w para %s", ErrQuantidadeInvalida, tipo.Nome)
 			}
 
@@ -293,23 +327,39 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 			if err != nil {
 				return err
 			}
+			// Item 10.3: a parte de um grupo usa uma das vagas que o grupo segura.
+			var grupo *GrupoCompra
+			if ir.GrupoToken != "" {
+				if tipo.Interno() || len(lugaresDoItem) > 0 {
+					return ErrGrupoInvalido
+				}
+				if grupo, err = grupoParaComprar(tx, ir.GrupoToken, eventoID, tipo.ID, usuarioID, ir.Quantidade, agora); err != nil {
+					return err
+				}
+				guardadas -= int64(ir.Quantidade)
+			}
 			estoqueOrganizador := int64(tipo.Quantidade) - ativos - guardadas
 			disponivel := VagasParaComprar(int64(tipo.Quantidade)-ativos, aVenda, guardadas)
-			if len(lugaresDoItem) > 0 {
-				// 9.5: com lugar marcado não há revenda; vale o estoque do tipo.
+			if len(lugaresDoItem) > 0 || ir.precoPacote != nil || tipo.Adicional || grupo != nil {
+				// 9.5/10.3: lugar marcado, pacote, adicional e grupo não usam a
+				// revenda; vale o estoque do tipo.
 				disponivel = estoqueOrganizador
 			}
 			if int64(ir.Quantidade) > disponivel {
 				return fmt.Errorf("%w: %s (restam %d)", ErrEstoqueInsuficiente, tipo.Nome, disponivel)
 			}
 
+			precoBase := tipo.PrecoCentavos
+			if ir.precoPacote != nil { // 10.3: preço rateado do pacote
+				precoBase = *ir.precoPacote
+			}
 			var descontoCentavos int64
 			var cupomID *int64
-			if cupom != nil {
-				descontoCentavos = calcularDesconto(cupom.Tipo, cupom.Valor, tipo.PrecoCentavos)
+			if cupom != nil && ir.precoPacote == nil {
+				descontoCentavos = calcularDesconto(cupom.Tipo, cupom.Valor, precoBase)
 				cupomID = &cupom.ID
 			}
-			precoFinal := tipo.PrecoCentavos - descontoCentavos
+			precoFinal := precoBase - descontoCentavos
 			// Item gratuito não tem garantia (não há o que devolver).
 			valores := taxasEvento.Calcular(precoFinal, ir.GarantiaContratada && precoFinal > 0)
 
@@ -339,6 +389,14 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 					CriadoEm:                 agora,
 				}
 				marcarLugar(&item, lugaresDoItem, i)
+				// Item 10.3: adicional, pacote e grupo.
+				item.Adicional, item.PacoteID = tipo.Adicional, ir.pacoteID
+				if grupo != nil {
+					item.GrupoID = &grupo.ID
+				}
+				if tipo.Adicional {
+					item.ComissaoAfiliadoCentavos = 0
+				}
 				if err := s.itensPedido.Criar(tx, &item); err != nil {
 					if lugarJaOcupado(err) {
 						return ErrLugarOcupado
@@ -353,6 +411,9 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 				ids := make([]int64, len(novos))
 				for k := range novos {
 					ids[k] = novos[k].ID
+				}
+				if tipo.Adicional { // 10.3: perguntas são do ingresso, não do adicional
+					ids = nil
 				}
 				if err := salvarRespostas(tx, perguntas, tipo.ID, ids, ir.Respostas); err != nil {
 					return err
@@ -374,7 +435,7 @@ func (s *CheckoutService) Reservar(usuarioID, eventoID int64, itensReq []ItemReq
 		}
 
 		if cupom != nil {
-			if err := s.cupons.AjustarUsos(tx, cupom.ID, totalUnidades); err != nil {
+			if err := s.cupons.AjustarUsos(tx, cupom.ID, unidadesCupom); err != nil {
 				return err
 			}
 		}

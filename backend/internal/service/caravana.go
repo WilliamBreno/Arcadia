@@ -258,7 +258,7 @@ func (s *CaravanaService) Lista(usuarioID int64, codigo string) ([]LinhaEmbarque
 	err = s.db.Raw(`SELECT m.id, m.nome, m.telefone, m.embarcou_em,
 		EXISTS (SELECT 1 FROM itens_pedido i JOIN pedidos p ON p.id = i.pedido_id
 			WHERE p.usuario_id = m.usuario_id AND p.evento_id = ? AND i.status IN ('pago','utilizado')
-			  AND i.ficha_id IS NULL AND i.expositor_id IS NULL) AS tem_ingresso
+			  AND i.ficha_id IS NULL AND i.expositor_id IS NULL AND NOT i.adicional) AS tem_ingresso
 		FROM caravana_membros m WHERE m.caravana_id = ? ORDER BY m.nome`, c.EventoID, c.ID).Scan(&out).Error
 	return out, err
 }
@@ -324,7 +324,7 @@ func (s *CaravanaService) DoOrganizador(organizadorID, eventoID int64) ([]Resumo
 		(SELECT count(*) FROM caravana_membros m WHERE m.caravana_id = c.id) AS membros,
 		(SELECT count(*) FROM caravana_membros m WHERE m.caravana_id = c.id AND EXISTS (SELECT 1 FROM itens_pedido i JOIN pedidos p ON p.id = i.pedido_id
 			WHERE p.usuario_id = m.usuario_id AND p.evento_id = c.evento_id AND i.status IN ('pago','utilizado')
-			  AND i.ficha_id IS NULL AND i.expositor_id IS NULL)) AS com_ingresso
+			  AND i.ficha_id IS NULL AND i.expositor_id IS NULL AND NOT i.adicional)) AS com_ingresso
 		FROM caravanas c JOIN usuarios u ON u.id = c.responsavel_id
 		WHERE c.evento_id = ? AND c.ativa ORDER BY c.cidade, c.nome`, eventoID).Scan(&out).Error
 	return out, err

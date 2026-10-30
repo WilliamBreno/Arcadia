@@ -76,7 +76,8 @@ func VagasGuardadas(tx *gorm.DB, tipoID, excetoUsuarioID int64) (int64, error) {
 	err := tx.Model(&FilaEspera{}).Select("COALESCE(SUM(quantidade),0)").
 		Where("tipo_ingresso_id = ? AND status = ? AND prazo_em > ? AND usuario_id <> ?", tipoID, FilaConvidado, time.Now(), excetoUsuarioID).
 		Scan(&n).Error
-	return n, err
+	// Item 10.3: ingressos segurados por grupos de compra abertos.
+	return n + vagasDeGrupos(tx, tipoID), err
 }
 
 // VagasGuardadasPorTipos é a versão para a página pública (vários tipos).
@@ -94,6 +95,9 @@ func VagasGuardadasPorTipos(db *gorm.DB, ids []int64) (map[int64]int64, error) {
 		Group("tipo_ingresso_id").Scan(&linhas).Error
 	for _, l := range linhas {
 		out[l.TipoIngressoID] = l.Total
+	}
+	for id, n := range vagasDeGruposPorTipos(db, ids) { // item 10.3
+		out[id] += n
 	}
 	return out, err
 }

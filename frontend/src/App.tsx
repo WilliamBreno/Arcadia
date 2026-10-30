@@ -14,6 +14,7 @@ import Pesquisa from '@/pages/Pesquisa'
 import Ajuda from '@/pages/Ajuda'
 import VerificarIngresso from '@/pages/VerificarIngresso'
 import Status from '@/pages/Status'
+import Grupo from '@/pages/Grupo'
 import AdminSuporte from '@/pages/admin/AdminSuporte'
 import Inscricao from '@/pages/Inscricao'
 import Login from '@/pages/Login'
@@ -88,6 +89,7 @@ function App() {
         <Route path="/ajuda" element={<Ajuda />} />
         <Route path="/verificar" element={<VerificarIngresso />} />
         <Route path="/status" element={<Status />} />
+        <Route path="/grupo/:token" element={<Grupo />} />
         <Route path="/login" element={<Login />} />
         <Route path="/cadastro" element={<Cadastro />} />
 

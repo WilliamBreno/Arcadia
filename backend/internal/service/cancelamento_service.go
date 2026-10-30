@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"html"
+	"log/slog"
 	"time"
 
 	"gorm.io/gorm"
@@ -259,10 +260,34 @@ func (s *CancelamentoService) Cancelar(itemID, usuarioID int64) (*domain.ItemPed
 			(SELECT evento_id, usuario_id, papel FROM fichas_participacao WHERE id = ?)`, *ctx.item.FichaID)
 		return itemCancelado, nil
 	}
+	if err == nil && !ctx.item.Adicional {
+		s.cancelarAdicionaisSemIngresso(ctx.item.PedidoID, usuarioID)
+	}
 	if err == nil && s.promotor != nil {
 		s.promotor.PromoverListaEspera(ctx.evento.ID)
 	}
 	return itemCancelado, err
+}
+
+// cancelarAdicionaisSemIngresso (item 10.3): se o pedido ficou sem
+// ingresso ativo, os adicionais ainda não entregues são cancelados pelas
+// mesmas regras (o entregue fica). Erro num adicional não desfaz o
+// cancelamento do ingresso; fica no log para o admin.
+func (s *CancelamentoService) cancelarAdicionaisSemIngresso(pedidoID, usuarioID int64) {
+	db := s.itensPedido.DB()
+	var ingressos int64
+	db.Model(&domain.ItemPedido{}).Where("pedido_id = ? AND NOT adicional AND status IN ?", pedidoID,
+		[]domain.StatusItemPedido{domain.StatusItemPago, domain.StatusItemUtilizado}).Count(&ingressos)
+	if ingressos > 0 {
+		return
+	}
+	var ids []int64
+	db.Model(&domain.ItemPedido{}).Where("pedido_id = ? AND adicional AND status = ?", pedidoID, domain.StatusItemPago).Pluck("id", &ids)
+	for _, id := range ids {
+		if _, err := s.Cancelar(id, usuarioID); err != nil {
+			slog.Error("cancelamento: adicional não cancelado junto com o ingresso", "item_id", id, "erro", err)
+		}
+	}
 }
 
 // DefinirPromotor liga a promoção da lista de espera (item 3.2).

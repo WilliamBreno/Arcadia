@@ -37,6 +37,9 @@ import { faltando, respostasDoTipo, type RespostasCheckout } from '@/lib/pergunt
 import { horaPrazo, minhaFila, type EntradaFila } from '@/lib/fila'
 import { EscolhaLugares } from '@/components/escolha-lugares'
 import type { Escolhas, SetorMapa } from '@/lib/lugares'
+import { ExtrasCompra } from '@/components/extras-compra'
+import { CompraGrupo } from '@/components/compra-grupo'
+import { somarResumo, valoresExtras, type Extras } from '@/lib/extras'
 
 export default function EventoDetalhe() {
   const { slug } = useParams()
@@ -54,6 +57,8 @@ export default function EventoDetalhe() {
   const [comprando, setComprando] = useState(false)
   const [respostas, setRespostas] = useState<RespostasCheckout>({}) // item 7.6
   const [escolhas, setEscolhas] = useState<Escolhas>({}) // item 9.5
+  const [qtdAdicionais, setQtdAdicionais] = useState<Record<number, number>>({}) // item 10.3
+  const [qtdPacotes, setQtdPacotes] = useState<Record<number, number>>({})
   // Item 7.2: quem não está logado entra com código aqui mesmo e a compra
   // continua sozinha, sem perder os ingressos escolhidos.
   const [pedirLogin, setPedirLogin] = useState<'comprar' | 'cupom' | 'fila' | null>(null)
@@ -123,6 +128,13 @@ export default function EventoDetalhe() {
     queryKey: ['lugares', slug],
     enabled: !!data,
     queryFn: () => api<{ setores: SetorMapa[] }>(`/eventos/${slug}/lugares`, { semAuth: true }),
+  })
+
+  // Item 10.3: adicionais e pacotes à venda.
+  const extras = useQuery({
+    queryKey: ['extras', slug],
+    enabled: !!data,
+    queryFn: () => api<Extras>(`/eventos/${slug}/extras`, { semAuth: true }),
   })
 
   // Link do e-mail de carrinho (item 7.2): ?retomar=12:2,13:1 já escolhe os
@@ -207,7 +219,7 @@ export default function EventoDetalhe() {
   const totalUnidades = Object.values(quantidadesFinal).reduce((a, b) => a + b, 0)
   // Prévia com a mesma regra do servidor (item 5.1): taxa pela faixa do
   // preço com desconto, garantia de 5% (mín./teto); quem cobra é o servidor.
-  const resumo = ingressos.reduce(
+  const resumoIngressos = ingressos.reduce(
     (acc, i) => {
       const qtd = quantidadesFinal[i.id] ?? 0
       if (qtd === 0) return acc
@@ -229,6 +241,18 @@ export default function EventoDetalhe() {
     },
     { preco: 0, taxa: 0, garantia: 0, garantiaSeMarcar: 0, total: 0, temPago: false },
   )
+  // Item 10.3: adicionais (com o cupom, como o ingresso) e pacotes (preço
+  // fechado rateado, sem cupom).
+  const descontoDe = (preco: number) =>
+    !cupom ? 0 : Math.min(preco, cupom.tipo === 'percentual' ? Math.floor((preco * cupom.valor) / 100) : cupom.valor)
+  const tabelaPrecos: Record<number, number> = Object.fromEntries([
+    ...ingressos.map((i) => [i.id, i.preco_centavos]),
+    ...(extras.data?.adicionais ?? []).map((a) => [a.id, a.preco_centavos]),
+  ])
+  const valoresDosExtras = valoresExtras(data.taxas, garantia, descontoDe, extras.data, qtdAdicionais, qtdPacotes, tabelaPrecos)
+  const resumo = somarResumo(resumoIngressos, valoresDosExtras)
+  const unidadesPacote = Object.values(qtdPacotes).reduce((a, b) => a + b, 0)
+  const totalItens = totalUnidades + valoresDosExtras.unidades
   const taxaAbsorvida = data.taxas.taxa_paga_por === 'organizador'
 
   const aplicarCupom = async () => {
@@ -277,10 +301,17 @@ export default function EventoDetalhe() {
           respostas: respostasDoTipo(Number(tipoIngressoId), quantidade, respostas),
           ...(tiposComMapa.has(Number(tipoIngressoId)) ? { lugar_ids: lugaresDoTipo(Number(tipoIngressoId)) } : {}),
         }))
+      // Item 10.3: adicionais e pacotes.
+      for (const [id, quantidade] of Object.entries(qtdAdicionais)) {
+        if (quantidade > 0) itens.push({ tipo_ingresso_id: Number(id), quantidade, garantia_contratada: garantia, respostas: [] })
+      }
+      const pacotes = Object.entries(qtdPacotes)
+        .filter(([, q]) => q > 0)
+        .map(([id, quantidade]) => ({ pacote_id: Number(id), quantidade, garantia_contratada: garantia }))
 
       const pedido = await api<Pedido>(`/eventos/${slug}/pedidos`, {
         method: 'POST',
-        body: { itens, cupom: cupom?.codigo ?? '', ref: refAtual() },
+        body: { itens: [...itens, ...pacotes], cupom: cupom?.codigo ?? '', ref: refAtual() },
       })
       // Item 9.3: "quero receber novidades" = seguir o organizador (6.4).
       if (novidades && data.organizador && !segue('organizador', String(data.organizador.id))) {
@@ -501,6 +532,28 @@ export default function EventoDetalhe() {
           <EscolhaLugares setores={setores} tipos={ingressos} escolhas={escolhas} aoMudar={setEscolhas} />
         )}
 
+        {extras.data && (
+          <ExtrasCompra
+            extras={extras.data}
+            regra={data.taxas}
+            qtdAdicionais={qtdAdicionais}
+            qtdPacotes={qtdPacotes}
+            aoMudarAdicional={(id, q) => setQtdAdicionais((a) => ({ ...a, [id]: q }))}
+            aoMudarPacote={(id, q) => setQtdPacotes((a) => ({ ...a, [id]: q }))}
+            temIngresso={totalUnidades + unidadesPacote > 0}
+            oculto={precisaAprovacao || vendasEncerradas}
+          />
+        )}
+
+        {!precisaAprovacao && !vendasEncerradas && (
+          <CompraGrupo
+            slug={evento.slug}
+            tipos={ingressos.filter((i) => !tiposComMapa.has(i.id))}
+            logado={!!usuario}
+            pedirLogin={() => setPedirLogin('comprar')}
+          />
+        )}
+
         {totalUnidades > 0 && (data.perguntas?.length ?? 0) > 0 && (
           <PerguntasCheckout
             perguntas={data.perguntas!}
@@ -512,7 +565,7 @@ export default function EventoDetalhe() {
           />
         )}
 
-        {totalUnidades > 0 && (
+        {totalItens > 0 && (
           <div className="mt-4 flex flex-col gap-3 rounded-lg border border-border p-4">
             {evento.garantia_habilitada && resumo.temPago && !eventoComecou && (
               <label className="flex items-start gap-2 text-sm text-foreground">
@@ -548,7 +601,7 @@ export default function EventoDetalhe() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">
-                  {totalUnidades} item(ns) · {formatarCentavos(resumo.preco)}
+                  {totalItens} item(ns) · {formatarCentavos(resumo.preco)}
                   {resumo.taxa > 0 && ` + ${formatarCentavos(resumo.taxa)} de taxa`}
                   {resumo.garantia > 0 && ` + ${formatarCentavos(resumo.garantia)} de garantia`}
                   {taxaAbsorvida && resumo.preco > 0 && ' · taxa paga pelo organizador'}

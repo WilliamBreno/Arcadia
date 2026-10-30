@@ -330,7 +330,7 @@ func (s *CheckoutService) TiposPorta(usuarioID, eventoID int64) ([]TipoPorta, er
 		return nil, err
 	}
 	var tipos []domain.TipoIngresso
-	if err := s.db.Where("evento_id = ? AND ativo AND NOT inscricao_talento AND NOT espaco_expositor", eventoID).Order("ordem, id").Find(&tipos).Error; err != nil {
+	if err := s.db.Where("evento_id = ? AND ativo AND NOT inscricao_talento AND NOT espaco_expositor AND NOT adicional", eventoID).Order("ordem, id").Find(&tipos).Error; err != nil {
 		return nil, err
 	}
 	out := make([]TipoPorta, 0, len(tipos))

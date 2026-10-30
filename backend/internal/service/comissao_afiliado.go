@@ -94,7 +94,7 @@ func saldoDoAfiliado(db *gorm.DB, afiliadoID int64, liberado bool) (SaldoComissa
 	err := db.Raw(`SELECT COUNT(ip.id) AS ingressos, COALESCE(SUM(ip.comissao_afiliado_centavos), 0) AS comissao_centavos
 		FROM pedidos p JOIN itens_pedido ip ON ip.pedido_id = p.id
 		WHERE p.afiliado_id = ? AND ip.status IN ('pago', 'utilizado') AND NOT ip.cortesia
-		  AND ip.ficha_id IS NULL AND ip.expositor_id IS NULL`, afiliadoID).Scan(&s).Error
+		  AND ip.ficha_id IS NULL AND ip.expositor_id IS NULL AND NOT ip.adicional`, afiliadoID).Scan(&s).Error
 	if err != nil {
 		return s, err
 	}

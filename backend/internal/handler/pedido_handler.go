@@ -41,7 +41,9 @@ type itemPedidoResposta struct {
 	Codigo             string     `json:"codigo"`
 	QRToken            string     `json:"qr_token,omitempty"`
 	UtilizadoEm        *time.Time `json:"utilizado_em"`
-	Lugar              string     `json:"lugar,omitempty"` // item 9.5
+	Lugar              string     `json:"lugar,omitempty"`     // item 9.5
+	Adicional          bool       `json:"adicional,omitempty"` // item 10.3
+	PacoteID           *int64     `json:"pacote_id,omitempty"`
 }
 
 func paraItemPedidoResposta(i *domain.ItemPedido) itemPedidoResposta {
@@ -50,6 +52,7 @@ func paraItemPedidoResposta(i *domain.ItemPedido) itemPedidoResposta {
 		PrecoCentavos: i.PrecoCentavos, TaxaCentavos: i.TaxaPlataformaCentavos,
 		GarantiaContratada: i.GarantiaContratada, GarantiaCentavos: i.GarantiaCentavos, TaxaAbsorvida: i.TaxaAbsorvida, DescontoCentavos: i.DescontoCentavos, TotalCentavos: i.TotalCentavos,
 		Status: string(i.Status), Codigo: i.Codigo, QRToken: i.QRToken, UtilizadoEm: i.UtilizadoEm, Lugar: i.LugarRotulo,
+		Adicional: i.Adicional, PacoteID: i.PacoteID,
 	}
 }
 
@@ -87,13 +90,16 @@ func paraPedidoResposta(p *domain.Pedido, itens []domain.ItemPedido) pedidoRespo
 }
 
 type itemRequest struct {
-	TipoIngressoID     int64 `json:"tipo_ingresso_id" binding:"required"`
+	TipoIngressoID     int64 `json:"tipo_ingresso_id"`
 	Quantidade         int   `json:"quantidade" binding:"required,gt=0"`
 	GarantiaContratada bool  `json:"garantia_contratada"`
 	// Item 7.6: [{"<pergunta_id>": "resposta"}, ...], um objeto por ingresso.
 	Respostas []map[string]string `json:"respostas"`
 	// Item 9.5: cadeiras escolhidas no mapa, uma por ingresso.
 	LugarIDs []int64 `json:"lugar_ids"`
+	// Item 10.3: pacote (no lugar do tipo) e parte de um grupo de compra.
+	PacoteID   int64  `json:"pacote_id"`
+	GrupoToken string `json:"grupo_token"`
 }
 
 // respostasPorUnidade converte as chaves (ids de pergunta em texto).
@@ -142,10 +148,19 @@ func (h *PedidoHandler) Criar(c *gin.Context) {
 		itensReq[i] = service.ItemRequisitado{
 			TipoIngressoID: ir.TipoIngressoID, Quantidade: ir.Quantidade, GarantiaContratada: ir.GarantiaContratada,
 			Respostas: respostasPorUnidade(ir.Respostas), LugarIDs: ir.LugarIDs,
+			PacoteID: ir.PacoteID, GrupoToken: ir.GrupoToken,
+		}
+		if ir.TipoIngressoID == 0 && ir.PacoteID == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"erro": "dados inválidos"})
+			return
 		}
 	}
 
 	pedido, itens, err := h.service.Reservar(usuarioID, evento.ID, itensReq, comprador.Nome, comprador.Email, req.Cupom, req.Ref)
+	if errors.Is(err, service.ErrGrupoJaParticipa) || errors.Is(err, service.ErrGrupoCompleto) || errors.Is(err, service.ErrGrupoEncerrado) {
+		c.JSON(http.StatusConflict, gin.H{"erro": err.Error()})
+		return
+	}
 	if errors.Is(err, service.ErrLugarOcupado) {
 		// 409: a tela recarrega o mapa e pede outra cadeira.
 		c.JSON(http.StatusConflict, gin.H{"erro": err.Error()})

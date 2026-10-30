@@ -90,7 +90,7 @@ func VerificarIngresso(db *gorm.DB, texto string, agora time.Time) VerificacaoIn
 	}
 	res := db.Raw(`SELECT i.id AS item_id, i.status, t.nome AS tipo, e.id AS evento_id, e.titulo, e.slug, e.inicio_em, e.fim_em, e.status AS status_event
 		FROM itens_pedido i JOIN tipos_ingresso t ON t.id = i.tipo_ingresso_id JOIN eventos e ON e.id = t.evento_id
-		WHERE i.codigo = ? AND i.ficha_id IS NULL AND i.expositor_id IS NULL LIMIT 1`, codigo).Scan(&linha)
+		WHERE i.codigo = ? AND i.ficha_id IS NULL AND i.expositor_id IS NULL AND NOT i.adicional LIMIT 1`, codigo).Scan(&linha)
 	if res.Error != nil || res.RowsAffected == 0 {
 		// Código antigo de um ingresso que foi transferido: o print não vale.
 		var n int64

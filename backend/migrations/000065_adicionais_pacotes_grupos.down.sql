@@ -1,0 +1,5 @@
+ALTER TABLE itens_pedido DROP COLUMN IF EXISTS grupo_id, DROP COLUMN IF EXISTS pacote_id, DROP COLUMN IF EXISTS adicional;
+DROP TABLE IF EXISTS grupos_compra;
+DROP TABLE IF EXISTS pacote_itens;
+DROP TABLE IF EXISTS pacotes;
+ALTER TABLE tipos_ingresso DROP COLUMN IF EXISTS adicional;

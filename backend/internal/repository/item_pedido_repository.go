@@ -66,7 +66,7 @@ func (r *ItemPedidoRepository) BuscarTipoIngressoParaAtualizar(tx *gorm.DB, id i
 
 func (r *ItemPedidoRepository) BuscarPorCodigo(codigo string) (*domain.ItemPedido, error) {
 	var item domain.ItemPedido
-	if err := r.db.First(&item, "codigo = ? AND ficha_id IS NULL AND expositor_id IS NULL", codigo).Error; err != nil {
+	if err := r.db.First(&item, "codigo = ? AND ficha_id IS NULL AND expositor_id IS NULL AND NOT adicional", codigo).Error; err != nil {
 		return nil, err
 	}
 	return &item, nil
@@ -107,7 +107,7 @@ func (r *ItemPedidoRepository) BuscarPorEventoEBusca(eventoID int64, busca strin
 		Where("tipos_ingresso.evento_id = ? AND itens_pedido.status IN ?", eventoID, []domain.StatusItemPedido{
 			domain.StatusItemPago, domain.StatusItemUtilizado,
 		}).
-		Where("itens_pedido.ficha_id IS NULL AND itens_pedido.expositor_id IS NULL").
+		Where("itens_pedido.ficha_id IS NULL AND itens_pedido.expositor_id IS NULL AND NOT itens_pedido.adicional").
 		Where("itens_pedido.titular_nome ILIKE ? OR itens_pedido.titular_email ILIKE ? OR itens_pedido.codigo ILIKE ?", like, like, like).
 		Order("itens_pedido.titular_nome").
 		Limit(50).
@@ -125,7 +125,7 @@ func (r *ItemPedidoRepository) ResumoCheckin(eventoID int64) (ResumoCheckin, err
 	var resumo ResumoCheckin
 	base := r.db.Table("itens_pedido").
 		Joins("JOIN tipos_ingresso ON tipos_ingresso.id = itens_pedido.tipo_ingresso_id").
-		Where("tipos_ingresso.evento_id = ? AND itens_pedido.ficha_id IS NULL AND itens_pedido.expositor_id IS NULL", eventoID)
+		Where("tipos_ingresso.evento_id = ? AND itens_pedido.ficha_id IS NULL AND itens_pedido.expositor_id IS NULL AND NOT itens_pedido.adicional", eventoID)
 
 	if err := base.Session(&gorm.Session{}).Where("itens_pedido.status IN ?", []domain.StatusItemPedido{
 		domain.StatusItemPago, domain.StatusItemUtilizado,
@@ -191,7 +191,7 @@ func (r *ItemPedidoRepository) ListarPagosPorUsuario(usuarioID int64) ([]ItemCom
 		Joins("JOIN pedidos ON pedidos.id = itens_pedido.pedido_id").
 		Joins("JOIN tipos_ingresso ON tipos_ingresso.id = itens_pedido.tipo_ingresso_id").
 		Joins("JOIN eventos ON eventos.id = tipos_ingresso.evento_id").
-		Where("pedidos.usuario_id = ? AND itens_pedido.cortesia = false AND itens_pedido.ficha_id IS NULL AND itens_pedido.expositor_id IS NULL AND itens_pedido.status IN ?", usuarioID, []domain.StatusItemPedido{
+		Where("pedidos.usuario_id = ? AND itens_pedido.cortesia = false AND itens_pedido.ficha_id IS NULL AND itens_pedido.expositor_id IS NULL AND NOT itens_pedido.adicional AND itens_pedido.status IN ?", usuarioID, []domain.StatusItemPedido{
 			domain.StatusItemPago, domain.StatusItemUtilizado,
 		}).
 		Order("eventos.inicio_em").
@@ -207,7 +207,7 @@ func (r *ItemPedidoRepository) EventosComIngressoPago(usuarioID int64) ([]int64,
 		Select("DISTINCT tipos_ingresso.evento_id").
 		Joins("JOIN pedidos ON pedidos.id = itens_pedido.pedido_id").
 		Joins("JOIN tipos_ingresso ON tipos_ingresso.id = itens_pedido.tipo_ingresso_id").
-		Where("pedidos.usuario_id = ? AND itens_pedido.cortesia = false AND itens_pedido.ficha_id IS NULL AND itens_pedido.expositor_id IS NULL AND itens_pedido.status IN ?", usuarioID, []domain.StatusItemPedido{
+		Where("pedidos.usuario_id = ? AND itens_pedido.cortesia = false AND itens_pedido.ficha_id IS NULL AND itens_pedido.expositor_id IS NULL AND NOT itens_pedido.adicional AND itens_pedido.status IN ?", usuarioID, []domain.StatusItemPedido{
 			domain.StatusItemPago, domain.StatusItemUtilizado,
 		}).
 		Scan(&eventoIDs).Error
@@ -247,7 +247,7 @@ func (r *ItemPedidoRepository) ContarDoUsuarioNoEvento(tx *gorm.DB, usuarioID, e
 	var n int64
 	err := tx.Table("itens_pedido").
 		Joins("JOIN pedidos ON pedidos.id = itens_pedido.pedido_id").
-		Where("pedidos.usuario_id = ? AND pedidos.evento_id = ? AND itens_pedido.cortesia = false AND itens_pedido.ficha_id IS NULL AND itens_pedido.expositor_id IS NULL AND itens_pedido.status IN ?",
+		Where("pedidos.usuario_id = ? AND pedidos.evento_id = ? AND itens_pedido.cortesia = false AND itens_pedido.ficha_id IS NULL AND itens_pedido.expositor_id IS NULL AND NOT itens_pedido.adicional AND itens_pedido.status IN ?",
 			usuarioID, eventoID, []domain.StatusItemPedido{domain.StatusItemReservado, domain.StatusItemPago, domain.StatusItemUtilizado}).
 		Count(&n).Error
 	return n, err

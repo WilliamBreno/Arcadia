@@ -171,7 +171,8 @@ function ItemLinha({ item, pedidoId, inscricao, espaco }: { item: ItemPedido; pe
       <div className="flex items-center justify-between">
         <div>
           <p className="text-foreground">
-            {inscricao ? `Inscrição de participante · ${item.titular_nome}` : espaco ? `Espaço de expositor · ${item.titular_nome}` : item.titular_nome}{' '}
+            {inscricao ? `Inscrição de participante · ${item.titular_nome}` : espaco ? `Espaço de expositor · ${item.titular_nome}` : item.adicional ? `Adicional · ${item.titular_nome}` : item.titular_nome}
+            {item.pacote_id ? ' · pacote' : ''}{' '}
             <span className="text-xs text-muted-foreground">({rotuloStatusItem[item.status]})</span>
           </p>
           {item.lugar && <p className="text-sm font-medium text-foreground">{item.lugar}</p>}

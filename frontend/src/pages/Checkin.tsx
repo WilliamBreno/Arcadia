@@ -3,8 +3,9 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import { VoltarBotao } from '@/components/voltar-link'
-import { ApiError } from '@/lib/api'
+import { api, ApiError } from '@/lib/api'
 import { lerCredencial } from '@/lib/expositor'
+import { BuscaAdicionais } from '@/components/busca-adicionais'
 import { lerCredencialEvento, portaoSalvo, portoesCheckin, rotuloFuncao, salvarPortao, validarImportado } from '@/lib/dia-evento'
 import { buscarCheckin, resumoCheckin, validarCheckin, type ItemBusca, type ResumoCheckin, type ValidarCheckinResposta } from '@/lib/checkin'
 import {
@@ -35,6 +36,8 @@ const corPorResultado: Record<ValidarCheckinResposta['resultado'], string> = {
   requer_internet: 'bg-orange-500 border-orange-600',
   expositor: 'bg-green-600 border-green-700',
   credencial: 'bg-green-600 border-green-700',
+  adicional: 'bg-blue-600 border-blue-700',
+  adicional_entregue: 'bg-yellow-500 border-yellow-600',
   credencial_invalida: 'bg-red-600 border-red-700',
 }
 
@@ -50,6 +53,8 @@ const tituloPorResultado: Record<ValidarCheckinResposta['resultado'], string> = 
   requer_internet: '📶 QR dinâmico: precisa de internet para validar',
   expositor: '✅ Expositor liberado',
   credencial: '✅ Credencial liberada',
+  adicional: '🎁 Entregar o adicional',
+  adicional_entregue: '⚠️ Adicional já entregue',
   credencial_invalida: '❌ Credencial inválida ou desativada',
 }
 
@@ -222,6 +227,26 @@ export default function Checkin() {
         setProcessando(false)
         leitorRef.current?.resume()
       }, 2500)
+      return
+    }
+
+    // Item 10.3: adicional (EVVEA:...) — marca entregue, não dá entrada.
+    if (texto.startsWith('EVVEA:')) {
+      try {
+        const r = await api<{ nome: string; titular: string; primeira_vez: boolean; entregue_em: string | null }>(
+          `/checkin/eventos/${id}/adicionais/entregar`,
+          { method: 'POST', body: { texto } },
+        )
+        setResultado({
+          resultado: r.primeira_vez ? 'adicional' : 'adicional_entregue',
+          titular_nome: r.titular,
+          tipo_ingresso_nome: r.nome,
+          utilizado_em: !r.primeira_vez && r.entregue_em ? new Date(r.entregue_em).toLocaleTimeString('pt-BR') : undefined,
+        })
+      } catch (e) {
+        setResultado({ resultado: e instanceof ApiError && e.status === 409 ? 'cancelado' : 'nao_encontrado' })
+      }
+      liberarLeitor()
       return
     }
 
@@ -409,6 +434,7 @@ export default function Checkin() {
             ))}
           </div>
         )}
+        <BuscaAdicionais eventoId={id} busca={busca} />
       </div>
 
       <div className="mt-6 flex flex-col gap-2 rounded-lg border border-border p-3 text-sm">

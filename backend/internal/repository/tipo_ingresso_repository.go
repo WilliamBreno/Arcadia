@@ -41,7 +41,7 @@ func (r *TipoIngressoRepository) BuscarPorID(id int64) (*domain.TipoIngresso, er
 func (r *TipoIngressoRepository) ListarPorEvento(eventoID int64) ([]domain.TipoIngresso, error) {
 	var tipos []domain.TipoIngresso
 	// O ingresso interno da inscrição paga (item 8.4) não é do organizador editar.
-	if err := r.db.Where("evento_id = ? AND NOT inscricao_talento AND NOT espaco_expositor", eventoID).Order("ordem, id").Find(&tipos).Error; err != nil {
+	if err := r.db.Where("evento_id = ? AND NOT inscricao_talento AND NOT espaco_expositor AND NOT adicional", eventoID).Order("ordem, id").Find(&tipos).Error; err != nil {
 		return nil, err
 	}
 	return tipos, r.PreencherSessoes(tipos)
