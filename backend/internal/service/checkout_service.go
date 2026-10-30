@@ -73,6 +73,7 @@ type CheckoutService struct {
 	backendURL     string
 	nomePlataforma string
 	avisoInscricao AvisoInscricao // item 8.4
+	avisoEspaco    AvisoEspaco    // item 8.6
 }
 
 func NovoCheckoutService(
@@ -575,7 +576,7 @@ func (s *CheckoutService) enviarEmailConfirmacao(pedido *domain.Pedido, itens []
 
 	pagos := make([]domain.ItemPedido, 0, len(itens))
 	for _, it := range itens {
-		if it.Status == domain.StatusItemPago && it.FichaID == nil { // 8.4: inscrição tem e-mail próprio
+		if it.Status == domain.StatusItemPago && !it.Interno() { // 8.4/8.6: inscrição e espaço têm e-mail próprio
 			pagos = append(pagos, it)
 		}
 	}

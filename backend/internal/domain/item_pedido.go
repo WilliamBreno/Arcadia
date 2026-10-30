@@ -31,7 +31,9 @@ type ItemPedido struct {
 	DescontoCentavos       int64
 	Cortesia               bool
 	// Item 8.4: inscrição paga de talento (não é ingresso de plateia).
-	FichaID            *int64
+	FichaID *int64
+	// Item 8.6: espaço de expositor (também não é ingresso).
+	ExpositorID        *int64
 	TotalCentavos      int64
 	Status             StatusItemPedido
 	Codigo             string
@@ -45,3 +47,6 @@ type ItemPedido struct {
 func (ItemPedido) TableName() string {
 	return "itens_pedido"
 }
+
+// Interno: item que não é ingresso de plateia (inscrição 8.4, espaço 8.6).
+func (i *ItemPedido) Interno() bool { return i.FichaID != nil || i.ExpositorID != nil }

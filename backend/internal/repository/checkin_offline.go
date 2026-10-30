@@ -24,7 +24,7 @@ func (r *ItemPedidoRepository) ListarParaPacote(eventoID int64) ([]ItemPacote, e
 	err := r.db.Raw(`SELECT ip.codigo, ip.qr_token, ip.titular_nome, ip.status, ip.utilizado_em,
 		ip.tipo_ingresso_id, t.nome AS tipo_nome, t.meia_entrada
 		FROM itens_pedido ip JOIN tipos_ingresso t ON t.id = ip.tipo_ingresso_id
-		WHERE t.evento_id = ? AND ip.status IN ('pago', 'utilizado') AND ip.ficha_id IS NULL
+		WHERE t.evento_id = ? AND ip.status IN ('pago', 'utilizado') AND ip.ficha_id IS NULL AND ip.expositor_id IS NULL
 		ORDER BY ip.id`, eventoID).Scan(&linhas).Error
 	return linhas, err
 }

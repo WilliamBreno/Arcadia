@@ -245,6 +245,11 @@ func (s *CancelamentoService) Cancelar(itemID, usuarioID int64) (*domain.ItemPed
 	} else {
 		itemCancelado, err = s.executarReembolso(ctx, decisao, usuarioID, nil)
 	}
+	if err == nil && ctx.item.ExpositorID != nil {
+		// Item 8.6: cancelar o espaço = desistir; a mesa fica livre.
+		LiberarExpositor(s.itensPedido.DB(), *ctx.item.ExpositorID, StatusExpositorDesistiu, "")
+		return itemCancelado, nil
+	}
 	if err == nil && ctx.item.FichaID != nil {
 		// Item 8.4: cancelar a inscrição paga = desistir da participação.
 		db := s.itensPedido.DB()
@@ -378,6 +383,12 @@ func (s *CancelamentoService) enviarEmailCancelamento(item *domain.ItemPedido, e
 		`<p>Olá!</p><p>Seu ingresso (código <strong>%s</strong>) para <strong>%s</strong> foi cancelado.</p><p>Valor reembolsado: R$ %.2f — o dinheiro volta pelo mesmo meio de pagamento em alguns dias úteis.</p>`,
 		item.Codigo, evento.Titulo, float64(decisao.ValorReembolsoCentavos)/100,
 	)
+	if item.ExpositorID != nil { // item 8.6
+		corpo = fmt.Sprintf(
+			`<p>Olá!</p><p>Seu espaço de expositor em <strong>%s</strong> foi cancelado (%s).</p><p>Valor reembolsado: %s. O dinheiro volta pelo mesmo meio de pagamento em alguns dias úteis.</p>`,
+			html.EscapeString(evento.Titulo), html.EscapeString(decisao.Motivo), formatarReais(decisao.ValorReembolsoCentavos),
+		)
+	}
 	if item.FichaID != nil { // item 8.4
 		corpo = fmt.Sprintf(
 			`<p>Olá!</p><p>Sua inscrição de participante em <strong>%s</strong> foi cancelada (%s).</p><p>Valor reembolsado: %s. O dinheiro volta pelo mesmo meio de pagamento em alguns dias úteis.</p>`,
@@ -435,8 +446,18 @@ func (s *CancelamentoService) reembolsarItens(evento *domain.Evento, itens []dom
 // talento (item 8.4: o organizador removeu a participação). Erro se algum
 // estorno falhar; aí a ficha não muda e o organizador tenta de novo.
 func (s *CancelamentoService) ReembolsarInscricao(fichaID, solicitadoPor int64, motivo string) error {
+	return s.reembolsarPor("ficha_id", fichaID, solicitadoPor, motivo)
+}
+
+// ReembolsarExpositor devolve tudo o que o expositor pagou pelo espaço
+// (item 8.6: o organizador removeu o expositor).
+func (s *CancelamentoService) ReembolsarExpositor(expositorID, solicitadoPor int64, motivo string) error {
+	return s.reembolsarPor("expositor_id", expositorID, solicitadoPor, motivo)
+}
+
+func (s *CancelamentoService) reembolsarPor(coluna string, id, solicitadoPor int64, motivo string) error {
 	var itens []domain.ItemPedido
-	if err := s.itensPedido.DB().Where("ficha_id = ? AND status = ?", fichaID, domain.StatusItemPago).Find(&itens).Error; err != nil {
+	if err := s.itensPedido.DB().Where(coluna+" = ? AND status = ?", id, domain.StatusItemPago).Find(&itens).Error; err != nil {
 		return err
 	}
 	if len(itens) == 0 {
@@ -451,7 +472,7 @@ func (s *CancelamentoService) ReembolsarInscricao(fichaID, solicitadoPor int64, 
 		return err
 	}
 	if _, falhas := s.reembolsarItensComo(evento, itens, solicitadoPor, motivo, domain.TipoReembolsoManual); len(falhas) > 0 {
-		return fmt.Errorf("não foi possível devolver o pagamento da inscrição agora; tente de novo em instantes")
+		return fmt.Errorf("não foi possível devolver o pagamento agora; tente de novo em instantes")
 	}
 	return nil
 }

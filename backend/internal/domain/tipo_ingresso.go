@@ -22,8 +22,13 @@ type TipoIngresso struct {
 	Ativo         bool
 	// Item 8.4: ingresso interno que segura a inscrição paga de talento.
 	InscricaoTalento bool
-	CriadoEm         time.Time
+	// Item 8.6: ingresso interno que segura o espaço de expositor.
+	EspacoExpositor bool
+	CriadoEm        time.Time
 }
+
+// Interno: tipo que não é ingresso de plateia (itens 8.4 e 8.6).
+func (t TipoIngresso) Interno() bool { return t.InscricaoTalento || t.EspacoExpositor }
 
 func (TipoIngresso) TableName() string {
 	return "tipos_ingresso"

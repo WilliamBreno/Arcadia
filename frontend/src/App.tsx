@@ -24,6 +24,7 @@ import AdminColecoes from '@/pages/admin/AdminColecoes'
 import AdminAvaliacoes from '@/pages/admin/AdminAvaliacoes'
 import Cookies from '@/pages/Cookies'
 import CircuitoPublico from '@/pages/CircuitoPublico'
+import CandidaturaExpositor from '@/pages/CandidaturaExpositor'
 import MeusCircuitos from '@/pages/organizador/Circuitos'
 import PerfilTalento from '@/pages/PerfilTalento'
 import MeuTalento from '@/pages/MeuTalento'
@@ -75,6 +76,7 @@ function App() {
           <Route path="/meu-talento" element={<MeuTalento />} />
           <Route path="/palco/:eventoId" element={<PalcoCamarim />} />
           <Route path="/e/:slug/inscricao" element={<Inscricao />} />
+          <Route path="/e/:slug/expositor" element={<CandidaturaExpositor />} />
           <Route path="/e/:slug/jurado" element={<AreaJurado />} />
           <Route path="/pedidos/:id" element={<Pedido />} />
           <Route path="/meus-ingressos" element={<MeusIngressos />} />

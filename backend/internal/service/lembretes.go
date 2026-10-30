@@ -169,7 +169,7 @@ func (s *LembretesService) Enviar(agora time.Time) (enviados int, err error) {
 		if err := s.db.Table("itens_pedido").
 			Select("itens_pedido.titular_email as email, itens_pedido.titular_nome as nome, itens_pedido.codigo, itens_pedido.qr_token as token").
 			Joins("JOIN tipos_ingresso ON tipos_ingresso.id = itens_pedido.tipo_ingresso_id").
-			Where("tipos_ingresso.evento_id = ? AND itens_pedido.status = ? AND itens_pedido.titular_email <> '' AND itens_pedido.ficha_id IS NULL", e.ID, domain.StatusItemPago).
+			Where("tipos_ingresso.evento_id = ? AND itens_pedido.status = ? AND itens_pedido.titular_email <> '' AND itens_pedido.ficha_id IS NULL AND itens_pedido.expositor_id IS NULL", e.ID, domain.StatusItemPago).
 			Order("itens_pedido.titular_email, itens_pedido.id").
 			Scan(&itens).Error; err != nil {
 			return enviados, err

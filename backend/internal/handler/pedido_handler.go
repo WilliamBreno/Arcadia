@@ -66,19 +66,22 @@ type pedidoResposta struct {
 	EventoSlug string `json:"evento_slug,omitempty"`
 	// Item 8.4: pedido da inscrição paga de talento (não é ingresso).
 	Inscricao bool `json:"inscricao,omitempty"`
+	// Item 8.6: pedido do espaço de expositor.
+	Espaco bool `json:"espaco,omitempty"`
 }
 
 func paraPedidoResposta(p *domain.Pedido, itens []domain.ItemPedido) pedidoResposta {
 	itensResp := make([]itemPedidoResposta, 0, len(itens))
-	inscricao := false
+	inscricao, espaco := false, false
 	for i := range itens {
 		inscricao = inscricao || itens[i].FichaID != nil
+		espaco = espaco || itens[i].ExpositorID != nil
 		itensResp = append(itensResp, paraItemPedidoResposta(&itens[i]))
 	}
 	return pedidoResposta{
 		ID: p.ID, EventoID: p.EventoID, Status: string(p.Status), TotalCentavos: p.TotalCentavos,
 		ExpiraEm: p.ExpiraEm, MaxParcelas: service.MaxParcelas(p.TotalCentavos), Itens: itensResp,
-		Inscricao: inscricao,
+		Inscricao: inscricao, Espaco: espaco,
 	}
 }
 

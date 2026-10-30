@@ -134,7 +134,7 @@ func (s *TipoIngressoService) buscarDoEvento(eventoID, tipoID int64) (*domain.Ti
 	if err != nil {
 		return nil, err
 	}
-	if tipo.EventoID != eventoID || tipo.InscricaoTalento {
+	if tipo.EventoID != eventoID || tipo.Interno() {
 		return nil, ErrEventoNaoPertenceAoOrganizador
 	}
 	return tipo, nil

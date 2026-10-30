@@ -11,12 +11,13 @@ import (
 )
 
 type JobHandler struct {
-	checkout  *service.CheckoutService
-	mail      *mail.Cliente
-	carrinho  *service.RecuperacaoCarrinhoService
-	fila      *service.FilaEsperaService
-	revenda   *service.RevendaService
-	perguntas *service.PerguntasService
+	expositores *service.ExpositorService
+	checkout    *service.CheckoutService
+	mail        *mail.Cliente
+	carrinho    *service.RecuperacaoCarrinhoService
+	fila        *service.FilaEsperaService
+	revenda     *service.RevendaService
+	perguntas   *service.PerguntasService
 }
 
 // DefinirPerguntas liga a limpeza das respostas (item 7.6, 90 dias após o evento).
@@ -27,6 +28,9 @@ func (h *JobHandler) DefinirRevenda(r *service.RevendaService) { h.revenda = r }
 
 // DefinirFila liga a lista de espera (item 7.3) ao job de reservas.
 func (h *JobHandler) DefinirFila(f *service.FilaEsperaService) { h.fila = f }
+
+// DefinirExpositores liga o prazo do espaço de expositor (8.6).
+func (h *JobHandler) DefinirExpositores(e *service.ExpositorService) { h.expositores = e }
 
 // DefinirRecuperacao liga o e-mail de carrinho (item 7.2) ao job de reservas.
 func (h *JobHandler) DefinirRecuperacao(s *service.RecuperacaoCarrinhoService) { h.carrinho = s }
@@ -58,6 +62,10 @@ func (h *JobHandler) ExpirarReservas(c *gin.Context) {
 	}
 	// Item 8.4: aprovada que não pagou a inscrição no prazo perde a vaga.
 	inscricoes, _ := h.checkout.ExpirarInscricoesNaoPagas()
+	if h.expositores != nil { // item 8.6
+		n, _ := h.expositores.ExpirarEspacosNaoPagos()
+		inscricoes += n
+	}
 	convidados := 0
 	if h.fila != nil {
 		convidados, _ = h.fila.Processar(time.Now())

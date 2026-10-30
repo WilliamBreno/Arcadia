@@ -73,7 +73,7 @@ func (r *EventoRepository) EmAlta(cidade, uf string, desde time.Time, limite int
 	vendas := r.db.Table("itens_pedido").
 		Select("tipos_ingresso.evento_id, COUNT(*) as vendidos").
 		Joins("JOIN tipos_ingresso ON tipos_ingresso.id = itens_pedido.tipo_ingresso_id").
-		Where("itens_pedido.status IN ? AND itens_pedido.cortesia = false AND itens_pedido.ficha_id IS NULL AND itens_pedido.criado_em >= ?",
+		Where("itens_pedido.status IN ? AND itens_pedido.cortesia = false AND itens_pedido.ficha_id IS NULL AND itens_pedido.expositor_id IS NULL AND itens_pedido.criado_em >= ?",
 			[]domain.StatusItemPedido{domain.StatusItemPago, domain.StatusItemUtilizado}, desde).
 		Group("tipos_ingresso.evento_id")
 	err := filtrarCidade(r.publicosFuturos(), cidade, uf).

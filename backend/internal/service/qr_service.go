@@ -30,7 +30,7 @@ func NovoQRService(i *repository.ItemPedidoRepository, p *repository.PedidoRepos
 
 func (s *QRService) info(item *domain.ItemPedido) (*QRInfo, error) {
 	// Item 8.4: inscrição paga não é ingresso (não tem QR de entrada).
-	if item.FichaID != nil || (item.Status != domain.StatusItemPago && item.Status != domain.StatusItemUtilizado) {
+	if item.Interno() || (item.Status != domain.StatusItemPago && item.Status != domain.StatusItemUtilizado) {
 		return nil, ErrItemNaoEncontrado
 	}
 	tipo, err := s.tipos.BuscarPorID(item.TipoIngressoID)

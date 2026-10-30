@@ -45,8 +45,8 @@ func NovoTransferenciaService(
 // podeTransferir: item pago (não utilizado/cancelado), evento não cancelado
 // e ainda não iniciado. Função pura para testar isolada.
 func podeTransferir(item *domain.ItemPedido, evento *domain.Evento, agora time.Time) error {
-	if item.FichaID != nil { // item 8.4: inscrição é pessoal
-		return fmt.Errorf("%w: inscrição de talento não pode ser transferida", ErrTransferenciaNaoPermitida)
+	if item.Interno() { // itens 8.4/8.6: inscrição e espaço são pessoais
+		return fmt.Errorf("%w: inscrição ou espaço de expositor não pode ser transferido", ErrTransferenciaNaoPermitida)
 	}
 	if item.Status != domain.StatusItemPago {
 		return fmt.Errorf("%w: só ingressos pagos e ainda não utilizados", ErrTransferenciaNaoPermitida)

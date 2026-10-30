@@ -321,12 +321,13 @@ func MensagemRecusa(detalhe string) string {
 // registro é nil só no pedido de valor zero (não passa pelo processador).
 func (s *CheckoutService) confirmarPagamento(pedidoID int64, registro *domain.Pagamento) error {
 	var (
-		pedido   domain.Pedido
-		evento   *domain.Evento
-		emitiu   bool
-		devolver string
-		vendidas []int64 // anúncios da revenda vendidos neste pagamento (7.4)
-		fichas   []int64 // item 8.4: inscrições pagas por este pedido
+		pedido      domain.Pedido
+		evento      *domain.Evento
+		emitiu      bool
+		devolver    string
+		vendidas    []int64 // anúncios da revenda vendidos neste pagamento (7.4)
+		fichas      []int64 // item 8.4: inscrições pagas por este pedido
+		expositores []int64 // item 8.6: espaços pagos por este pedido
 	)
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&pedido, pedidoID).Error; err != nil {
@@ -352,6 +353,19 @@ func (s *CheckoutService) confirmarPagamento(pedidoID int64, registro *domain.Pa
 				return s.pagamentos.MarcarDevolver(tx, registro.ID, devolver)
 			}
 			fichas = ids
+			// Item 8.6: idem para o espaço de expositor.
+			exps, esperandoExp, err := expositoresDoPedido(tx, pedido.ID)
+			if err != nil {
+				return err
+			}
+			if !esperandoExp {
+				if registro == nil {
+					return nil
+				}
+				devolver = domain.DevolucaoInscricaoEncerrada
+				return s.pagamentos.MarcarDevolver(tx, registro.ID, devolver)
+			}
+			expositores = exps
 		}
 
 		switch pedido.Status {
@@ -425,6 +439,9 @@ func (s *CheckoutService) confirmarPagamento(pedidoID int64, registro *domain.Pa
 		if err := confirmarFichasPagas(tx, fichas); err != nil { // item 8.4
 			return err
 		}
+		if err := confirmarExpositoresPagos(tx, expositores); err != nil { // item 8.6
+			return err
+		}
 		return tx.Save(&pedido).Error
 	})
 	if err != nil {
@@ -433,6 +450,11 @@ func (s *CheckoutService) confirmarPagamento(pedidoID int64, registro *domain.Pa
 	if emitiu {
 		if itens, err := s.itensPedido.ListarPorPedido(pedido.ID); err == nil {
 			s.enviarEmailConfirmacao(&pedido, itens, evento)
+		}
+	}
+	if emitiu && s.avisoEspaco != nil {
+		for _, id := range expositores {
+			s.avisoEspaco.AvisarEspacoPago(id)
 		}
 	}
 	if emitiu && s.avisoInscricao != nil {

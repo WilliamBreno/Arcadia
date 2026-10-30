@@ -14,6 +14,7 @@ import {
   simularDesistencia,
   type DecisaoCancelamento,
   type MinhaFicha,
+  type ValoresInscricao,
 } from '@/lib/inscricao'
 
 type EventoInscricao = {
@@ -107,19 +108,46 @@ function SituacaoInscricao({ evento, ficha }: { evento: EventoInscricao; ficha: 
 }
 
 function PagarInscricao({ evento }: { evento: EventoInscricao }) {
+  const { data: v } = useQuery({ queryKey: ['valores-inscricao', evento.slug], queryFn: () => obterValoresInscricao(evento.slug) })
+  if (!v) return null
+  return (
+    <ResumoPagamento
+      valores={v}
+      rotuloItem="Inscrição"
+      aviso={
+        <>
+          Aprovada! Para confirmar a vaga, pague a inscrição{v.prazo_em ? <> até <strong>{quando(v.prazo_em, evento.timezone)}</strong></> : null}. Sem o
+          pagamento, a vaga é liberada.
+        </>
+      }
+      pagar={(g) => pagarInscricao(evento.slug, g)}
+    />
+  )
+}
+
+// Resumo (preço + taxa + garantia opcional) e botão de pagar. Usado na
+// inscrição paga (8.4) e no espaço de expositor (8.6).
+export function ResumoPagamento({
+  valores: v,
+  rotuloItem,
+  aviso,
+  pagar,
+}: {
+  valores: ValoresInscricao
+  rotuloItem: string
+  aviso: React.ReactNode
+  pagar: (garantia: boolean) => Promise<{ id: number }>
+}) {
   const navigate = useNavigate()
   const [garantia, setGarantia] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
-  const { data: v } = useQuery({ queryKey: ['valores-inscricao', evento.slug], queryFn: () => obterValoresInscricao(evento.slug) })
-  if (!v) return null
-
   const total = v.preco_centavos + v.taxa_centavos + (garantia ? v.garantia_centavos : 0)
-  const pagar = async () => {
+  const clicar = async () => {
     setErro(null)
     setEnviando(true)
     try {
-      const p = await pagarInscricao(evento.slug, garantia)
+      const p = await pagar(garantia)
       navigate(`/pedidos/${p.id}`)
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : 'Não foi possível abrir o pagamento.')
@@ -129,13 +157,10 @@ function PagarInscricao({ evento }: { evento: EventoInscricao }) {
 
   return (
     <div className="mt-2 flex flex-col gap-3">
-      <p className="text-sm text-foreground">
-        Aprovada! Para confirmar a vaga, pague a inscrição{v.prazo_em ? <> até <strong>{quando(v.prazo_em, evento.timezone)}</strong></> : null}. Sem o
-        pagamento, a vaga é liberada.
-      </p>
+      <p className="text-sm text-foreground">{aviso}</p>
       <dl className="flex flex-col gap-1 text-sm">
         <div className="flex justify-between">
-          <dt className="text-muted-foreground">Inscrição</dt>
+          <dt className="text-muted-foreground">{rotuloItem}</dt>
           <dd className="text-foreground">{formatarCentavos(v.preco_centavos)}</dd>
         </div>
         <div className="flex justify-between">
@@ -168,7 +193,7 @@ function PagarInscricao({ evento }: { evento: EventoInscricao }) {
         </p>
       )}
       <div className="flex flex-wrap items-center gap-3">
-        <Button onClick={pagar} disabled={enviando}>
+        <Button onClick={clicar} disabled={enviando}>
           {enviando ? 'Abrindo…' : `Pagar ${formatarCentavos(total)}`}
         </Button>
         {v.pedido_aberto_id && (
@@ -188,17 +213,51 @@ function InscricaoAprovada({ slug }: { slug: string }) {
     retry: false,
     queryFn: () => obterValoresInscricao(slug).catch(() => null),
   })
+  const pago = v?.pago && v.item_pago_id
+  return (
+    <div className="mt-1 flex flex-col gap-3">
+      <p className="text-sm text-foreground">
+        Aprovada{pago ? <> e paga ({formatarCentavos(v.total_pago_centavos)})</> : null}. Sua vaga no concurso está confirmada.
+        {pago && v.garantia_contratada && ' Com garantia: se desistir até o início do evento, recebe tudo de volta.'}
+      </p>
+      {pago && v.item_pago_id && (
+        <Desistencia
+          itemId={v.item_pago_id}
+          rotulo="Desistir da participação"
+          manter="Manter inscrição"
+          aoConcluir={() =>
+            Promise.all([
+              queryClient.invalidateQueries({ queryKey: ['minha-ficha', slug] }),
+              queryClient.invalidateQueries({ queryKey: ['meu-qr-participante', slug] }),
+              queryClient.invalidateQueries({ queryKey: ['valores-inscricao', slug] }),
+            ])
+          }
+        />
+      )}
+    </div>
+  )
+}
+
+// Desistir com a simulação do reembolso antes (regras da garantia/arrependimento).
+export function Desistencia({
+  itemId,
+  rotulo,
+  manter,
+  aoConcluir,
+}: {
+  itemId: number
+  rotulo: string
+  manter: string
+  aoConcluir: () => Promise<unknown>
+}) {
   const [decisao, setDecisao] = useState<DecisaoCancelamento | null>(null)
   const [ocupado, setOcupado] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
-
-  const pago = v?.pago && v.item_pago_id
   const verificar = async () => {
-    if (!v?.item_pago_id) return
     setErro(null)
     setOcupado(true)
     try {
-      setDecisao(await simularDesistencia(v.item_pago_id))
+      setDecisao(await simularDesistencia(itemId))
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : 'Não foi possível verificar agora.')
     } finally {
@@ -206,32 +265,22 @@ function InscricaoAprovada({ slug }: { slug: string }) {
     }
   }
   const confirmar = async () => {
-    if (!v?.item_pago_id) return
     setErro(null)
     setOcupado(true)
     try {
-      await desistir(v.item_pago_id)
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['minha-ficha', slug] }),
-        queryClient.invalidateQueries({ queryKey: ['meu-qr-participante', slug] }),
-        queryClient.invalidateQueries({ queryKey: ['valores-inscricao', slug] }),
-      ])
+      await desistir(itemId)
+      await aoConcluir()
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : 'Não foi possível desistir agora.')
       setOcupado(false)
     }
   }
-
   return (
-    <div className="mt-1 flex flex-col gap-3">
-      <p className="text-sm text-foreground">
-        Aprovada{pago ? <> e paga ({formatarCentavos(v.total_pago_centavos)})</> : null}. Sua vaga no concurso está confirmada.
-        {pago && v.garantia_contratada && ' Com garantia: se desistir até o início do evento, recebe tudo de volta.'}
-      </p>
-      {pago && !decisao && (
+    <div className="flex flex-col gap-2">
+      {!decisao && (
         <div>
           <Button variant="outline" size="sm" onClick={verificar} disabled={ocupado}>
-            Desistir da participação
+            {rotulo}
           </Button>
         </div>
       )}
@@ -250,7 +299,7 @@ function InscricaoAprovada({ slug }: { slug: string }) {
                   Confirmar desistência
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setDecisao(null)} disabled={ocupado}>
-                  Manter inscrição
+                  {manter}
                 </Button>
               </div>
             </>

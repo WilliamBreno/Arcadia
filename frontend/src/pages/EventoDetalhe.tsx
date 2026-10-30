@@ -22,6 +22,7 @@ import { ListaRanking } from '@/components/resultado-cards'
 import { MinhaDevolutiva, PremioPublico, VotacaoPublico, type LinhaVoto } from '@/components/concurso-publico'
 import { MinhaInscricao } from '@/components/minha-inscricao'
 import { SelosCircuito } from '@/components/selos-circuito'
+import { ExpositoresDoEvento } from '@/components/expositores-evento'
 import { MeuQRParticipante } from '@/components/meu-qr-participante'
 import { Card, CardContent } from '@/components/ui/card'
 import { Carregando } from '@/components/carregando'
@@ -576,6 +577,7 @@ export default function EventoDetalhe() {
       <MeuQRParticipante slug={evento.slug} />
 
       <MinhaInscricao evento={evento} />
+      <ExpositoresDoEvento slug={evento.slug} timezone={evento.timezone} />
 
       <AvaliacoesDoEvento slug={evento.slug} eventoComecou={eventoComecou} />
 

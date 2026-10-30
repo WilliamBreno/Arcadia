@@ -87,7 +87,7 @@ export default function Pedido() {
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             {pedido.itens.map((item) => (
-              <ItemLinha key={item.id} item={item} pedidoId={pedido.id} inscricao={!!pedido.inscricao} />
+              <ItemLinha key={item.id} item={item} pedidoId={pedido.id} inscricao={!!pedido.inscricao} espaco={!!pedido.espaco} />
             ))}
           </div>
 
@@ -109,7 +109,9 @@ export default function Pedido() {
 
           {pedido.status === 'pago' && (
             <p className="text-sm text-muted-foreground">
-              {pedido.inscricao
+              {pedido.espaco
+                ? 'Espaço pago! Sua mesa está confirmada. As credenciais com QR ficam na página do evento.'
+                : pedido.inscricao
                 ? 'Inscrição paga! Sua vaga no concurso está confirmada. O QR do camarim fica na página do evento.'
                 : pedido.total_centavos === 0
                   ? 'Inscrição confirmada! Os códigos aparecem em "Meus ingressos".'
@@ -118,7 +120,7 @@ export default function Pedido() {
           )}
           {pedido.status === 'expirado' && (
             <p className="text-sm text-muted-foreground">
-              {pedido.inscricao ? 'Essa reserva expirou. Volte ao evento para pagar a inscrição de novo, dentro do prazo.' : 'Essa reserva expirou. Volte ao evento para comprar de novo.'}
+              {pedido.inscricao || pedido.espaco ? 'Essa reserva expirou. Volte ao evento para pagar de novo, dentro do prazo.' : 'Essa reserva expirou. Volte ao evento para comprar de novo.'}
             </p>
           )}
         </CardContent>
@@ -136,7 +138,7 @@ const rotuloStatusItem: Record<ItemPedido['status'], string> = {
   expirado: 'Expirado',
 }
 
-function ItemLinha({ item, pedidoId, inscricao }: { item: ItemPedido; pedidoId: number; inscricao: boolean }) {
+function ItemLinha({ item, pedidoId, inscricao, espaco }: { item: ItemPedido; pedidoId: number; inscricao: boolean; espaco: boolean }) {
   const queryClient = useQueryClient()
   const [verificando, setVerificando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
@@ -169,7 +171,7 @@ function ItemLinha({ item, pedidoId, inscricao }: { item: ItemPedido; pedidoId: 
       <div className="flex items-center justify-between">
         <div>
           <p className="text-foreground">
-            {inscricao ? `Inscrição de participante · ${item.titular_nome}` : item.titular_nome}{' '}
+            {inscricao ? `Inscrição de participante · ${item.titular_nome}` : espaco ? `Espaço de expositor · ${item.titular_nome}` : item.titular_nome}{' '}
             <span className="text-xs text-muted-foreground">({rotuloStatusItem[item.status]})</span>
           </p>
           <p className="text-xs text-muted-foreground">
@@ -183,7 +185,7 @@ function ItemLinha({ item, pedidoId, inscricao }: { item: ItemPedido; pedidoId: 
                   : item.taxa_plataforma_centavos > 0 && <> + {formatarCentavos(item.taxa_plataforma_centavos)} de taxa</>}
               </>
             )}
-            {item.garantia_contratada && <> + {formatarCentavos(item.garantia_centavos)} de garantia{inscricao ? '' : ' de vaga'}</>}
+            {item.garantia_contratada && <> + {formatarCentavos(item.garantia_centavos)} de garantia{inscricao || espaco ? '' : ' de vaga'}</>}
             {item.desconto_centavos > 0 && <> (cupom: −{formatarCentavos(item.desconto_centavos)})</>}
           </p>
         </div>
@@ -191,7 +193,7 @@ function ItemLinha({ item, pedidoId, inscricao }: { item: ItemPedido; pedidoId: 
           <span className="font-medium text-foreground">{formatarCentavos(item.total_centavos)}</span>
           {item.status === 'pago' && (
             <Button variant="destructive" size="sm" onClick={cancelar} disabled={verificando}>
-              {inscricao ? 'Desistir' : 'Cancelar'}
+              {inscricao || espaco ? 'Desistir' : 'Cancelar'}
             </Button>
           )}
         </div>

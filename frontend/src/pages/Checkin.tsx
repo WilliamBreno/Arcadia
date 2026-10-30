@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom'
 
 import { VoltarBotao } from '@/components/voltar-link'
 import { ApiError } from '@/lib/api'
+import { lerCredencial } from '@/lib/expositor'
 import { buscarCheckin, resumoCheckin, validarCheckin, type ItemBusca, type ResumoCheckin, type ValidarCheckinResposta } from '@/lib/checkin'
 import {
   baixarPacote,
@@ -31,6 +32,8 @@ const corPorResultado: Record<ValidarCheckinResposta['resultado'], string> = {
   fora_da_sessao: 'bg-orange-500 border-orange-600',
   em_revenda: 'bg-orange-500 border-orange-600',
   requer_internet: 'bg-orange-500 border-orange-600',
+  expositor: 'bg-green-600 border-green-700',
+  credencial_invalida: 'bg-red-600 border-red-700',
 }
 
 const tituloPorResultado: Record<ValidarCheckinResposta['resultado'], string> = {
@@ -43,6 +46,8 @@ const tituloPorResultado: Record<ValidarCheckinResposta['resultado'], string> = 
   fora_da_sessao: '⛔ Ingresso não vale para esta sessão/horário',
   em_revenda: '⛔ Ingresso sendo revendido agora — peça para retirar da revenda ou aguardar',
   requer_internet: '📶 QR dinâmico: precisa de internet para validar',
+  expositor: '✅ Expositor liberado',
+  credencial_invalida: '❌ Credencial de expositor inválida',
 }
 
 export default function Checkin() {
@@ -179,6 +184,27 @@ export default function Checkin() {
     processandoRef.current = true
     setProcessando(true)
     leitorRef.current?.pause(true)
+
+    // Item 8.6: credencial de expositor (EVVEX:...), entra e sai à vontade.
+    if (texto.startsWith('EVVEX:')) {
+      try {
+        const r = await lerCredencial(id, texto)
+        setResultado({
+          resultado: 'expositor',
+          titular_nome: r.nome || 'Credencial sem nome',
+          tipo_ingresso_nome: `${r.marca}${r.mesa ? ` · mesa ${r.mesa}` : ''}${r.primeira_vez ? '' : ' · reentrada'}`,
+        })
+      } catch {
+        setResultado({ resultado: 'credencial_invalida' })
+      }
+      setTimeout(() => {
+        setResultado(null)
+        processandoRef.current = false
+        setProcessando(false)
+        leitorRef.current?.resume()
+      }, 2500)
+      return
+    }
 
     const codigo = texto.slice(0, separador)
     const qrToken = texto.slice(separador + 1)

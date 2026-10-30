@@ -20,6 +20,7 @@ export type Pedido = {
   evento_id: number
   evento_slug?: string
   inscricao?: boolean // item 8.4: pedido da inscrição paga de talento
+  espaco?: boolean // item 8.6: pedido do espaço de expositor
   status: 'aberto' | 'aguardando_pagamento' | 'pago' | 'expirado' | 'cancelado' | 'reembolsado_parcial' | 'reembolsado'
   total_centavos: number
   expira_em: string | null
