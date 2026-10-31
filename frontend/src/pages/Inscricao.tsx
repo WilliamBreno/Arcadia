@@ -7,6 +7,7 @@ import { api, ApiError } from '@/lib/api'
 import { formatarCentavos } from '@/lib/evento'
 import type { EventoDetalhe } from '@/lib/publico'
 import { modalidades, obterVagasPublicas, restantes, type Modalidade } from '@/lib/vagas'
+import { listarMeusArtistas } from '@/lib/artistas'
 import { UploadAudio } from '@/components/upload-audio'
 import { UploadImagem } from '@/components/upload-imagem'
 import { Button } from '@/components/ui/button'
@@ -64,6 +65,9 @@ export default function Inscricao() {
   const [autorizacaoURL, setAutorizacaoURL] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
+  // Item 11.1: inscrever pelo grupo (o resultado vai para o perfil dele).
+  const [grupoId, setGrupoId] = useState('')
+  const { data: meusArtistas } = useQuery({ queryKey: ['meus-artistas'], queryFn: listarMeusArtistas })
 
   // Item 8.4: inscrição paga (avisa o valor antes de enviar a ficha).
   const { data: detalhe } = useQuery({
@@ -102,6 +106,7 @@ export default function Inscricao() {
           responsavel_nome: responsavelNome,
           responsavel_contato: responsavelContato,
           autorizacao_responsavel_url: autorizacaoURL,
+          grupo_id: grupoId ? Number(grupoId) : undefined,
         },
       })
       navigate(`/e/${slug}#minha-inscricao`, { replace: true })
@@ -155,6 +160,21 @@ export default function Inscricao() {
           </div>
 
           <UploadImagem id="foto" rotulo="Foto" valor={fotoURL} onEnviado={setFotoURL} />
+
+          {meusArtistas && meusArtistas.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="grupo">Inscrever como</Label>
+              <select id="grupo" className="h-8 rounded-lg border border-border bg-background px-2.5 text-sm" value={grupoId} onChange={(e) => setGrupoId(e.target.value)}>
+                <option value="">Eu, individualmente</option>
+                {meusArtistas.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.nome}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">Pelo grupo, a participação e a colocação aparecem no perfil do grupo.</p>
+            </div>
+          )}
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="tipo_apresentacao">Tipo de apresentação</Label>

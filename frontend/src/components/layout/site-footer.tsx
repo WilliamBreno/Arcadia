@@ -12,6 +12,9 @@ export function SiteFooter() {
         <Link to="/mapa" className="hover:text-foreground">
           Eventos perto de você
         </Link>
+        <Link to="/artistas" className="hover:text-foreground">
+          Artistas
+        </Link>
         <Link to="/ajuda" className="hover:text-foreground">
           Ajuda
         </Link>

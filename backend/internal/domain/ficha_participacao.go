@@ -48,6 +48,7 @@ type FichaParticipacao struct {
 	MotivoRejeicao            string
 	OrdemApresentacao         *int
 	TipoApresentacao          *TipoApresentacao
+	GrupoID                   *int64 // item 11.1: inscrição pelo grupo
 	Dados                     datatypes.JSON
 	ResponsavelNome           string
 	ResponsavelContato        string

@@ -82,6 +82,7 @@ export default function Home() {
         <ChipLink to="/mapa">
           <MapPin className="size-3.5" aria-hidden="true" /> Perto de mim
         </ChipLink>
+        <ChipLink to="/artistas">Artistas</ChipLink>
         {descoberta.data?.cidades.slice(0, 12).map((c) => (
           <ChipLink key={c.slug} to={`/eventos/${c.slug}`}>
             {c.cidade}/{c.uf}

@@ -159,6 +159,9 @@ func (s *ConviteService) aceitar(tx *gorm.DB, convite *domain.Convite, usuarioID
 	if err := validarMenorDeIdade(ficha); err != nil {
 		return nil, nil, err
 	}
+	if err := validarGrupoDaFicha(ficha); err != nil {
+		return nil, nil, err
+	}
 
 	papel, err := papeis.Buscar(convite.EventoID, usuarioID, papelTipo)
 	novoPapel := err != nil

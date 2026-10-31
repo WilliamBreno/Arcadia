@@ -23,6 +23,7 @@ import { CuponsCard } from '@/components/cupons-card'
 import { DivulgacaoCard } from '@/components/divulgacao-card'
 import { VagasCard } from '@/components/vagas-card'
 import { TemasCard } from '@/components/temas-card'
+import { AtracoesCard } from '@/components/atracoes-card'
 import { ArteStories } from '@/components/arte-stories'
 import { PerguntasCard } from '@/components/perguntas-card'
 import { obterFinanceiroEvento } from '@/lib/financeiro'
@@ -388,6 +389,8 @@ export default function EventoEditar() {
       <PerguntasCard eventoId={Number(id)} tipos={tiposIngresso ?? []} />
 
       <CortesiasCard eventoId={Number(id)} tipos={tiposIngresso ?? []} />
+
+      <AtracoesCard eventoId={Number(id)} />
 
       <ConvitesCard eventoId={Number(id)} />
 

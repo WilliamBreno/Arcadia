@@ -37,6 +37,23 @@ type FichaDados struct {
 	ResponsavelNome           string
 	ResponsavelContato        string
 	AutorizacaoResponsavelURL string
+	GrupoID                   *int64 // item 11.1
+}
+
+// ErrFichaGrupo: só o líder ou um integrante ativo inscreve pelo grupo.
+var ErrFichaGrupo = errors.New("você só pode se inscrever por um grupo do qual faz parte")
+
+// PodeInscreverPeloGrupo é ligado no main (item 11.1).
+var PodeInscreverPeloGrupo func(usuarioID, grupoID int64) bool
+
+func validarGrupoDaFicha(f *domain.FichaParticipacao) error {
+	if f.GrupoID == nil {
+		return nil
+	}
+	if PodeInscreverPeloGrupo == nil || !PodeInscreverPeloGrupo(f.UsuarioID, *f.GrupoID) {
+		return ErrFichaGrupo
+	}
+	return nil
 }
 
 func aplicarDadosFicha(f *domain.FichaParticipacao, dados FichaDados) {
@@ -55,6 +72,14 @@ func aplicarDadosFicha(f *domain.FichaParticipacao, dados FichaDados) {
 	f.ResponsavelNome = dados.ResponsavelNome
 	f.ResponsavelContato = dados.ResponsavelContato
 	f.AutorizacaoResponsavelURL = dados.AutorizacaoResponsavelURL
+	// Item 11.1: ausente mantém o grupo; 0 tira.
+	if dados.GrupoID != nil {
+		if *dados.GrupoID == 0 {
+			f.GrupoID = nil
+		} else {
+			f.GrupoID = dados.GrupoID
+		}
+	}
 }
 
 // validarMenorDeIdade aplica a regra da seção 7.12: menor de 18 (por
@@ -219,6 +244,9 @@ func (s *FichaService) AtualizarMinha(eventoID, usuarioID int64, papel domain.Pa
 	if err := validarMenorDeIdade(ficha); err != nil {
 		return nil, err
 	}
+	if err := validarGrupoDaFicha(ficha); err != nil {
+		return nil, err
+	}
 	troca := s.vagas != nil && ficha.Papel == domain.PapelParticipante && !mesmoTipo(tipoAntes, ficha.TipoApresentacao)
 	if !troca {
 		if err := s.fichas.SalvarDadosEditaveis(ficha); err != nil {
@@ -282,6 +310,9 @@ func (s *FichaService) Inscrever(eventoID, usuarioID int64, dados FichaDados) (*
 	}
 	aplicarDadosFicha(ficha, dados)
 	if err := validarMenorDeIdade(ficha); err != nil {
+		return nil, err
+	}
+	if err := validarGrupoDaFicha(ficha); err != nil {
 		return nil, err
 	}
 

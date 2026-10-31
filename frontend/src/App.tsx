@@ -48,6 +48,13 @@ import WidgetEvento from '@/pages/WidgetEvento'
 import CidadeEventos from '@/pages/CidadeEventos'
 import ColecaoPublica from '@/pages/ColecaoPublica'
 import Colecoes from '@/pages/Colecoes'
+import Artistas from '@/pages/Artistas'
+import ArtistaPublico from '@/pages/ArtistaPublico'
+import ArtistaConvite from '@/pages/ArtistaConvite'
+import AutorizarIntegrante from '@/pages/AutorizarIntegrante'
+import MeusArtistas from '@/pages/MeusArtistas'
+import ArtistaPainel from '@/pages/ArtistaPainel'
+import AdminArtistas from '@/pages/admin/AdminArtistas'
 import MapaEventos from '@/pages/MapaEventos'
 import QuantoCusta from '@/pages/QuantoCusta'
 import Descadastrar from '@/pages/Descadastrar'
@@ -83,6 +90,10 @@ function App() {
         <Route path="/cookies" element={<Cookies />} />
         <Route path="/t/:slug" element={<PerfilTalento />} />
         <Route path="/autorizar-perfil" element={<AutorizarPerfil />} />
+        <Route path="/artistas" element={<Artistas />} />
+        <Route path="/artista/:slug" element={<ArtistaPublico />} />
+        <Route path="/grupo-convite/:token" element={<ArtistaConvite />} />
+        <Route path="/autorizar-integrante" element={<AutorizarIntegrante />} />
         <Route path="/descadastrar" element={<Descadastrar />} />
         <Route path="/o/:slug" element={<OrganizadorPublico />} />
         <Route path="/convite/:token" element={<Convite />} />
@@ -98,6 +109,8 @@ function App() {
 
         <Route element={<ProtectedRoute />}>
           <Route path="/meu-talento" element={<MeuTalento />} />
+          <Route path="/meus-artistas" element={<MeusArtistas />} />
+          <Route path="/meus-artistas/:id" element={<ArtistaPainel />} />
           <Route path="/palco/:eventoId" element={<PalcoCamarim />} />
           <Route path="/porta/:eventoId" element={<VendaPorta />} />
           <Route path="/ao-vivo/:eventoId" element={<AoVivo />} />
@@ -126,6 +139,7 @@ function App() {
           <Route path="/admin/relatorios" element={<AdminRelatorios />} />
           <Route path="/admin/organizadores" element={<AdminOrganizadores />} />
           <Route path="/admin/colecoes" element={<AdminColecoes />} />
+          <Route path="/admin/artistas" element={<AdminArtistas />} />
           <Route path="/admin/avaliacoes" element={<AdminAvaliacoes />} />
           <Route path="/admin/suporte" element={<AdminSuporte />} />
           <Route path="/organizador/eventos/novo" element={<EventoNovo />} />

@@ -229,7 +229,7 @@ func (h *ConviteHandler) Aceitar(c *gin.Context) {
 			c.JSON(http.StatusConflict, gin.H{"erro": err.Error()})
 			return
 		}
-		if errors.Is(err, service.ErrMenorSemAutorizacao) {
+		if errors.Is(err, service.ErrMenorSemAutorizacao) || errors.Is(err, service.ErrFichaGrupo) {
 			c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
 			return
 		}

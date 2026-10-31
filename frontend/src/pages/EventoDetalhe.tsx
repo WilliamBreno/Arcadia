@@ -40,6 +40,7 @@ import { EscolhaLugares } from '@/components/escolha-lugares'
 import type { Escolhas, SetorMapa } from '@/lib/lugares'
 import { ExtrasCompra } from '@/components/extras-compra'
 import { RecomendacoesDoEvento } from '@/components/recomendacoes-evento'
+import { AtracoesDoEvento } from '@/components/atracoes-card'
 import { CompraGrupo } from '@/components/compra-grupo'
 import { somarResumo, valoresExtras, type Extras } from '@/lib/extras'
 
@@ -389,6 +390,7 @@ export default function EventoDetalhe() {
       )}
 
       {evento.descricao && <p className="mt-6 whitespace-pre-wrap text-foreground">{evento.descricao}</p>}
+      <AtracoesDoEvento slug={evento.slug} />
 
       {local && (
         <Card className="mt-6">

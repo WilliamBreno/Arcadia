@@ -49,6 +49,7 @@ type fichaResposta struct {
 	MotivoRejeicao          string          `json:"motivo_rejeicao,omitempty"`
 	OrdemApresentacao       *int            `json:"ordem_apresentacao"`
 	TipoApresentacao        *string         `json:"tipo_apresentacao"`
+	GrupoID                 *int64          `json:"grupo_id"` // item 11.1
 	Dados                   json.RawMessage `json:"dados"`
 	ResponsavelNome         string          `json:"responsavel_nome,omitempty"`
 	ResponsavelContato      string          `json:"responsavel_contato,omitempty"`
@@ -79,6 +80,7 @@ func paraFichaResposta(f *domain.FichaParticipacao) fichaResposta {
 		MotivoRejeicao:          f.MotivoRejeicao,
 		OrdemApresentacao:       f.OrdemApresentacao,
 		TipoApresentacao:        tipoApresentacao,
+		GrupoID:                 f.GrupoID,
 		Dados:                   dados,
 		ResponsavelNome:         f.ResponsavelNome,
 		ResponsavelContato:      f.ResponsavelContato,
@@ -146,6 +148,7 @@ type minhaFichaRequest struct {
 	ResponsavelNome           string         `json:"responsavel_nome"`
 	ResponsavelContato        string         `json:"responsavel_contato"`
 	AutorizacaoResponsavelURL string         `json:"autorizacao_responsavel_url"`
+	GrupoID                   *int64         `json:"grupo_id"` // item 11.1
 }
 
 func (req minhaFichaRequest) paraDados() service.FichaDados {
@@ -170,6 +173,7 @@ func (req minhaFichaRequest) paraDados() service.FichaDados {
 		TipoApresentacao:          tipoApresentacao,
 		Dados:                     dadosJSON,
 		ResponsavelNome:           req.ResponsavelNome,
+		GrupoID:                   req.GrupoID,
 		ResponsavelContato:        req.ResponsavelContato,
 		AutorizacaoResponsavelURL: req.AutorizacaoResponsavelURL,
 	}
@@ -218,7 +222,7 @@ func (h *FichaHandler) AtualizarMinha(c *gin.Context) {
 		if responderErroVagas(c, err) {
 			return
 		}
-		if errors.Is(err, service.ErrMenorSemAutorizacao) {
+		if errors.Is(err, service.ErrMenorSemAutorizacao) || errors.Is(err, service.ErrFichaGrupo) {
 			c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
 			return
 		}
@@ -248,7 +252,7 @@ func (h *FichaHandler) Inscrever(c *gin.Context) {
 		switch {
 		case service.EhErroVagas(err):
 			responderErroVagas(c, err)
-		case errors.Is(err, service.ErrMenorSemAutorizacao):
+		case errors.Is(err, service.ErrMenorSemAutorizacao) || errors.Is(err, service.ErrFichaGrupo):
 			c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
 		case errors.Is(err, service.ErrInscricaoNaoPermitida), errors.Is(err, service.ErrInscricaoForaDoPrazo), errors.Is(err, service.ErrJaInscrito):
 			c.JSON(http.StatusConflict, gin.H{"erro": err.Error()})

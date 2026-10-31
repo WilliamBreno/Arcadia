@@ -29,7 +29,7 @@ func (r *FichaParticipacaoRepository) Salvar(f *domain.FichaParticipacao) error 
 func (r *FichaParticipacaoRepository) SalvarDadosEditaveis(f *domain.FichaParticipacao) error {
 	return r.db.Model(&domain.FichaParticipacao{}).Where("id = ?", f.ID).
 		Select("nome", "nome_artistico", "instagram", "data_nascimento", "foto_url", "telefone", "tipo_apresentacao", "dados",
-			"responsavel_nome", "responsavel_contato", "autorizacao_responsavel_url").
+			"responsavel_nome", "responsavel_contato", "autorizacao_responsavel_url", "grupo_id").
 		Updates(f).Error
 }
 
