@@ -27,10 +27,13 @@ Encarregado pelo tratamento de dados pessoais (DPO): **[nome]**, pelo e-mail **[
 
 Não vendemos dados pessoais.
 
+**Mural de eventos (11.5):** texto e fotos enviados voluntariamente ficam restritos ao autor e à moderação até a aprovação da organização. Após aprovados, aparecem no mural público; destaques podem compor artes para Stories. As fotos são recodificadas sem metadados EXIF. Não mostramos o nome real de menores ou de pessoas sem idade conhecida. Remover uma publicação apaga suas fotos e substitui seu texto por um aviso de remoção. Denúncias ficam restritas à organização. ⚖️ Revisar bases legais, retenção, autorização de imagem e proteção de menores para este fluxo.
+
 ## 3. Com quem compartilhamos
 
 - **Organizador do evento que você comprou:** nome e e-mail do titular, ingresso e situação do check-in, para a gestão do evento e a portaria. O organizador é controlador desses dados para as finalidades dele. ⚖️ Definir o papel (controlador conjunto ou independente) e o contrato com o organizador.
 - **Mercado Pago:** processamento de pagamentos, estornos e contestações.
+- **Anthropic (quando a IA estiver configurada):** recebe o texto e as fotos de publicações do mural para sinalizar conteúdo sensível à organização. A IA não aprova nem rejeita publicações. A tela informa essa análise antes do envio. ⚖️ Revisar contrato, transferência internacional e tratamento de imagens no fluxo de moderação.
 - **Prestadores que operam o serviço para nós (operadores):** hospedagem e banco de dados (Railway, Neon, Vercel), envio de e-mails (Resend), armazenamento de arquivos (**[provedor S3/R2]**). ⚖️ Contratos com cláusulas da LGPD (art. 39).
 - **Autoridades**, quando a lei ou ordem judicial exigir.
 

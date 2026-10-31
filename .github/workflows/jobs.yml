@@ -10,6 +10,7 @@ on:
     - cron: "40 * * * *"    # lembretes 7 dias e 1 dia antes do evento
     - cron: "25 * * * *"    # repasse automático por Pix (item 9.1)
     - cron: "45 * * * *"    # resumo do chat da equipe (item 11.4)
+    - cron: "3-59/5 * * * *" # análise de posts do mural interrompida (11.5)
     - cron: "0 12 * * *"    # aviso de vencimento do Evve Pro (item 10.4, 09h BRT)
   workflow_dispatch:
 
@@ -28,6 +29,7 @@ jobs:
             "40 * * * *") echo "nome=lembretes" >> "$GITHUB_OUTPUT" ;;
             "25 * * * *") echo "nome=enviar-repasses" >> "$GITHUB_OUTPUT" ;;
             "45 * * * *") echo "nome=chat-resumos" >> "$GITHUB_OUTPUT" ;;
+            "3-59/5 * * * *") echo "nome=mural-analisar" >> "$GITHUB_OUTPUT" ;;
             "0 12 * * *") echo "nome=pro-vencimento" >> "$GITHUB_OUTPUT" ;;
             *) echo "nome=expirar-reservas" >> "$GITHUB_OUTPUT" ;;
           esac

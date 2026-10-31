@@ -698,6 +698,7 @@ export default function EventoDetalhe() {
       <ExpositoresDoEvento slug={evento.slug} timezone={evento.timezone} />
       <CaravanasDoEvento slug={evento.slug} eventoComecou={eventoComecou} />
       <GaleriaDoEvento slug={evento.slug} />
+      <section className="mt-8 rounded-xl border border-border p-5"><h2 className="text-xl font-semibold">Mural do evento</h2><p className="mt-2 text-sm text-muted-foreground">Fotos e comentários de quem participa, com aprovação da organização. Veja os melhores momentos e compartilhe os seus.</p><Link to={`/e/${evento.slug}/mural`} className="mt-3 inline-block text-sm font-medium underline">Ver mural e compartilhar um momento</Link></section>
 
       <AvaliacoesDoEvento slug={evento.slug} eventoComecou={eventoComecou} />
       <RecomendacoesDoEvento slug={evento.slug} />

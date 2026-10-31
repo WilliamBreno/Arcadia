@@ -43,6 +43,8 @@ import PerfilTalento from '@/pages/PerfilTalento'
 import MeuTalento from '@/pages/MeuTalento'
 import ChatsEventos from '@/pages/ChatsEventos'
 import ChatEvento from '@/pages/ChatEvento'
+import MuralEvento from '@/pages/MuralEvento'
+import MuralModeracao from '@/pages/MuralModeracao'
 import AutorizarPerfil from '@/pages/AutorizarPerfil'
 import PalcoCamarim from '@/pages/PalcoCamarim'
 import Telao from '@/pages/Telao'
@@ -84,6 +86,7 @@ function App() {
       <Route element={<SiteLayout />}>
         <Route path="/" element={<Home />} />
         <Route path="/e/:slug" element={<EventoDetalhe />} />
+        <Route path="/e/:slug/mural" element={<MuralEvento />} />
         <Route path="/eventos/:cidade" element={<CidadeEventos />} />
         <Route path="/eventos/:cidade/:categoria" element={<CidadeEventos />} />
         <Route path="/colecoes" element={<Colecoes />} />
@@ -116,6 +119,7 @@ function App() {
           <Route path="/meu-talento" element={<MeuTalento />} />
           <Route path="/conversas-equipe" element={<ChatsEventos />} />
           <Route path="/chat-evento/:id" element={<ChatEvento />} />
+          <Route path="/e/:slug/mural/moderacao" element={<MuralModeracao />} />
           <Route path="/meus-artistas" element={<MeusArtistas />} />
           <Route path="/meus-orcamentos" element={<MeusOrcamentosArtistas />} />
           <Route path="/orcamento-artista/:id" element={<OrcamentoArtista />} />
