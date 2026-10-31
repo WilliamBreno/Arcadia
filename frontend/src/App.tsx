@@ -54,6 +54,8 @@ import ArtistaConvite from '@/pages/ArtistaConvite'
 import AutorizarIntegrante from '@/pages/AutorizarIntegrante'
 import MeusArtistas from '@/pages/MeusArtistas'
 import ArtistaPainel from '@/pages/ArtistaPainel'
+import OrcamentoArtista from '@/pages/OrcamentoArtista'
+import MeusOrcamentosArtistas from '@/pages/MeusOrcamentosArtistas'
 import ArtistaGestaoConvite from '@/pages/ArtistaGestaoConvite'
 import AdminArtistas from '@/pages/admin/AdminArtistas'
 import MapaEventos from '@/pages/MapaEventos'
@@ -111,6 +113,8 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/meu-talento" element={<MeuTalento />} />
           <Route path="/meus-artistas" element={<MeusArtistas />} />
+          <Route path="/meus-orcamentos" element={<MeusOrcamentosArtistas />} />
+          <Route path="/orcamento-artista/:id" element={<OrcamentoArtista />} />
           <Route path="/meus-artistas/:id" element={<ArtistaPainel />} />
           <Route path="/artista-gestao/:token" element={<ArtistaGestaoConvite />} />
           <Route path="/palco/:eventoId" element={<PalcoCamarim />} />

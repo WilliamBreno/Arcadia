@@ -6,7 +6,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { Carregando } from '@/components/carregando'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { api } from '@/lib/api'
+import { api, ApiError } from '@/lib/api'
 import { nomeTipoArtista, tiposArtista, type ArtistaItem } from '@/lib/artistas'
 
 const iniciais = (nome: string) =>
@@ -22,6 +22,7 @@ export default function Artistas() {
   const tipo = params.get('tipo') ?? ''
   const uf = params.get('uf') ?? ''
   const q = params.get('q') ?? ''
+  const livreEm = params.get('livre_em') ?? ''
   const pagina = Number(params.get('pagina') ?? '1') || 1
   const [busca, setBusca] = useState(q)
 
@@ -29,13 +30,14 @@ export default function Artistas() {
     document.title = 'Artistas | Evve'
   }, [])
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['artistas', tipo, uf, q, pagina],
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['artistas', tipo, uf, q, pagina, livreEm],
     queryFn: () => {
       const s = new URLSearchParams()
       if (tipo) s.set('tipo', tipo)
       if (uf) s.set('uf', uf)
       if (q) s.set('q', q)
+      if (livreEm) s.set('livre_em', livreEm)
       if (pagina > 1) s.set('pagina', String(pagina))
       return api<{ itens: ArtistaItem[]; total: number }>(`/artistas?${s}`, { semAuth: true })
     },
@@ -52,7 +54,8 @@ export default function Artistas() {
   return (
     <main className="mx-auto max-w-5xl px-4 py-10">
       <h1 className="text-3xl font-bold text-foreground sm:text-4xl">Artistas</h1>
-      <p className="mt-2 max-w-2xl text-muted-foreground">Grupos de dança, cosplayers, cantores e companhias de teatro. Veja o trabalho e chame pelo Instagram.</p>
+      <Link to="/meus-orcamentos" className="mt-3 inline-block text-sm underline">Meus pedidos de orçamento</Link>
+      <p className="mt-2 max-w-2xl text-muted-foreground">Grupos de dança, cosplayers, cantores e companhias de teatro. Conheça o trabalho, consulte a agenda e peça um orçamento.</p>
 
       <form
         className="mt-6 flex gap-2"
@@ -87,10 +90,18 @@ export default function Artistas() {
           UF
           <Input className="h-8 w-16 uppercase" maxLength={2} value={uf} onChange={(e) => mudar('uf', e.target.value.toUpperCase())} aria-label="Estado (UF)" />
         </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          Livres em
+          <Input type="date" className="h-8 w-auto" value={livreEm} onChange={(e) => mudar('livre_em', e.target.value)} aria-label="Disponíveis em" />
+        </label>
+        {livreEm && <Button type="button" size="sm" variant="ghost" onClick={() => mudar('livre_em', '')}>Limpar data</Button>}
       </div>
+      {livreEm && <p className="mt-2 text-xs text-muted-foreground">Disponibilidade conforme a agenda cadastrada e as atrações confirmadas. Combine os detalhes com o artista.</p>}
 
       <div className="mt-8">
-        {isLoading ? (
+        {error ? (
+          <p role="alert" className="rounded-xl border border-border p-6 text-destructive">{error instanceof ApiError ? error.message : 'Não foi possível buscar os artistas. Tente novamente.'}</p>
+        ) : isLoading ? (
           <Carregando />
         ) : !data || data.itens.length === 0 ? (
           <p className="rounded-xl border border-border p-6 text-muted-foreground">Nenhum artista encontrado com esses filtros.</p>

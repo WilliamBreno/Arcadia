@@ -6,6 +6,7 @@ import { Link, useParams } from 'react-router-dom'
 import { Carregando } from '@/components/carregando'
 import { VoltarBotao } from '@/components/voltar-link'
 import { ApiError } from '@/lib/api'
+import { ArtistaContratar } from '@/components/artista-contratar'
 import { obterArtista, textoAnos, type ApresentacaoArtista, type Midia } from '@/lib/artistas'
 
 const dataCurta = (iso: string | null) =>
@@ -172,6 +173,7 @@ export default function ArtistaPublico() {
         )}
         {data.bio && <p className="mt-4 max-w-2xl whitespace-pre-line text-foreground text-pretty">{data.bio}</p>}
       </header>
+      {data.oferta && <ArtistaContratar key={slug} slug={slug} oferta={data.oferta} />}
       {data.agenda?.length > 0 && <section className="mx-4 my-6 rounded-xl border border-border p-4">
         <h2 className="mb-3 font-semibold">Agenda pública</h2>
         <ul className="flex flex-col gap-3">{data.agenda.map(a => <li key={a.id} className="text-sm">

@@ -242,13 +242,14 @@ func (s *GruposService) RemoverGestao(usuarioID, grupoID, alvoID int64, convite 
 }
 
 type AgendaArtista struct {
-	ID      int64  `json:"id"`
-	GrupoID int64  `json:"-"`
-	Tipo    string `json:"tipo"`
-	Titulo  string `json:"titulo"`
-	Inicio  string `json:"inicio"`
-	Fim     string `json:"fim"`
-	Publico bool   `json:"publico"`
+	OrcamentoID *int64 `json:"orcamento_id,omitempty"`
+	ID          int64  `json:"id"`
+	GrupoID     int64  `json:"-"`
+	Tipo        string `json:"tipo"`
+	Titulo      string `json:"titulo"`
+	Inicio      string `json:"inicio"`
+	Fim         string `json:"fim"`
+	Publico     bool   `json:"publico"`
 }
 
 func (AgendaArtista) TableName() string { return "grupo_agenda" }
@@ -268,7 +269,8 @@ func NormalizarAgenda(d AgendaArtista) (AgendaArtista, error) {
 func (s *GruposService) agenda(grupoID int64, publica bool) ([]AgendaArtista, error) {
 	out := []AgendaArtista{}
 	err := s.db.Raw(`SELECT id, grupo_id, tipo, titulo, to_char(inicio,'YYYY-MM-DD') AS inicio,
- to_char(fim,'YYYY-MM-DD') AS fim, publico FROM grupo_agenda WHERE grupo_id = ? AND (NOT ? OR publico) ORDER BY inicio, id`, grupoID, publica).Scan(&out).Error
+ to_char(fim,'YYYY-MM-DD') AS fim, publico, CASE WHEN ? THEN NULL ELSE orcamento_id END AS orcamento_id
+ FROM grupo_agenda WHERE grupo_id = ? AND (NOT ? OR publico) ORDER BY inicio, id`, publica, grupoID, publica).Scan(&out).Error
 	if publica {
 		for i := range out {
 			if out[i].Tipo == "bloqueio" {
@@ -285,31 +287,55 @@ func (s *GruposService) Agenda(usuarioID, grupoID int64) ([]AgendaArtista, error
 	return s.agenda(grupoID, false)
 }
 func (s *GruposService) SalvarAgenda(usuarioID, grupoID, id int64, d AgendaArtista) error {
-	if _, err := s.doGestor(usuarioID, grupoID); err != nil {
-		return err
-	}
-	d, err := NormalizarAgenda(d)
-	if err != nil {
-		return err
-	}
-	if id == 0 {
-		d.ID, d.GrupoID = 0, grupoID
-		return s.db.Create(&d).Error
-	}
-	r := s.db.Model(&AgendaArtista{}).Where("id = ? AND grupo_id = ?", id, grupoID).Updates(map[string]any{"tipo": d.Tipo, "titulo": d.Titulo, "inicio": d.Inicio, "fim": d.Fim, "publico": d.Publico})
-	if r.Error != nil {
-		return r.Error
-	}
-	if r.RowsAffected == 0 {
-		return ErrArtistaNaoEncontrado
-	}
-	return nil
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		var g Grupo
+		if tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&g, grupoID).Error != nil {
+			return ErrArtistaNaoEncontrado
+		}
+		local := *s
+		local.db = tx
+		if _, e := local.doGestor(usuarioID, grupoID); e != nil {
+			return e
+		}
+		d, e := NormalizarAgenda(d)
+		if e != nil {
+			return e
+		}
+		d.OrcamentoID = nil
+		if id == 0 {
+			d.ID, d.GrupoID = 0, grupoID
+			return tx.Create(&d).Error
+		}
+		var anterior AgendaArtista
+		if tx.Where("id = ? AND grupo_id = ?", id, grupoID).First(&anterior).Error != nil {
+			return ErrArtistaNaoEncontrado
+		}
+		if anterior.OrcamentoID != nil {
+			return ErrContratacaoEstado
+		}
+		return tx.Model(&anterior).Updates(map[string]any{"tipo": d.Tipo, "titulo": d.Titulo, "inicio": d.Inicio, "fim": d.Fim, "publico": d.Publico}).Error
+	})
 }
 func (s *GruposService) RemoverAgenda(usuarioID, grupoID, id int64) error {
-	if _, err := s.doGestor(usuarioID, grupoID); err != nil {
-		return err
-	}
-	return s.db.Where("id = ? AND grupo_id = ?", id, grupoID).Delete(&AgendaArtista{}).Error
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		var g Grupo
+		if tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&g, grupoID).Error != nil {
+			return ErrArtistaNaoEncontrado
+		}
+		local := *s
+		local.db = tx
+		if _, e := local.doGestor(usuarioID, grupoID); e != nil {
+			return e
+		}
+		var a AgendaArtista
+		if tx.Where("id = ? AND grupo_id = ?", id, grupoID).First(&a).Error != nil {
+			return ErrArtistaNaoEncontrado
+		}
+		if a.OrcamentoID != nil {
+			return ErrContratacaoEstado
+		}
+		return tx.Delete(&a).Error
+	})
 }
 
 // Usa exclusivamente a mesma projeção do perfil público, inclusive as regras de menores.

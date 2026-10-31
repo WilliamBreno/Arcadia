@@ -9,13 +9,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { api, ApiError } from '@/lib/api'
+import { useAuth } from '@/hooks/use-auth'
 import { listarMeusArtistas, nomeTipoArtista, tiposArtista, type DadosArtista, type TipoArtista } from '@/lib/artistas'
 
 // Item 11.1: "Meus artistas" — grupos que a pessoa lidera ou de que faz parte.
 export default function MeusArtistas() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { data, isLoading } = useQuery({ queryKey: ['meus-artistas'], queryFn: listarMeusArtistas })
+  const { usuario } = useAuth()
+  const { data, isLoading } = useQuery({ queryKey: ['meus-artistas', usuario?.id], queryFn: listarMeusArtistas })
   const [criando, setCriando] = useState(false)
   const [nome, setNome] = useState('')
   const [tipo, setTipo] = useState<TipoArtista>('danca')
@@ -56,6 +58,7 @@ export default function MeusArtistas() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-10">
       <h1 className="text-2xl font-bold text-foreground">Meus artistas</h1>
+      <Link to="/meus-orcamentos" className="mt-3 inline-block text-sm underline">Meus pedidos de orçamento</Link>
       <p className="mt-1 text-muted-foreground">Perfis de grupo ou solo para mostrar o seu trabalho na vitrine de artistas e nos eventos.</p>
 
       {erro && (

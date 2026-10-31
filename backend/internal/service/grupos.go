@@ -992,19 +992,36 @@ func (s *GruposService) RemoverAtracao(organizadorID, eventoID, grupoID int64) e
 
 // DecidirAtracao: o líder confirma ou recusa (pode desfazer depois).
 func (s *GruposService) DecidirAtracao(usuarioID, grupoID, atracaoID int64, aceitar bool) error {
-	if _, err := s.doLider(usuarioID, grupoID); err != nil {
-		return err
-	}
-	status := "recusado"
-	if aceitar {
-		status = "confirmado"
-	}
-	res := s.db.Model(&Atracao{}).Where("id = ? AND grupo_id = ?", atracaoID, grupoID).
-		Updates(map[string]any{"status": status, "decidido_em": time.Now()})
-	if res.RowsAffected == 0 {
-		return ErrAtracaoInvalida
-	}
-	return res.Error
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		var g Grupo
+		if tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&g, grupoID).Error != nil {
+			return ErrArtistaNaoEncontrado
+		}
+		if g.LiderUsuarioID != usuarioID {
+			return ErrArtistaSemPermissao
+		}
+		var a Atracao
+		if tx.Where("id = ? AND grupo_id = ?", atracaoID, grupoID).First(&a).Error != nil {
+			return ErrAtracaoInvalida
+		}
+		status := "recusado"
+		if aceitar {
+			status = "confirmado"
+			if a.Status != "confirmado" {
+				var n int64
+				if e := tx.Raw(`SELECT count(*) FROM grupo_agenda ga JOIN eventos e ON e.id=?
+				 WHERE ga.grupo_id=? AND ga.orcamento_id IS NOT NULL
+				 AND ga.inicio <= (COALESCE(e.fim_em,e.inicio_em+interval '12 hours') AT TIME ZONE e.timezone)::date
+				 AND ga.fim >= (e.inicio_em AT TIME ZONE e.timezone)::date`, a.EventoID, grupoID).Scan(&n).Error; e != nil {
+					return e
+				}
+				if n > 0 {
+					return ErrContratacaoEstado
+				}
+			}
+		}
+		return tx.Model(&a).Updates(map[string]any{"status": status, "decidido_em": time.Now()}).Error
+	})
 }
 
 // AtracaoDoEvento aparece no painel do evento (todas) e na página pública
@@ -1153,6 +1170,7 @@ type GrupoPublico struct {
 	Resultados        []ResultadoGrupo    `json:"resultados"`
 	Indexar           bool                `json:"indexar"`
 	Agenda            []AgendaArtista     `json:"agenda"`
+	Oferta            *ArtistaOferta      `json:"oferta,omitempty"`
 }
 
 func (s *GruposService) integrantesPublicos(grupoID int64, agora time.Time) ([]IntegrantePublico, int, bool) {
@@ -1227,6 +1245,16 @@ func (s *GruposService) Publico(slug string) (*GrupoPublico, error) {
 		}
 	}
 	p.Indexar = !(g.Solo && temMenor)
+	o, ofertaErr := s.oferta(g.ID)
+	if ofertaErr != nil {
+		return nil, ofertaErr
+	}
+	if o.Habilitada {
+		if g.Solo && sitSolo.Menor {
+			o.OrigemID, o.Origem = nil, nil
+		}
+		p.Oferta = o
+	}
 	var err error
 	p.Agenda, err = s.agenda(g.ID, true)
 	if err != nil {
@@ -1238,12 +1266,13 @@ func (s *GruposService) Publico(slug string) (*GrupoPublico, error) {
 // --- Vitrine ---
 
 type FiltrosArtistas struct {
-	Tipo   string
-	UF     string
-	Cidade string
-	Busca  string
-	Solo   *bool
-	Pagina int
+	DataLivre string
+	Tipo      string
+	UF        string
+	Cidade    string
+	Busca     string
+	Solo      *bool
+	Pagina    int
 }
 
 type ArtistaItem struct {
@@ -1264,6 +1293,11 @@ type ArtistaItem struct {
 
 func (s *GruposService) Vitrine(f FiltrosArtistas) ([]ArtistaItem, int64, error) {
 	q := s.db.Table("grupos g").Where("g.publico").Where(condSoloVisivel)
+	var err error
+	q, err = filtrarDisponibilidadeArtista(q, f.DataLivre)
+	if err != nil {
+		return nil, 0, err
+	}
 	if TiposGrupo[f.Tipo] != "" {
 		q = q.Where("g.tipo = ?", f.Tipo)
 	}
@@ -1285,7 +1319,7 @@ func (s *GruposService) Vitrine(f FiltrosArtistas) ([]ArtistaItem, int64, error)
 	}
 	pagina := max(f.Pagina, 1)
 	out := []ArtistaItem{}
-	err := q.Select(`g.id, g.lider_usuario_id AS lider_id, g.slug, g.nome, g.tipo, g.solo, g.cidade, g.uf, g.logo_url, g.capa_url, g.instagram, (g.instagram_verificado_em IS NOT NULL) AS verificado,
+	err = q.Select(`g.id, g.lider_usuario_id AS lider_id, g.slug, g.nome, g.tipo, g.solo, g.cidade, g.uf, g.logo_url, g.capa_url, g.instagram, (g.instagram_verificado_em IS NOT NULL) AS verificado,
 		(SELECT count(*) FROM grupo_integrantes gi WHERE gi.grupo_id = g.id AND gi.status = 'ativo') AS integrantes`).
 		Order("(g.instagram_verificado_em IS NOT NULL) DESC, g.atualizado_em DESC").Offset((pagina - 1) * 24).Limit(24).Scan(&out).Error
 	for k := range out {

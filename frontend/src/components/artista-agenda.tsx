@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Ban, ChevronLeft, ChevronRight, Circle, Plus } from 'lucide-react'
 
@@ -8,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useAuth } from '@/hooks/use-auth'
 
 const isoLocal = (data: Date) => `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}-${String(data.getDate()).padStart(2, '0')}`
 const dataLocal = (iso: string) => new Date(`${iso}T12:00:00`)
@@ -19,8 +21,9 @@ const ocorreNoDia = (a: AgendaArtista, dia: string) => a.inicio <= dia && a.fim 
 
 export function ArtistaAgenda({ id }: { id: number }) {
   const qc = useQueryClient()
+  const { usuario } = useAuth()
   const { data = [], error, isLoading } = useQuery({
-    queryKey: ['agenda-artista', id],
+    queryKey: ['agenda-artista', id, usuario?.id],
     queryFn: () => api<AgendaArtista[]>(`/me/artistas/${id}/agenda`),
   })
   const [selecionado, setSelecionado] = useState(() => isoLocal(new Date()))
@@ -158,8 +161,10 @@ export function ArtistaAgenda({ id }: { id: number }) {
                 {a.inicio !== a.fim && <p className="text-xs text-muted-foreground">De {diaCurto(a.inicio)} a {diaCurto(a.fim)}</p>}
               </div>
               <div className="flex shrink-0 gap-2">
-                <Button type="button" size="sm" variant="outline" disabled={ocupado} onClick={() => { setD(a); setErro(''); setOk('') }}>Editar</Button>
-                <Button type="button" size="sm" variant="ghost" disabled={ocupado} onClick={() => remover(a.id)}>Remover</Button>
+                {a.orcamento_id ? <Link to={`/orcamento-artista/${a.orcamento_id}`} className="text-sm underline">Ver contratação</Link> : <>
+                  <Button type="button" size="sm" variant="outline" disabled={ocupado} onClick={() => { setD(a); setErro(''); setOk('') }}>Editar</Button>
+                  <Button type="button" size="sm" variant="ghost" disabled={ocupado} onClick={() => remover(a.id)}>Remover</Button>
+                </>}
               </div>
             </div>
           ))}

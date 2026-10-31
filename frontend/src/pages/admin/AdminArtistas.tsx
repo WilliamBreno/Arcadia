@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import { ApiError } from '@/lib/api'
 import { decidirSelo, listarPedidosSelo } from '@/lib/artistas'
 import { AdminNav } from '@/components/admin-nav'
+import { ArtistaViagemConfig } from '@/components/artista-viagem-config'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 
@@ -36,6 +37,7 @@ export default function AdminArtistas() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
       <AdminNav />
+      <ArtistaViagemConfig />
       <h1 className="mb-2 text-2xl font-semibold text-foreground">Selo do Instagram</h1>
       <p className="mb-6 text-sm text-muted-foreground">Abra o perfil no Instagram, confira se o código está na bio e aprove o selo.</p>
       {isLoading && <p role="status" className="text-muted-foreground">Carregando pedidos…</p>}

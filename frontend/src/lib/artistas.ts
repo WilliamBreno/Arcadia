@@ -1,5 +1,6 @@
 // Item 11.1: grupos (dança, cosplay, canto, teatro) e artistas solo.
 import { api } from '@/lib/api'
+import type { OfertaArtista } from '@/lib/contratacao'
 
 export type TipoArtista = 'danca' | 'cosplay' | 'canto' | 'teatro' | 'outro'
 
@@ -66,6 +67,7 @@ export type ArtistaPublico = {
   resultados: ResultadoArtista[]
   indexar: boolean
   agenda: AgendaArtista[]
+  oferta?: OfertaArtista
 }
 
 export type ArtistaItem = {
@@ -165,7 +167,7 @@ export type AutorizacaoIntegrante = {
 
 export type PedidoSeloInstagram = { grupo_id: number; nome: string; slug: string; instagram: string; codigo: string; pedido_em: string }
 
-export type AgendaArtista = { id: number; tipo: 'apresentacao' | 'bloqueio'; titulo: string; inicio: string; fim: string; publico: boolean }
+export type AgendaArtista = { id: number; tipo: 'apresentacao' | 'bloqueio'; titulo: string; inicio: string; fim: string; publico: boolean; orcamento_id?: number }
 export type GestaoArtista = {
   lider: boolean
   gestores: { usuario_id: number; email: string; lider: boolean }[]

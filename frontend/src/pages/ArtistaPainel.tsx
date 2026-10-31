@@ -1,6 +1,8 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArtistaGestao, ArtistaMidiaKit } from '@/components/artista-gestao'
 import { ArtistaAgenda } from '@/components/artista-agenda'
+import { ArtistaOferta } from '@/components/artista-oferta'
+import { ArtistaOrcamentos } from '@/components/artista-orcamentos'
 import { BadgeCheck, Copy, ExternalLink, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -14,6 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { api, ApiError } from '@/lib/api'
+import { useAuth } from '@/hooks/use-auth'
 import { obterPainelArtista, textoAnos, tiposArtista, type DadosArtista, type PainelArtista, type TipoArtista } from '@/lib/artistas'
 
 const msg = (e: unknown, padrao: string) => (e instanceof ApiError ? e.message : padrao)
@@ -449,7 +452,8 @@ function AtracoesCard({ painel, aoMudar }: { painel: PainelArtista; aoMudar: (p:
 export default function ArtistaPainel() {
   const { id } = useParams()
   const queryClient = useQueryClient()
-  const chave = ['painel-artista', Number(id)]
+  const { usuario } = useAuth()
+  const chave = ['painel-artista', Number(id), usuario?.id]
   const { data, isLoading, error } = useQuery({ queryKey: chave, queryFn: () => obterPainelArtista(Number(id)), retry: false })
   const atualizar = (p: PainelArtista) => queryClient.setQueryData(chave, p)
 
@@ -472,6 +476,8 @@ export default function ArtistaPainel() {
         </Link>
       </div>
       <ArtistaGestao id={data.grupo.id} solo={data.grupo.solo} />
+      <ArtistaOrcamentos id={data.grupo.id} />
+      <ArtistaOferta id={data.grupo.id} />
       <ArtistaAgenda id={data.grupo.id} />
       <ArtistaMidiaKit id={data.grupo.id} />
       {data.lider && <AtracoesCard painel={data} aoMudar={atualizar} />}

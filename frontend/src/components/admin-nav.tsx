@@ -13,7 +13,7 @@ const links = [
 // Navegação entre as telas do admin da plataforma.
 export function AdminNav() {
   return (
-    <nav className="mb-6 flex gap-4 border-b border-border text-sm" aria-label="Admin">
+    <nav className="mb-6 flex flex-wrap gap-4 border-b border-border text-sm" aria-label="Admin">
       {links.map((l) => (
         <NavLink
           key={l.to}

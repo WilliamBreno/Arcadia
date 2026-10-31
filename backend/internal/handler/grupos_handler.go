@@ -25,6 +25,10 @@ func NovoGruposHandler(o *OrganizadorHandler, eventos *repository.EventoReposito
 
 func (h *GruposHandler) erro(c *gin.Context, err error) {
 	switch {
+	case errors.Is(err, service.ErrIBGEArtista):
+		c.JSON(http.StatusServiceUnavailable, gin.H{"erro": err.Error()})
+	case errors.Is(err, service.ErrContratacaoEstado):
+		c.JSON(http.StatusConflict, gin.H{"erro": err.Error()})
 	case errors.Is(err, service.ErrArtistaNaoEncontrado), errors.Is(err, service.ErrConviteArtista), errors.Is(err, service.ErrLinkAutorizacao):
 		c.JSON(http.StatusNotFound, gin.H{"erro": err.Error()})
 	case errors.Is(err, service.ErrArtistaSemPermissao), errors.Is(err, service.ErrConviteOutroEmail):
@@ -32,6 +36,7 @@ func (h *GruposHandler) erro(c *gin.Context, err error) {
 	case errors.Is(err, service.ErrIntegranteDuplicado), errors.Is(err, service.ErrLiderNaoSai), errors.Is(err, service.ErrAtracaoInvalida):
 		c.JSON(http.StatusConflict, gin.H{"erro": err.Error()})
 	case errors.Is(err, service.ErrArtistaInvalido), errors.Is(err, service.ErrIntegranteInvalido), errors.Is(err, service.ErrMidiaInvalida),
+		errors.Is(err, service.ErrContratacao),
 		errors.Is(err, service.ErrGestaoArtista), errors.Is(err, service.ErrAgendaArtista),
 		errors.Is(err, service.ErrLimiteArtistas), errors.Is(err, service.ErrLimiteIntegrantes), errors.Is(err, service.ErrLimiteMidias),
 		errors.Is(err, service.ErrSoloUmIntegrante):
@@ -57,7 +62,7 @@ func paramID(c *gin.Context, nome string) (int64, bool) {
 // Vitrine é GET /artistas.
 func (h *GruposHandler) Vitrine(c *gin.Context) {
 	pagina, _ := strconv.Atoi(c.Query("pagina"))
-	f := service.FiltrosArtistas{Tipo: c.Query("tipo"), UF: c.Query("uf"), Cidade: c.Query("cidade"), Busca: c.Query("q"), Pagina: pagina}
+	f := service.FiltrosArtistas{Tipo: c.Query("tipo"), UF: c.Query("uf"), Cidade: c.Query("cidade"), Busca: c.Query("q"), Pagina: pagina, DataLivre: c.Query("livre_em")}
 	if v := c.Query("solo"); v == "1" || v == "0" {
 		solo := v == "1"
 		f.Solo = &solo

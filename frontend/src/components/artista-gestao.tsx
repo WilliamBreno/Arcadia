@@ -6,12 +6,14 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useAuth } from '@/hooks/use-auth'
 
 const mensagem = (e: unknown) => e instanceof ApiError ? e.message : 'Não foi possível concluir. Tente novamente.'
 
 export function ArtistaGestao({ id, solo }: { id: number; solo: boolean }) {
   const qc = useQueryClient()
-  const { data, error } = useQuery({ queryKey: ['gestao-artista', id], queryFn: () => api<GestaoArtista>(`/me/artistas/${id}/gestao`) })
+  const { usuario } = useAuth()
+  const { data, error } = useQuery({ queryKey: ['gestao-artista', id, usuario?.id], queryFn: () => api<GestaoArtista>(`/me/artistas/${id}/gestao`) })
   const [email, setEmail] = useState('')
   const [papel, setPapel] = useState('cogestor')
   const [antigo, setAntigo] = useState(true)
