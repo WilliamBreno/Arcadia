@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArtistaGestao, ArtistaAgenda, ArtistaMidiaKit } from '@/components/artista-gestao'
+import { ArtistaGestao, ArtistaMidiaKit } from '@/components/artista-gestao'
+import { ArtistaAgenda } from '@/components/artista-agenda'
 import { BadgeCheck, Copy, ExternalLink, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
