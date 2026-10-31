@@ -47,6 +47,7 @@ import Telao from '@/pages/Telao'
 import WidgetEvento from '@/pages/WidgetEvento'
 import CidadeEventos from '@/pages/CidadeEventos'
 import ColecaoPublica from '@/pages/ColecaoPublica'
+import Colecoes from '@/pages/Colecoes'
 import MapaEventos from '@/pages/MapaEventos'
 import QuantoCusta from '@/pages/QuantoCusta'
 import Descadastrar from '@/pages/Descadastrar'
@@ -73,6 +74,7 @@ function App() {
         <Route path="/e/:slug" element={<EventoDetalhe />} />
         <Route path="/eventos/:cidade" element={<CidadeEventos />} />
         <Route path="/eventos/:cidade/:categoria" element={<CidadeEventos />} />
+        <Route path="/colecoes" element={<Colecoes />} />
         <Route path="/c/:slug" element={<ColecaoPublica />} />
         <Route path="/circuitos/:slug" element={<CircuitoPublico />} />
         <Route path="/divulgador/:token" element={<PainelDivulgador />} />

@@ -6,7 +6,9 @@ export type Cidade = { cidade: string; uf: string; slug: string; eventos: number
 export type Categoria = { nome: string; slug: string; eventos: number }
 export type Descoberta = { cidades: Cidade[]; categorias: Categoria[]; cidade: Cidade | null }
 export type Destaques = { em_alta: EventoPublicoItem[]; quase_esgotando: EventoPublicoItem[]; novos: EventoPublicoItem[] }
-export type Colecao = { slug: string; titulo: string; descricao: string; eventos: EventoPublicoItem[] }
+export type Colecao = { slug: string; titulo: string; descricao: string; icone: string; eventos: EventoPublicoItem[] }
+// Item 11.7: grade de coleções (só título e ícone).
+export type ColecaoGrade = { slug: string; titulo: string; icone: string }
 
 export const QUANDO = [
   { valor: '', rotulo: 'Qualquer data' },
@@ -20,6 +22,7 @@ export const obterDescoberta = (cidade?: string) =>
 export const obterDestaques = (cidade?: string) =>
   api<Destaques>(`/destaques${cidade ? `?cidade=${encodeURIComponent(cidade)}` : ''}`)
 export const listarColecoes = () => api<Colecao[]>('/colecoes')
+export const listarGradeColecoes = () => api<ColecaoGrade[]>('/colecoes?grade=1', { semAuth: true })
 export const obterColecao = (slug: string) => api<Colecao>(`/colecoes/${encodeURIComponent(slug)}`)
 
 export type FiltrosLista = {

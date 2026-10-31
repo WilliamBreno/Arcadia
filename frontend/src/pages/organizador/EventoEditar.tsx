@@ -22,6 +22,7 @@ import { SolicitacoesCard } from '@/components/solicitacoes-card'
 import { CuponsCard } from '@/components/cupons-card'
 import { DivulgacaoCard } from '@/components/divulgacao-card'
 import { VagasCard } from '@/components/vagas-card'
+import { TemasCard } from '@/components/temas-card'
 import { ArteStories } from '@/components/arte-stories'
 import { PerguntasCard } from '@/components/perguntas-card'
 import { obterFinanceiroEvento } from '@/lib/financeiro'
@@ -378,6 +379,8 @@ export default function EventoEditar() {
       <AfiliadosCard eventoId={Number(id)} slug={evento.slug} />
 
       <DestaqueCard eventoId={Number(id)} publicado={evento.status === 'publicado'} />
+
+      <TemasCard eventoId={Number(id)} />
 
       <DivulgacaoCard eventoId={Number(id)} slug={evento.slug} ingressos={tiposIngresso?.filter((t) => t.ativo).length ?? 1} />
       <ArteStories slug={evento.slug} />

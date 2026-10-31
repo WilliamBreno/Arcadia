@@ -164,6 +164,7 @@ func main() {
 	conviteHandler := handler.NovoConviteHandler(organizadorHandler, eventoRepo, conviteService)
 	conviteHandler.DefinirVagas(vagasService)
 	vagasHandler := handler.NovoVagasHandler(organizadorHandler, eventoRepo, vagasService)
+	temasHandler := handler.NovoTemasHandler(organizadorHandler, eventoService, eventoRepo)
 	fichaHandler := handler.NovoFichaHandler(eventoRepo, organizadorHandler, fichaService)
 	uploadHandler := handler.NovoUploadHandler(armazenamento)
 	pedidoHandler := handler.NovoPedidoHandler(eventoRepo, usuarioRepo, checkoutService)
@@ -570,6 +571,8 @@ func main() {
 		org.DELETE("/eventos/:id/convites/:conviteId", conviteHandler.Revogar)
 		org.GET("/eventos/:id/vagas", vagasHandler.Obter)
 		org.PUT("/eventos/:id/vagas", vagasHandler.Definir)
+		org.GET("/eventos/:id/temas", temasHandler.Listar)
+		org.PUT("/eventos/:id/temas", temasHandler.Definir)
 
 		org.GET("/eventos/:id/participantes", fichaHandler.ListarDoOrganizador)
 		org.POST("/eventos/:id/participantes/:fichaId/aprovar", fichaHandler.Aprovar)
@@ -683,6 +686,7 @@ func main() {
 		admin.POST("/colecoes", publicoHandler.SalvarColecao)
 		admin.PUT("/colecoes/:id", publicoHandler.SalvarColecao)
 		admin.DELETE("/colecoes/:id", publicoHandler.ExcluirColecao)
+		admin.POST("/colecoes/:id/marcados/:slug", publicoHandler.BloquearEventoDaColecao)
 		admin.POST("/reembolsos/:id/reprocessar", adminHandler.ReprocessarReembolso)
 	}
 

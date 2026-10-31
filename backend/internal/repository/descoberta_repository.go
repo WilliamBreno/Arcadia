@@ -152,38 +152,129 @@ func (r *EventoRepository) SlugColecaoExiste(slug string, excetoID int64) (bool,
 	return n > 0, err
 }
 
+// exprGratuito: o evento tem entrada gratuita à venda (adicional não conta).
+const exprGratuito = "EXISTS (SELECT 1 FROM tipos_ingresso ti WHERE ti.evento_id = eventos.id AND ti.ativo AND NOT ti.adicional AND ti.preco_centavos = 0)"
+
 // EventosDaColecao: só publicados, públicos e futuros (o admin pode ter
 // incluído um evento que depois terminou ou foi cancelado — some sozinho).
-func (r *EventoRepository) EventosDaColecao(colecaoID int64, limite int) ([]domain.Evento, error) {
+// Item 11.7: coleção automática segue a regra; a manual junta os eventos
+// do admin e os marcados pelo organizador (menos os que o admin tirou).
+func (r *EventoRepository) EventosDaColecao(col *domain.Colecao, limite int) ([]domain.Evento, error) {
 	var eventos []domain.Evento
-	err := r.publicosFuturos().
-		Select("eventos.*").
-		Joins("JOIN colecao_eventos ce ON ce.evento_id = eventos.id AND ce.colecao_id = ?", colecaoID).
-		Order("ce.ordem, eventos.inicio_em").
-		Limit(limite).Find(&eventos).Error
+	q := r.publicosFuturos().Select("eventos.*")
+	switch col.Regra {
+	case domain.RegraColecaoGratuitos:
+		q = q.Where(exprGratuito).Order("eventos.inicio_em")
+	case domain.RegraColecaoEstaSemana:
+		q = q.Where("eventos.inicio_em < now() + interval '7 days'").Order("eventos.inicio_em")
+	case domain.RegraColecaoOnline:
+		q = q.Where("eventos.local_id IS NULL").Order("eventos.inicio_em")
+	case domain.RegraColecaoCategoria:
+		q = q.Where("eventos.categoria = ?", col.RegraValor).Order("eventos.inicio_em")
+	default:
+		q = q.Joins("JOIN colecao_eventos ce ON ce.evento_id = eventos.id AND ce.colecao_id = ? AND NOT ce.bloqueado", col.ID).
+			Order("ce.origem, ce.ordem, eventos.inicio_em")
+	}
+	err := q.Limit(limite).Find(&eventos).Error
 	return eventos, err
 }
 
-// SlugsDaColecao: todos os eventos incluídos (para o admin, sem filtro).
+// MarcadoPeloOrganizador é um evento que o organizador pôs num tema.
+type MarcadoPeloOrganizador struct {
+	Slug      string `json:"slug"`
+	Titulo    string `json:"titulo"`
+	Bloqueado bool   `json:"bloqueado"`
+}
+
+// MarcadosPeloOrganizador lista os eventos que organizadores puseram na coleção.
+func (r *EventoRepository) MarcadosPeloOrganizador(colecaoID int64) ([]MarcadoPeloOrganizador, error) {
+	lista := []MarcadoPeloOrganizador{}
+	err := r.db.Table("colecao_eventos").Select("eventos.slug, eventos.titulo, colecao_eventos.bloqueado").
+		Joins("JOIN eventos ON eventos.id = colecao_eventos.evento_id").
+		Where("colecao_eventos.colecao_id = ? AND colecao_eventos.origem = 'organizador'", colecaoID).
+		Order("colecao_eventos.criado_em DESC").Scan(&lista).Error
+	return lista, err
+}
+
+// BloquearNaColecao tira (ou devolve) um evento marcado pelo organizador.
+func (r *EventoRepository) BloquearNaColecao(colecaoID int64, slug string, bloqueado bool) (bool, error) {
+	res := r.db.Exec(`UPDATE colecao_eventos SET bloqueado = ? WHERE colecao_id = ? AND origem = 'organizador'
+		AND evento_id = (SELECT id FROM eventos WHERE slug = ?)`, bloqueado, colecaoID, slug)
+	return res.RowsAffected > 0, res.Error
+}
+
+// TemaDoEvento é a presença do evento numa coleção.
+type TemaDoEvento struct {
+	ColecaoID int64
+	Origem    string // admin | organizador
+	Bloqueado bool
+}
+
+// TemasDoEvento: coleções em que o evento está (pelo admin ou pelo
+// organizador, com o bloqueio do admin, se houver).
+func (r *EventoRepository) TemasDoEvento(eventoID int64) (map[int64]TemaDoEvento, error) {
+	var linhas []TemaDoEvento
+	err := r.db.Table("colecao_eventos").Select("colecao_id, origem, bloqueado").
+		Where("evento_id = ?", eventoID).Scan(&linhas).Error
+	m := map[int64]TemaDoEvento{}
+	for _, l := range linhas {
+		m[l.ColecaoID] = l
+	}
+	return m, err
+}
+
+// DefinirTemasDoEvento troca os temas que o organizador marcou. Linhas
+// bloqueadas pelo admin ficam como estão.
+func (r *EventoRepository) DefinirTemasDoEvento(eventoID int64, colecaoIDs []int64) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		// Trava a linha do evento: dois salvamentos ao mesmo tempo não
+		// somam temas (o último vence).
+		if err := tx.Exec("SELECT id FROM eventos WHERE id = ? FOR UPDATE", eventoID).Error; err != nil {
+			return err
+		}
+		apagar := "DELETE FROM colecao_eventos WHERE evento_id = ? AND origem = 'organizador' AND NOT bloqueado"
+		args := []any{eventoID}
+		if len(colecaoIDs) > 0 {
+			apagar += " AND colecao_id NOT IN ?"
+			args = append(args, colecaoIDs)
+		}
+		if err := tx.Exec(apagar, args...).Error; err != nil {
+			return err
+		}
+		for _, id := range colecaoIDs {
+			if err := tx.Exec(`INSERT INTO colecao_eventos (colecao_id, evento_id, ordem, origem)
+				VALUES (?, ?, 1000, 'organizador') ON CONFLICT DO NOTHING`, id, eventoID).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+// SlugsDaColecao: eventos que o admin incluiu (para o admin, sem filtro).
 func (r *EventoRepository) SlugsDaColecao(colecaoID int64) ([]string, error) {
 	var slugs []string
 	err := r.db.Table("colecao_eventos").
 		Select("eventos.slug").
 		Joins("JOIN eventos ON eventos.id = colecao_eventos.evento_id").
-		Where("colecao_eventos.colecao_id = ?", colecaoID).
+		Where("colecao_eventos.colecao_id = ? AND colecao_eventos.origem = 'admin'", colecaoID).
 		Order("colecao_eventos.ordem").
 		Pluck("eventos.slug", &slugs).Error
 	return slugs, err
 }
 
-// DefinirEventosDaColecao troca a lista inteira, na ordem dada.
+// DefinirEventosDaColecao troca a lista do admin, na ordem dada. Os
+// eventos marcados pelo organizador (item 11.7) não são tocados.
 func (r *EventoRepository) DefinirEventosDaColecao(colecaoID int64, eventoIDs []int64) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Exec("DELETE FROM colecao_eventos WHERE colecao_id = ?", colecaoID).Error; err != nil {
+		if err := tx.Exec("DELETE FROM colecao_eventos WHERE colecao_id = ? AND origem = 'admin'", colecaoID).Error; err != nil {
 			return err
 		}
 		for i, id := range eventoIDs {
-			if err := tx.Exec("INSERT INTO colecao_eventos (colecao_id, evento_id, ordem) VALUES (?, ?, ?) ON CONFLICT DO NOTHING", colecaoID, id, i).Error; err != nil {
+			// Se o organizador já tinha marcado, a linha passa a ser do admin
+			// (com a ordem dele e sem bloqueio).
+			if err := tx.Exec(`INSERT INTO colecao_eventos (colecao_id, evento_id, ordem) VALUES (?, ?, ?)
+				ON CONFLICT (colecao_id, evento_id) DO UPDATE SET origem = 'admin', ordem = EXCLUDED.ordem, bloqueado = false`, colecaoID, id, i).Error; err != nil {
 				return err
 			}
 		}

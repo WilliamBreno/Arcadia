@@ -148,8 +148,13 @@ func (h *SEOHandler) paginasDescoberta() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, col := range colecoes {
-		if eventos, err := h.eventos.EventosDaColecao(col.ID, 1); err == nil && len(eventos) > 0 {
+	agora := time.Now()
+	for i := range colecoes {
+		col := &colecoes[i]
+		if !col.VisivelEm(agora) {
+			continue
+		}
+		if eventos, err := h.eventos.EventosDaColecao(col, 1); err == nil && len(eventos) > 0 {
 			caminhos = append(caminhos, "/c/"+col.Slug)
 		}
 	}

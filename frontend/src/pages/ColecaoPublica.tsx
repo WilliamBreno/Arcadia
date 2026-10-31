@@ -6,6 +6,7 @@ import { ApiError } from '@/lib/api'
 import { obterColecao } from '@/lib/descoberta'
 import { EventoCard } from '@/components/evento-card'
 import { Carregando } from '@/components/carregando'
+import { IconeColecao } from '@/components/icone-colecao'
 
 // Coleção curada pelo admin (item 6.2): /c/:slug.
 export default function ColecaoPublica() {
@@ -31,8 +32,17 @@ export default function ColecaoPublica() {
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10">
-      <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">Coleção</p>
-      <h1 className="mt-1 text-3xl font-bold text-foreground text-balance sm:text-4xl">{data.titulo}</h1>
+      <div className="flex items-center gap-4">
+        <span className="flex size-16 shrink-0 items-center justify-center rounded-full bg-muted text-foreground sm:size-20">
+          <IconeColecao nome={data.icone} className="size-9 sm:size-11" />
+        </span>
+        <div>
+          <Link to="/colecoes" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+            Coleções
+          </Link>
+          <h1 className="mt-0.5 text-3xl font-bold text-foreground text-balance sm:text-4xl">{data.titulo}</h1>
+        </div>
+      </div>
       {data.descricao && <p className="mt-2 max-w-2xl text-muted-foreground text-pretty">{data.descricao}</p>}
       {data.eventos.length === 0 && (
         <p className="mt-8 rounded-xl border border-border p-6 text-muted-foreground">Os eventos desta coleção já aconteceram.</p>

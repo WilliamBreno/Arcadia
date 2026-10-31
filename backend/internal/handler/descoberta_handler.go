@@ -128,19 +128,49 @@ type colecaoPublica struct {
 	Slug      string              `json:"slug"`
 	Titulo    string              `json:"titulo"`
 	Descricao string              `json:"descricao"`
+	Icone     string              `json:"icone"` // item 11.7
 	Eventos   []eventoPublicoItem `json:"eventos"`
 }
 
-// Colecoes é GET /api/v1/colecoes: coleções ativas com ao menos um evento.
+type colecaoGrade struct {
+	Slug   string `json:"slug"`
+	Titulo string `json:"titulo"`
+	Icone  string `json:"icone"`
+}
+
+// Colecoes é GET /api/v1/colecoes: coleções ativas, no período e com ao
+// menos um evento. Sem parâmetro, só as que vão para a página inicial (com
+// os eventos); com ?grade=1, todas, só com título e ícone (item 11.7).
 func (h *PublicoHandler) Colecoes(c *gin.Context) {
 	cs, err := h.eventos.ListarColecoes(true)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao listar coleções"})
 		return
 	}
+	agora := time.Now()
+	if c.Query("grade") == "1" {
+		grade := make([]colecaoGrade, 0, len(cs))
+		for i := range cs {
+			col := &cs[i]
+			if !col.VisivelEm(agora) {
+				continue
+			}
+			if eventos, err := h.eventos.EventosDaColecao(col, 1); err != nil || len(eventos) == 0 {
+				continue
+			}
+			grade = append(grade, colecaoGrade{Slug: col.Slug, Titulo: col.Titulo, Icone: col.Icone})
+		}
+		c.Header("Cache-Control", "public, max-age=300")
+		c.JSON(http.StatusOK, grade)
+		return
+	}
 	resp := make([]colecaoPublica, 0, len(cs))
-	for _, col := range cs {
-		eventos, err := h.eventos.EventosDaColecao(col.ID, 8)
+	for i := range cs {
+		col := &cs[i]
+		if !col.NaHome || !col.VisivelEm(agora) {
+			continue
+		}
+		eventos, err := h.eventos.EventosDaColecao(col, 8)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao listar coleções"})
 			return
@@ -153,7 +183,7 @@ func (h *PublicoHandler) Colecoes(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao calcular preços"})
 			return
 		}
-		resp = append(resp, colecaoPublica{Slug: col.Slug, Titulo: col.Titulo, Descricao: col.Descricao, Eventos: itens})
+		resp = append(resp, colecaoPublica{Slug: col.Slug, Titulo: col.Titulo, Descricao: col.Descricao, Icone: col.Icone, Eventos: itens})
 	}
 	c.Header("Cache-Control", "public, max-age=300")
 	c.JSON(http.StatusOK, resp)
@@ -162,11 +192,11 @@ func (h *PublicoHandler) Colecoes(c *gin.Context) {
 // Colecao é GET /api/v1/colecoes/:slug.
 func (h *PublicoHandler) Colecao(c *gin.Context) {
 	col, err := h.eventos.BuscarColecao(c.Param("slug"))
-	if err != nil || !col.Ativa {
+	if err != nil || !col.VisivelEm(time.Now()) {
 		c.JSON(http.StatusNotFound, gin.H{"erro": "coleção não encontrada"})
 		return
 	}
-	eventos, err := h.eventos.EventosDaColecao(col.ID, 100)
+	eventos, err := h.eventos.EventosDaColecao(col, 100)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao listar a coleção"})
 		return
@@ -176,7 +206,7 @@ func (h *PublicoHandler) Colecao(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao calcular preços"})
 		return
 	}
-	c.JSON(http.StatusOK, colecaoPublica{Slug: col.Slug, Titulo: col.Titulo, Descricao: col.Descricao, Eventos: itens})
+	c.JSON(http.StatusOK, colecaoPublica{Slug: col.Slug, Titulo: col.Titulo, Descricao: col.Descricao, Icone: col.Icone, Eventos: itens})
 }
 
 // --- Admin das coleções ---
@@ -189,6 +219,16 @@ type colecaoAdmin struct {
 	Ordem     int      `json:"ordem"`
 	Ativa     bool     `json:"ativa"`
 	Eventos   []string `json:"eventos"` // slugs, na ordem
+	// Item 11.7.
+	Icone             string                              `json:"icone"`
+	ExibirDe          *string                             `json:"exibir_de"`
+	ExibirAte         *string                             `json:"exibir_ate"`
+	Regra             string                              `json:"regra"`
+	RegraValor        string                              `json:"regra_valor"`
+	AbertaOrganizador bool                                `json:"aberta_organizador"`
+	NaHome            bool                                `json:"na_home"`
+	VisivelAgora      bool                                `json:"visivel_agora"`
+	Marcados          []repository.MarcadoPeloOrganizador `json:"marcados_organizador"`
 }
 
 type colecaoRequest struct {
@@ -197,6 +237,35 @@ type colecaoRequest struct {
 	Ordem     int      `json:"ordem"`
 	Ativa     *bool    `json:"ativa"`
 	Eventos   []string `json:"eventos"`
+	// Item 11.7 (datas em AAAA-MM-DD; vazio = sem limite). Campo ausente
+	// mantém o valor atual (na criação, o padrão).
+	Icone             *string `json:"icone"`
+	ExibirDe          *string `json:"exibir_de"`
+	ExibirAte         *string `json:"exibir_ate"`
+	Regra             *string `json:"regra"`
+	RegraValor        *string `json:"regra_valor"`
+	AbertaOrganizador *bool   `json:"aberta_organizador"`
+	NaHome            *bool   `json:"na_home"`
+}
+
+func dataColecao(t *time.Time) *string {
+	if t == nil {
+		return nil
+	}
+	s := t.UTC().Format("2006-01-02")
+	return &s
+}
+
+func lerDataColecao(s string) (*time.Time, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil, nil
+	}
+	t, err := time.Parse("2006-01-02", s)
+	if err != nil {
+		return nil, err
+	}
+	return &t, nil
 }
 
 // ListarColecoesAdmin é GET /api/v1/admin/colecoes.
@@ -207,7 +276,9 @@ func (h *PublicoHandler) ListarColecoesAdmin(c *gin.Context) {
 		return
 	}
 	resp := make([]colecaoAdmin, 0, len(cs))
-	for _, col := range cs {
+	agora := time.Now()
+	for i := range cs {
+		col := &cs[i]
 		slugs, err := h.eventos.SlugsDaColecao(col.ID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao listar coleções"})
@@ -216,7 +287,14 @@ func (h *PublicoHandler) ListarColecoesAdmin(c *gin.Context) {
 		if slugs == nil {
 			slugs = []string{}
 		}
-		resp = append(resp, colecaoAdmin{ID: col.ID, Slug: col.Slug, Titulo: col.Titulo, Descricao: col.Descricao, Ordem: col.Ordem, Ativa: col.Ativa, Eventos: slugs})
+		marcados, err := h.eventos.MarcadosPeloOrganizador(col.ID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao listar coleções"})
+			return
+		}
+		resp = append(resp, colecaoAdmin{ID: col.ID, Slug: col.Slug, Titulo: col.Titulo, Descricao: col.Descricao, Ordem: col.Ordem, Ativa: col.Ativa, Eventos: slugs,
+			Icone: col.Icone, ExibirDe: dataColecao(col.ExibirDe), ExibirAte: dataColecao(col.ExibirAte), Regra: col.Regra, RegraValor: col.RegraValor,
+			AbertaOrganizador: col.AbertaOrganizador, NaHome: col.NaHome, VisivelAgora: col.VisivelEm(agora), Marcados: marcados})
 	}
 	c.JSON(http.StatusOK, resp)
 }
@@ -230,7 +308,7 @@ func (h *PublicoHandler) SalvarColecao(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"erro": "informe um título (2 a 120 caracteres)"})
 		return
 	}
-	col := &domain.Colecao{Ativa: true, CriadoEm: time.Now()}
+	col := &domain.Colecao{Ativa: true, NaHome: true, Icone: "estrela", Regra: domain.RegraColecaoManual, CriadoEm: time.Now()}
 	if c.Param("id") != "" {
 		id, ok := idDaURL(c)
 		if !ok {
@@ -246,6 +324,52 @@ func (h *PublicoHandler) SalvarColecao(c *gin.Context) {
 	col.Titulo, col.Descricao, col.Ordem = strings.TrimSpace(req.Titulo), strings.TrimSpace(req.Descricao), req.Ordem
 	if req.Ativa != nil {
 		col.Ativa = *req.Ativa
+	}
+	// Item 11.7: ícone, período e regra (ausente = mantém).
+	if req.Icone != nil {
+		col.Icone = *req.Icone
+	}
+	if req.Regra != nil {
+		col.Regra = *req.Regra
+	}
+	if req.RegraValor != nil {
+		col.RegraValor = strings.TrimSpace(*req.RegraValor)
+	}
+	if col.Regra != domain.RegraColecaoCategoria {
+		col.RegraValor = ""
+	}
+	var errData error
+	if req.ExibirDe != nil {
+		col.ExibirDe, errData = lerDataColecao(*req.ExibirDe)
+	}
+	if req.ExibirAte != nil && errData == nil {
+		col.ExibirAte, errData = lerDataColecao(*req.ExibirAte)
+	}
+	if req.AbertaOrganizador != nil {
+		col.AbertaOrganizador = *req.AbertaOrganizador
+	}
+	if req.NaHome != nil {
+		col.NaHome = *req.NaHome
+	}
+	switch {
+	case !domain.IconesColecao[col.Icone]:
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"erro": "ícone inválido"})
+		return
+	case !domain.RegrasColecao[col.Regra]:
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"erro": "regra inválida"})
+		return
+	case col.Regra == domain.RegraColecaoCategoria && (col.RegraValor == "" || len(col.RegraValor) > 60):
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"erro": "informe a categoria da coleção"})
+		return
+	case errData != nil:
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"erro": "datas no formato AAAA-MM-DD"})
+		return
+	case col.ExibirDe != nil && col.ExibirAte != nil && col.ExibirDe.After(*col.ExibirAte):
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"erro": "o início do período deve vir antes do fim"})
+		return
+	case col.AbertaOrganizador && col.Regra != domain.RegraColecaoManual:
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"erro": "só coleção manual pode ser aberta para o organizador marcar"})
+		return
 	}
 	if col.Slug == "" {
 		base := service.Slugify(col.Titulo)
@@ -331,4 +455,31 @@ func itoa(i int) string {
 		i /= 10
 	}
 	return string(b)
+}
+
+// BloquearEventoDaColecao é POST /api/v1/admin/colecoes/:id/marcados/:slug
+// (item 11.7): o admin tira (bloqueado=true) ou devolve um evento que o
+// organizador marcou no tema.
+func (h *PublicoHandler) BloquearEventoDaColecao(c *gin.Context) {
+	id, ok := idDaURL(c)
+	if !ok {
+		return
+	}
+	var req struct {
+		Bloqueado bool `json:"bloqueado"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "dados inválidos"})
+		return
+	}
+	achou, err := h.eventos.BloquearNaColecao(id, c.Param("slug"), req.Bloqueado)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao salvar"})
+		return
+	}
+	if !achou {
+		c.JSON(http.StatusNotFound, gin.H{"erro": "evento não marcado nesta coleção"})
+		return
+	}
+	c.Status(http.StatusNoContent)
 }

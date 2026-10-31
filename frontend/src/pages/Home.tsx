@@ -1,10 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { MapPin } from 'lucide-react'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { api } from '@/lib/api'
 import type { ListaEventosResposta } from '@/lib/publico'
-import { listarColecoes, obterDescoberta, obterDestaques } from '@/lib/descoberta'
+import { listarColecoes, listarGradeColecoes, obterDescoberta, obterDestaques } from '@/lib/descoberta'
+import { AtalhoColecao } from '@/components/grade-colecoes'
 import { ChipLink } from '@/components/chip'
 import { EventoCard } from '@/components/evento-card'
 import { TrilhoEventos } from '@/components/trilho-eventos'
@@ -31,6 +33,8 @@ export default function Home() {
   // Item 6.2: vitrine (cidades, destaques e coleções). Some durante a busca.
   const descoberta = useQuery({ queryKey: ['descoberta', ''], queryFn: () => obterDescoberta() })
   const destaques = useQuery({ queryKey: ['destaques', ''], queryFn: () => obterDestaques() })
+  // Item 11.7: temas da época e coleções em ícones.
+  const grade = useQuery({ queryKey: ['colecoes-grade'], queryFn: listarGradeColecoes })
   // Item 10.5: recomendações pelo histórico de compras de quem está logado.
   const { usuario } = useAuth()
   const paraVoce = useQuery({ queryKey: ['para-voce', usuario?.id], enabled: !!usuario, queryFn: () => api<EventoPublicoItem[]>('/me/para-voce'), retry: false })
@@ -84,6 +88,26 @@ export default function Home() {
           </ChipLink>
         ))}
       </nav>
+
+      {vitrine && grade.data && grade.data.length > 0 && (
+        <section aria-labelledby="titulo-colecoes" className="mb-10">
+          <div className="mb-3 flex items-baseline justify-between gap-4">
+            <h2 id="titulo-colecoes" className="text-xl font-bold text-foreground">
+              Explore por tema
+            </h2>
+            <Link to="/colecoes" className="text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+              Ver todas
+            </Link>
+          </div>
+          <ul className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2">
+            {grade.data.map((c) => (
+              <li key={c.slug} className="w-24 shrink-0">
+                <AtalhoColecao colecao={c} compacto />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {vitrine && paraVoce.data && paraVoce.data.length > 0 && (
         <TrilhoEventos titulo="Para você" subtitulo="Pelo que você já comprou" eventos={paraVoce.data} />
