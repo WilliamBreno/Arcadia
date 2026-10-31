@@ -79,7 +79,11 @@ type FichaService struct {
 	// Item 8.4: inscrição paga (consulta do item pago e reembolso na remoção).
 	db           *gorm.DB
 	reembolsador ReembolsadorInscricao
+	vagas        *VagasService
 }
+
+// DefinirVagas liga o limite de jurados e participantes (item 11.6).
+func (s *FichaService) DefinirVagas(v *VagasService) { s.vagas = v }
 
 // ReembolsadorInscricao devolve o que a pessoa pagou pela inscrição.
 type ReembolsadorInscricao interface {
@@ -210,15 +214,40 @@ func (s *FichaService) AtualizarMinha(eventoID, usuarioID int64, papel domain.Pa
 		return nil, ErrFichaNaoEncontrada
 	}
 
+	tipoAntes := ficha.TipoApresentacao
 	aplicarDadosFicha(ficha, dados)
 	if err := validarMenorDeIdade(ficha); err != nil {
 		return nil, err
 	}
-
-	if err := s.fichas.Salvar(ficha); err != nil {
+	troca := s.vagas != nil && ficha.Papel == domain.PapelParticipante && !mesmoTipo(tipoAntes, ficha.TipoApresentacao)
+	if !troca {
+		if err := s.fichas.SalvarDadosEditaveis(ficha); err != nil {
+			return nil, err
+		}
+		return s.fichas.BuscarPorID(ficha.ID)
+	}
+	// Item 11.6: trocar de modalidade só se a nova ainda tiver vaga, com a
+	// conferência e a gravação sob a mesma trava.
+	err = s.vagas.DB().Transaction(func(tx *gorm.DB) error {
+		if err := TravarVagas(tx, eventoID); err != nil {
+			return err
+		}
+		fichas := repository.NovoFichaParticipacaoRepository(tx)
+		atual, err := fichas.BuscarPorID(ficha.ID)
+		if err != nil {
+			return err
+		}
+		if OcupaVaga(atual.Status) {
+			if err := s.vagas.ConferirTroca(tx, eventoID, ficha.TipoApresentacao); err != nil {
+				return err
+			}
+		}
+		return fichas.SalvarDadosEditaveis(ficha)
+	})
+	if err != nil {
 		return nil, err
 	}
-	return ficha, nil
+	return s.fichas.BuscarPorID(ficha.ID)
 }
 
 // Inscrever é o fluxo de inscrição aberta (seção 2.4/7.12): o usuário se
@@ -243,10 +272,6 @@ func (s *FichaService) Inscrever(eventoID, usuarioID int64, dados FichaDados) (*
 		return nil, ErrInscricaoForaDoPrazo
 	}
 
-	if _, err := s.fichas.Buscar(eventoID, usuarioID, domain.PapelParticipante); err == nil {
-		return nil, ErrJaInscrito
-	}
-
 	ficha := &domain.FichaParticipacao{
 		EventoID:  eventoID,
 		UsuarioID: usuarioID,
@@ -260,7 +285,34 @@ func (s *FichaService) Inscrever(eventoID, usuarioID int64, dados FichaDados) (*
 		return nil, err
 	}
 
-	if err := s.fichas.Criar(ficha); err != nil {
+	if s.vagas == nil {
+		if _, err := s.fichas.Buscar(eventoID, usuarioID, domain.PapelParticipante); err == nil {
+			return nil, ErrJaInscrito
+		}
+		if err := s.fichas.Criar(ficha); err != nil {
+			return nil, err
+		}
+		return ficha, nil
+	}
+	// Item 11.6: ordem de chegada. Com a vaga preenchida, entra na lista de
+	// espera (se o organizador ligou) ou a inscrição é recusada.
+	err = s.vagas.DB().Transaction(func(tx *gorm.DB) error {
+		if err := TravarVagas(tx, eventoID); err != nil {
+			return err
+		}
+		fichas := repository.NovoFichaParticipacaoRepository(tx)
+		if _, err := fichas.Buscar(eventoID, usuarioID, domain.PapelParticipante); err == nil {
+			return ErrJaInscrito
+		}
+		if err := s.vagas.Conferir(tx, eventoID, domain.PapelParticipante, ficha.TipoApresentacao); err != nil {
+			if !EhErroVagas(err) || !s.vagas.obter(tx, eventoID).ListaEspera {
+				return err
+			}
+			ficha.Status = domain.StatusFichaListaEspera
+		}
+		return fichas.Criar(ficha)
+	})
+	if err != nil {
 		return nil, err
 	}
 	return ficha, nil
@@ -273,7 +325,55 @@ func (s *FichaService) Aprovar(organizadorID, eventoID, fichaID int64) (*domain.
 	if err != nil {
 		return nil, err
 	}
+	if s.vagas != nil {
+		if err := s.reservarVagaNaAprovacao(eventoID, ficha.ID); err != nil {
+			return nil, err
+		}
+		if ficha, err = s.fichas.BuscarPorID(ficha.ID); err != nil {
+			return nil, err
+		}
+	}
 	return s.aprovar(ficha, eventoID)
+}
+
+// reservarVagaNaAprovacao (item 11.6): quem estava fora das vagas (lista de
+// espera, rejeitado, desistiu; jurado removido) só entra se ainda houver
+// vaga. A vaga é reservada sob a trava (ficha volta a "pendente", papel de
+// jurado a "pendente") antes de aprovar, então duas aprovações ao mesmo
+// tempo não ficam com a mesma última vaga.
+func (s *FichaService) reservarVagaNaAprovacao(eventoID, fichaID int64) error {
+	return s.vagas.DB().Transaction(func(tx *gorm.DB) error {
+		if err := TravarVagas(tx, eventoID); err != nil {
+			return err
+		}
+		atual, err := repository.NovoFichaParticipacaoRepository(tx).BuscarPorID(fichaID)
+		if err != nil {
+			return err
+		}
+		if atual.Papel == domain.PapelJurado {
+			papeis := repository.NovoPapelEventoRepository(tx)
+			papel, err := papeis.Buscar(eventoID, atual.UsuarioID, domain.PapelJurado)
+			if err == nil && papel.Status != domain.StatusPapelRemovido {
+				return nil
+			}
+			if err := s.vagas.Conferir(tx, eventoID, domain.PapelJurado, nil); err != nil {
+				return err
+			}
+			if err != nil {
+				return papeis.Criar(&domain.PapelEvento{EventoID: eventoID, UsuarioID: atual.UsuarioID, Papel: domain.PapelJurado,
+					Origem: atual.Origem, Status: domain.StatusPapelPendente, CriadoEm: time.Now()})
+			}
+			papel.Status = domain.StatusPapelPendente
+			return papeis.Salvar(papel)
+		}
+		if OcupaVaga(atual.Status) {
+			return nil
+		}
+		if err := s.vagas.Conferir(tx, eventoID, atual.Papel, atual.TipoApresentacao); err != nil {
+			return err
+		}
+		return tx.Model(&domain.FichaParticipacao{}).Where("id = ?", atual.ID).Update("status", domain.StatusFichaPendente).Error
+	})
 }
 
 // AprovarPeloSistema aprova sem o organizador (item 8.5: classificado na

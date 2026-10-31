@@ -6,6 +6,7 @@ import { VoltarLink } from '@/components/voltar-link'
 import { api, ApiError } from '@/lib/api'
 import { formatarCentavos } from '@/lib/evento'
 import type { EventoDetalhe } from '@/lib/publico'
+import { modalidades, obterVagasPublicas, restantes, type Modalidade } from '@/lib/vagas'
 import { UploadAudio } from '@/components/upload-audio'
 import { UploadImagem } from '@/components/upload-imagem'
 import { Button } from '@/components/ui/button'
@@ -70,6 +71,15 @@ export default function Inscricao() {
     queryFn: () => api<EventoDetalhe>(`/eventos/${slug}`),
   })
   const valorInscricao = detalhe?.evento.inscricao_talento_centavos ?? 0
+
+  // Item 11.6: vagas por ordem de chegada.
+  const { data: vagas } = useQuery({ queryKey: ['vagas-publicas', slug], queryFn: () => obterVagasPublicas(slug!), retry: false })
+  const tipoLotado = (t: string) => !!vagas && (vagas.participantes.esgotado || !!vagas.por_tipo[t as Modalidade]?.esgotado)
+  const semVaga = tipoLotado(tipoApresentacao)
+  const bloqueado = semVaga && !vagas?.lista_espera
+  const restamTotal = vagas ? restantes(vagas.participantes) : null
+  const restamTipo = vagas ? restantes(vagas.por_tipo[tipoApresentacao as Modalidade] ?? { limite: null, ocupadas: 0, esgotado: false }) : null
+  const restam = restamTotal === null ? restamTipo : restamTipo === null ? restamTotal : Math.min(restamTotal, restamTipo)
 
   const idade = calcularIdade(dataNascimento)
   const menorDeIdade = idade !== null && idade < 18
@@ -157,10 +167,12 @@ export default function Inscricao() {
                 setDados({})
               }}
             >
-              <option value="cosplay">Cosplay</option>
-              <option value="danca">Dança</option>
-              <option value="canto">Canto</option>
-              <option value="atuacao">Atuação</option>
+              {modalidades.map((m) => (
+                <option key={m.valor} value={m.valor}>
+                  {m.nome}
+                  {tipoLotado(m.valor) ? ' (vagas preenchidas)' : ''}
+                </option>
+              ))}
             </select>
           </div>
           {camposPorTipo[tipoApresentacao].map((campo) => (
@@ -213,9 +225,22 @@ export default function Inscricao() {
             </div>
           )}
 
+          {semVaga ? (
+            <p role="status" className="rounded-lg bg-muted p-3 text-sm text-foreground">
+              {vagas?.participantes.esgotado ? 'As vagas de participante deste evento estão preenchidas.' : 'As vagas desta modalidade estão preenchidas.'}
+              {vagas?.lista_espera ? ' Você pode entrar na lista de espera: se alguém sair, o organizador chama quem estiver na lista.' : ''}
+            </p>
+          ) : (
+            restam !== null && (
+              <p className="text-sm text-muted-foreground">
+                {restam === 1 ? 'Resta 1 vaga' : `Restam ${restam} vagas`} {vagas?.por_tipo[tipoApresentacao as Modalidade]?.limite != null ? 'nesta modalidade' : ''}, por
+                ordem de chegada.
+              </p>
+            )
+          )}
           {erro && <p className="text-sm text-destructive">{erro}</p>}
-          <Button onClick={enviar} disabled={enviando || !nome}>
-            Enviar inscrição
+          <Button onClick={enviar} disabled={enviando || !nome || bloqueado}>
+            {semVaga && vagas?.lista_espera ? 'Entrar na lista de espera' : 'Enviar inscrição'}
           </Button>
         </CardContent>
       </Card>

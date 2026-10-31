@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label'
 import { useAuth } from '@/hooks/use-auth'
 import { Carregando } from '@/components/carregando'
 
-type ConviteInfo = { tipo: 'jurado' | 'participante_especial'; evento_titulo: string; evento_slug: string }
+type ConviteInfo = { tipo: 'jurado' | 'participante_especial'; evento_titulo: string; evento_slug: string; vagas_esgotadas?: boolean }
 
 const rotuloTipo: Record<ConviteInfo['tipo'], string> = {
   jurado: 'Jurado',
@@ -47,6 +47,23 @@ export default function Convite() {
     return <p className="p-8 text-center text-muted-foreground">Convite inválido, expirado ou revogado.</p>
   }
   if (!convite) return null
+
+  // Item 11.6: o organizador limitou as vagas e elas acabaram.
+  if (convite.vagas_esgotadas) {
+    return (
+      <main className="mx-auto max-w-sm px-4 py-24 text-center">
+        <h1 className="text-xl font-semibold text-foreground text-balance">
+          As vagas de {convite.tipo === 'jurado' ? 'jurado' : 'participante'} já foram preenchidas
+        </h1>
+        <p className="mt-2 text-muted-foreground">
+          {convite.evento_titulo} chegou ao limite definido pelo organizador. Se você já aceitou este convite antes, sua vaga continua garantida.
+        </p>
+        <Link to={`/e/${convite.evento_slug}`} className="mt-6 inline-block text-primary underline-offset-4 hover:underline">
+          Ver o evento
+        </Link>
+      </main>
+    )
+  }
 
   if (!usuario) {
     return (

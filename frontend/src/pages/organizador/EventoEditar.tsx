@@ -21,6 +21,7 @@ import { VotacaoCard } from '@/components/concurso-publico'
 import { SolicitacoesCard } from '@/components/solicitacoes-card'
 import { CuponsCard } from '@/components/cupons-card'
 import { DivulgacaoCard } from '@/components/divulgacao-card'
+import { VagasCard } from '@/components/vagas-card'
 import { ArteStories } from '@/components/arte-stories'
 import { PerguntasCard } from '@/components/perguntas-card'
 import { obterFinanceiroEvento } from '@/lib/financeiro'
@@ -386,6 +387,8 @@ export default function EventoEditar() {
       <CortesiasCard eventoId={Number(id)} tipos={tiposIngresso ?? []} />
 
       <ConvitesCard eventoId={Number(id)} />
+
+      {evento.modo_participantes !== 'nenhum' && <VagasCard eventoId={Number(id)} />}
 
       {evento.aprovacao_manual && <SolicitacoesCard eventoId={Number(id)} />}
 
@@ -941,12 +944,19 @@ function ParticipantesCard({ eventoId }: { eventoId: number }) {
 
   const invalidar = () => queryClient.invalidateQueries({ queryKey: ['org-evento-participantes', eventoId] })
 
+  const [erroAcao, setErroAcao] = useState<string | null>(null)
   const aprovar = async (fichaId: number) => {
-    await api(`/org/eventos/${eventoId}/participantes/${fichaId}/aprovar`, { method: 'POST' })
-    invalidar()
+    setErroAcao(null)
+    try {
+      await api(`/org/eventos/${eventoId}/participantes/${fichaId}/aprovar`, { method: 'POST' })
+      invalidar()
+      queryClient.invalidateQueries({ queryKey: ['org-vagas', eventoId] })
+    } catch (e) {
+      // Item 11.6: sem vaga, quem está na lista de espera não entra.
+      setErroAcao(e instanceof ApiError ? e.message : 'Não foi possível aprovar agora.')
+    }
   }
 
-  const [erroAcao, setErroAcao] = useState<string | null>(null)
   const rejeitar = async (fichaId: number, remover = false) => {
     const motivo = window.prompt(
       remover ? 'Motivo da remoção (opcional). Se a inscrição foi paga, a pessoa recebe tudo de volta:' : 'Motivo da rejeição (opcional):',
@@ -956,13 +966,14 @@ function ParticipantesCard({ eventoId }: { eventoId: number }) {
     try {
       await api(`/org/eventos/${eventoId}/participantes/${fichaId}/rejeitar`, { method: 'POST', body: { motivo } })
       invalidar()
+      queryClient.invalidateQueries({ queryKey: ['org-vagas', eventoId] })
     } catch (e) {
       setErroAcao(e instanceof ApiError ? e.message : 'Não foi possível concluir agora.')
     }
   }
 
-  const pendentes = fichas?.filter((f) => f.status === 'pendente') ?? []
-  const outras = fichas?.filter((f) => f.status !== 'pendente') ?? []
+  const pendentes = fichas?.filter((f) => f.status === 'pendente' || f.status === 'lista_espera') ?? []
+  const outras = fichas?.filter((f) => f.status !== 'pendente' && f.status !== 'lista_espera') ?? []
 
   return (
     <Card className="mt-6">
@@ -986,7 +997,10 @@ function ParticipantesCard({ eventoId }: { eventoId: number }) {
                   <p className="text-sm font-medium text-foreground">
                     {f.nome} {f.nome_artistico && `(${f.nome_artistico})`}
                   </p>
-                  <p className="text-xs text-muted-foreground">{f.tipo_apresentacao ?? f.papel}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {f.tipo_apresentacao ?? f.papel}
+                    {f.status === 'lista_espera' && ' · lista de espera'}
+                  </p>
                 </div>
                 <div className="flex gap-2">
                   <Button size="sm" onClick={() => aprovar(f.id)}>

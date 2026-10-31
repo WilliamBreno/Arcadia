@@ -215,6 +215,9 @@ func (h *FichaHandler) AtualizarMinha(c *gin.Context) {
 
 	ficha, err := h.service.AtualizarMinha(eventoID, usuarioID, qualPapel(c), req.paraDados())
 	if err != nil {
+		if responderErroVagas(c, err) {
+			return
+		}
 		if errors.Is(err, service.ErrMenorSemAutorizacao) {
 			c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
 			return
@@ -243,6 +246,8 @@ func (h *FichaHandler) Inscrever(c *gin.Context) {
 	ficha, err := h.service.Inscrever(eventoID, usuarioID, req.paraDados())
 	if err != nil {
 		switch {
+		case service.EhErroVagas(err):
+			responderErroVagas(c, err)
 		case errors.Is(err, service.ErrMenorSemAutorizacao):
 			c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
 		case errors.Is(err, service.ErrInscricaoNaoPermitida), errors.Is(err, service.ErrInscricaoForaDoPrazo), errors.Is(err, service.ErrJaInscrito):
@@ -296,6 +301,9 @@ func (h *FichaHandler) Aprovar(c *gin.Context) {
 
 	ficha, err := h.service.Aprovar(organizador.ID, eventoID, fichaID)
 	if err != nil {
+		if responderErroVagas(c, err) {
+			return
+		}
 		c.JSON(http.StatusNotFound, gin.H{"erro": "ficha não encontrada"})
 		return
 	}

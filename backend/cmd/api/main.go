@@ -85,6 +85,10 @@ func main() {
 	tipoIngressoService := service.NovoTipoIngressoService(eventoService, tipoIngressoRepo, sessaoRepo)
 	conviteService := service.NovoConviteService(conviteRepo, eventoService, papelEventoRepo, fichaRepo)
 	fichaService := service.NovoFichaService(fichaRepo, papelEventoRepo, eventoRepo, usuarioRepo, mailCliente)
+	// Item 11.6: limite de jurados e participantes.
+	vagasService := service.NovoVagasService(db, eventoService)
+	conviteService.DefinirVagas(vagasService)
+	fichaService.DefinirVagas(vagasService)
 	// Item 5.2: os serviços falam com pagamento.Processador; o Mercado Pago
 	// é a implementação atual.
 	mpCliente := mercadopago.NovoProcessador(mercadopago.NovoCliente(cfg.MercadoPagoAccessToken).ComBaseURL(cfg.MercadoPagoBaseURL))
@@ -158,6 +162,8 @@ func main() {
 	cortesiaHandler := handler.NovoCortesiaHandler(organizadorHandler, cortesiaService, fichaService, itemPedidoRepo, tipoIngressoRepo, eventoRepo)
 	cupomHandler := handler.NovoCupomHandler(organizadorHandler, eventoRepo, cupomService)
 	conviteHandler := handler.NovoConviteHandler(organizadorHandler, eventoRepo, conviteService)
+	conviteHandler.DefinirVagas(vagasService)
+	vagasHandler := handler.NovoVagasHandler(organizadorHandler, eventoRepo, vagasService)
 	fichaHandler := handler.NovoFichaHandler(eventoRepo, organizadorHandler, fichaService)
 	uploadHandler := handler.NovoUploadHandler(armazenamento)
 	pedidoHandler := handler.NovoPedidoHandler(eventoRepo, usuarioRepo, checkoutService)
@@ -363,6 +369,7 @@ func main() {
 		v1.GET("/ingressos/:codigo/:token", cortesiaHandler.IngressoPublico)
 		v1.GET("/ingressos/:codigo/:token/qr", qrHandler.PorLink)
 		v1.GET("/convites/:token", conviteHandler.Consultar)
+		v1.GET("/eventos/:slug/vagas", vagasHandler.Publico)
 		v1.POST("/webhooks/mercadopago", webhookHandler.MercadoPago)
 
 		api := router.Group("/api/public/v1", middleware.LimitarPorJanela(limiteRepo, "api", 300, time.Minute), middleware.ExigirAPIKey(apiKeyRepo))
@@ -561,6 +568,8 @@ func main() {
 		org.GET("/eventos/:id/convites", conviteHandler.Listar)
 		org.POST("/eventos/:id/convites", conviteHandler.Gerar)
 		org.DELETE("/eventos/:id/convites/:conviteId", conviteHandler.Revogar)
+		org.GET("/eventos/:id/vagas", vagasHandler.Obter)
+		org.PUT("/eventos/:id/vagas", vagasHandler.Definir)
 
 		org.GET("/eventos/:id/participantes", fichaHandler.ListarDoOrganizador)
 		org.POST("/eventos/:id/participantes/:fichaId/aprovar", fichaHandler.Aprovar)

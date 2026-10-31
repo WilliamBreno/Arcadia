@@ -20,6 +20,7 @@ type ConviteHandler struct {
 	organizadorHandler *OrganizadorHandler
 	eventos            *repository.EventoRepository
 	service            *service.ConviteService
+	vagas              *service.VagasService
 }
 
 func NovoConviteHandler(organizadorHandler *OrganizadorHandler, eventos *repository.EventoRepository, s *service.ConviteService) *ConviteHandler {
@@ -133,10 +134,14 @@ func (h *ConviteHandler) responderErro(c *gin.Context, err error) {
 // --- Público / convidado ---
 
 type consultarConviteResposta struct {
-	Tipo         string `json:"tipo"`
-	EventoTitulo string `json:"evento_titulo"`
-	EventoSlug   string `json:"evento_slug"`
+	Tipo           string `json:"tipo"`
+	EventoTitulo   string `json:"evento_titulo"`
+	EventoSlug     string `json:"evento_slug"`
+	VagasEsgotadas bool   `json:"vagas_esgotadas"` // item 11.6
 }
+
+// DefinirVagas liga o aviso de vagas preenchidas na tela do convite (11.6).
+func (h *ConviteHandler) DefinirVagas(v *service.VagasService) { h.vagas = v }
 
 func (h *ConviteHandler) Consultar(c *gin.Context) {
 	convite, err := h.service.ConsultarPorToken(c.Param("token"))
@@ -151,7 +156,17 @@ func (h *ConviteHandler) Consultar(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, consultarConviteResposta{Tipo: string(convite.Tipo), EventoTitulo: evento.Titulo, EventoSlug: evento.Slug})
+	resp := consultarConviteResposta{Tipo: string(convite.Tipo), EventoTitulo: evento.Titulo, EventoSlug: evento.Slug}
+	if h.vagas != nil {
+		if r, err := h.vagas.Resumo(evento.ID); err == nil {
+			if convite.Tipo == domain.TipoConviteParticipanteEspecial {
+				resp.VagasEsgotadas = r.Participantes.Esgotado
+			} else {
+				resp.VagasEsgotadas = r.Jurados.Esgotado
+			}
+		}
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 type aceitarConviteRequest struct {
@@ -207,6 +222,13 @@ func (h *ConviteHandler) Aceitar(c *gin.Context) {
 	usuarioID := c.GetInt64(middleware.ChaveContextoUsuarioID)
 	_, ficha, err := h.service.Aceitar(c.Param("token"), usuarioID, req.paraDados())
 	if err != nil {
+		if responderErroVagas(c, err) {
+			return
+		}
+		if errors.Is(err, service.ErrRemovidoDoEvento) {
+			c.JSON(http.StatusConflict, gin.H{"erro": err.Error()})
+			return
+		}
 		if errors.Is(err, service.ErrMenorSemAutorizacao) {
 			c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
 			return

@@ -4,6 +4,8 @@ import (
 	"errors"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/WilliamBreno/Arcadia/backend/internal/domain"
 	"github.com/WilliamBreno/Arcadia/backend/internal/repository"
 )
@@ -11,6 +13,7 @@ import (
 var (
 	ErrConviteInvalido    = errors.New("convite inválido, expirado ou esgotado")
 	ErrConviteNaoPertence = errors.New("convite não pertence a este organizador")
+	ErrRemovidoDoEvento   = errors.New("você foi removido deste evento pelo organizador; fale com ele para voltar")
 )
 
 type ConviteService struct {
@@ -18,7 +21,11 @@ type ConviteService struct {
 	eventos  *EventoService
 	papeis   *repository.PapelEventoRepository
 	fichas   *repository.FichaParticipacaoRepository
+	vagas    *VagasService
 }
+
+// DefinirVagas liga o limite de jurados e participantes (item 11.6).
+func (s *ConviteService) DefinirVagas(v *VagasService) { s.vagas = v }
 
 func NovoConviteService(convites *repository.ConviteRepository, eventos *EventoService, papeis *repository.PapelEventoRepository, fichas *repository.FichaParticipacaoRepository) *ConviteService {
 	return &ConviteService{convites: convites, eventos: eventos, papeis: papeis, fichas: fichas}
@@ -94,6 +101,38 @@ func (s *ConviteService) Aceitar(tokenPlano string, usuarioID int64, dados Ficha
 	if err != nil {
 		return nil, nil, err
 	}
+	if s.vagas == nil {
+		return s.aceitar(nil, convite, usuarioID, dados)
+	}
+	// Item 11.6: papel, ficha e uso do convite na mesma transação, com a
+	// vaga do evento travada (sem passar do limite com aceites simultâneos).
+	var papel *domain.PapelEvento
+	var ficha *domain.FichaParticipacao
+	err = s.vagas.DB().Transaction(func(tx *gorm.DB) error {
+		if err := TravarVagas(tx, convite.EventoID); err != nil {
+			return err
+		}
+		// Revalida depois da trava: o convite pode ter sido revogado ou ter
+		// vencido enquanto este aceite esperava.
+		atual, err := repository.NovoConviteRepository(tx).BuscarPorID(convite.ID)
+		if err != nil || !s.convites.Valido(atual) {
+			return ErrConviteInvalido
+		}
+		var e error
+		papel, ficha, e = s.aceitar(tx, convite, usuarioID, dados)
+		return e
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	return papel, ficha, nil
+}
+
+func (s *ConviteService) aceitar(tx *gorm.DB, convite *domain.Convite, usuarioID int64, dados FichaDados) (*domain.PapelEvento, *domain.FichaParticipacao, error) {
+	papeis, fichas := s.papeis, s.fichas
+	if tx != nil {
+		papeis, fichas = repository.NovoPapelEventoRepository(tx), repository.NovoFichaParticipacaoRepository(tx)
+	}
 
 	papelTipo := domain.PapelJurado
 	fichaPapel := domain.PapelJurado
@@ -102,28 +141,9 @@ func (s *ConviteService) Aceitar(tokenPlano string, usuarioID int64, dados Ficha
 		fichaPapel = domain.PapelParticipante
 	}
 
-	papel, err := s.papeis.Buscar(convite.EventoID, usuarioID, papelTipo)
-	if err != nil {
-		papel = &domain.PapelEvento{
-			EventoID:  convite.EventoID,
-			UsuarioID: usuarioID,
-			Papel:     papelTipo,
-			Origem:    domain.OrigemConvite,
-			Status:    domain.StatusPapelConfirmado,
-			ConviteID: &convite.ID,
-			CriadoEm:  time.Now(),
-		}
-		if err := s.papeis.Criar(papel); err != nil {
-			return nil, nil, err
-		}
-		convite.Usos++
-		if err := s.convites.Salvar(convite); err != nil {
-			return nil, nil, err
-		}
-	}
-
-	ficha, err := s.fichas.Buscar(convite.EventoID, usuarioID, fichaPapel)
-	if err != nil {
+	ficha, err := fichas.Buscar(convite.EventoID, usuarioID, fichaPapel)
+	novaFicha := err != nil
+	if novaFicha {
 		ficha = &domain.FichaParticipacao{
 			EventoID:  convite.EventoID,
 			UsuarioID: usuarioID,
@@ -133,21 +153,83 @@ func (s *ConviteService) Aceitar(tokenPlano string, usuarioID int64, dados Ficha
 			CriadoEm:  time.Now(),
 		}
 	}
+	jaOcupava := !novaFicha && OcupaVaga(ficha.Status)
+	tipoAntes := ficha.TipoApresentacao
 	aplicarDadosFicha(ficha, dados)
 	if err := validarMenorDeIdade(ficha); err != nil {
 		return nil, nil, err
 	}
-	ficha.Status = domain.StatusFichaAprovado
 
+	papel, err := papeis.Buscar(convite.EventoID, usuarioID, papelTipo)
+	novoPapel := err != nil
+	if !novoPapel && papel.Status == domain.StatusPapelRemovido {
+		return nil, nil, ErrRemovidoDoEvento
+	}
+	if tx != nil {
+		// Jurado ocupa vaga pelo papel; participante, pela ficha (e pela
+		// modalidade, quando ela muda).
+		var errVaga error
+		switch {
+		case papelTipo == domain.PapelJurado && novoPapel,
+			papelTipo == domain.PapelParticipante && !jaOcupava:
+			errVaga = s.vagas.Conferir(tx, convite.EventoID, papelTipo, ficha.TipoApresentacao)
+		case papelTipo == domain.PapelParticipante && !mesmoTipo(tipoAntes, ficha.TipoApresentacao):
+			errVaga = s.vagas.ConferirTroca(tx, convite.EventoID, ficha.TipoApresentacao)
+		}
+		if errVaga != nil {
+			return nil, nil, errVaga
+		}
+	}
+	if novoPapel {
+		papel = &domain.PapelEvento{
+			EventoID:  convite.EventoID,
+			UsuarioID: usuarioID,
+			Papel:     papelTipo,
+			Origem:    domain.OrigemConvite,
+			Status:    domain.StatusPapelConfirmado,
+			ConviteID: &convite.ID,
+			CriadoEm:  time.Now(),
+		}
+		if err := papeis.Criar(papel); err != nil {
+			return nil, nil, err
+		}
+		// Uso do convite somado de forma atômica: dois aceites ao mesmo
+		// tempo não passam do max_usos.
+		if tx != nil {
+			res := tx.Exec(`UPDATE convites SET usos = usos + 1 WHERE id = ? AND revogado_em IS NULL
+				AND (expira_em IS NULL OR expira_em > now()) AND (max_usos IS NULL OR usos < max_usos)`, convite.ID)
+			if res.Error != nil {
+				return nil, nil, res.Error
+			}
+			if res.RowsAffected == 0 {
+				return nil, nil, ErrConviteInvalido
+			}
+		} else {
+			convite.Usos++
+			if err := s.convites.Salvar(convite); err != nil {
+				return nil, nil, err
+			}
+		}
+	}
+
+	ficha.Status = domain.StatusFichaAprovado
 	if ficha.ID == 0 {
-		if err := s.fichas.Criar(ficha); err != nil {
+		if err := fichas.Criar(ficha); err != nil {
 			return nil, nil, err
 		}
 	} else {
-		if err := s.fichas.Salvar(ficha); err != nil {
+		if err := fichas.Salvar(ficha); err != nil {
 			return nil, nil, err
 		}
 	}
 
 	return papel, ficha, nil
+}
+
+// mesmoTipo compara modalidades (nil = sem modalidade).
+func mesmoTipo(a, b *domain.TipoApresentacao) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
 }

@@ -22,6 +22,17 @@ func (r *FichaParticipacaoRepository) Salvar(f *domain.FichaParticipacao) error 
 	return r.db.Save(f).Error
 }
 
+// SalvarDadosEditaveis grava só os campos da ficha que a própria pessoa
+// edita. Status, motivo e prazo ficam com quem os controla (organizador e
+// pagamento), então uma edição feita com a ficha desatualizada não desfaz
+// uma rejeição.
+func (r *FichaParticipacaoRepository) SalvarDadosEditaveis(f *domain.FichaParticipacao) error {
+	return r.db.Model(&domain.FichaParticipacao{}).Where("id = ?", f.ID).
+		Select("nome", "nome_artistico", "instagram", "data_nascimento", "foto_url", "telefone", "tipo_apresentacao", "dados",
+			"responsavel_nome", "responsavel_contato", "autorizacao_responsavel_url").
+		Updates(f).Error
+}
+
 func (r *FichaParticipacaoRepository) BuscarPorID(id int64) (*domain.FichaParticipacao, error) {
 	var f domain.FichaParticipacao
 	if err := r.db.First(&f, id).Error; err != nil {
