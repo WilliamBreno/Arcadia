@@ -27,6 +27,7 @@ export type EventoSEO = {
   ingressos: { nome: string; preco_centavos: number; ativo: boolean; vendas_inicio?: string | null }[]
   taxas: RegraTaxas
   vendas_encerradas?: boolean
+  entrada_livre?: boolean
 }
 
 export type OrganizadorSEO = {
@@ -138,7 +139,7 @@ export function renderizarEvento(html: string, d: EventoSEO, base: string): stri
   const onde = d.local ? `${d.local.nome} · ${d.local.cidade}/${d.local.uf}` : 'Online'
   const quando = dataPorExtenso(e.inicio_em, e.timezone)
   const titulo = `${e.titulo} — ingressos | Evve`
-  const descricao = resumo(e.descricao || `Ingressos para ${e.titulo}${quando ? ` em ${quando}` : ''} · ${onde}`)
+  const descricao = resumo(e.descricao || `${d.entrada_livre ? 'Entrada livre e gratuita para' : 'Ingressos para'} ${e.titulo}${quando ? ` em ${quando}` : ''} · ${onde}`)
   const imagem = e.capa_url || `${base}/brand/og.png`
 
   const head = [
@@ -173,7 +174,7 @@ export function renderizarEvento(html: string, d: EventoSEO, base: string): stri
     `<p>${escapeHtml(onde)}</p>`,
     d.organizador ? `<p>por <a href="/o/${escapeHtml(d.organizador.slug)}">${escapeHtml(d.organizador.nome_publico)}</a></p>` : '',
     e.descricao ? `<p>${escapeHtml(e.descricao)}</p>` : '',
-    ingressos ? `<h2>Ingressos</h2><ul>${ingressos}</ul>` : '',
+    d.entrada_livre ? '<h2>Entrada livre e gratuita</h2><p>Este evento não cobra entrada e não exige ingresso ou QR.</p>' : ingressos ? `<h2>Ingressos</h2><ul>${ingressos}</ul>` : '',
     d.vendas_encerradas ? '<p>Vendas encerradas.</p>' : '',
     '</main>',
   ].join('')

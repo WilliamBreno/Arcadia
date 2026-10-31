@@ -1,7 +1,10 @@
 package repository
 
 import (
+	"errors"
+	"fmt"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/WilliamBreno/Arcadia/backend/internal/domain"
 )
@@ -22,8 +25,46 @@ func (r *TipoIngressoRepository) Salvar(t *domain.TipoIngresso) error {
 	return r.db.Save(t).Error
 }
 
-func (r *TipoIngressoRepository) Excluir(t *domain.TipoIngresso) error {
-	return r.db.Delete(t).Error
+var ErrTipoIngressoVinculado = errors.New("este ingresso possui registros vinculados e não pode ser excluído")
+
+func (r *TipoIngressoRepository) Excluir(t *domain.TipoIngresso, validar func([]domain.TipoIngresso) error) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		var evento domain.Evento
+		if e := tx.Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).First(&evento, t.EventoID).Error; e != nil {
+			return e
+		}
+		var atual domain.TipoIngresso
+		if e := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("evento_id = ?", t.EventoID).First(&atual, t.ID).Error; e != nil {
+			return e
+		}
+		for _, ref := range []struct{ tabela, motivo string }{
+			{"itens_pedido", "já tem pedidos ou ingressos emitidos, inclusive reservas ou registros antigos. O histórico precisa ser preservado"},
+			{"pacote_itens", "faz parte de um pacote. Remova-o do pacote antes de excluir"},
+			{"grupos_compra", "tem compras em grupo vinculadas. Esses registros precisam ser preservados"},
+			{"fila_espera", "tem uma lista de espera vinculada. Esses registros precisam ser preservados"},
+		} {
+			var n int64
+			if e := tx.Table(ref.tabela).Where("tipo_ingresso_id = ?", t.ID).Count(&n).Error; e != nil {
+				return e
+			}
+			if n > 0 {
+				return fmt.Errorf("%w: %s. Para interromper novas vendas, desative este ingresso.", ErrTipoIngressoVinculado, ref.motivo)
+			}
+		}
+		var restantes []domain.TipoIngresso
+		if e := tx.Where("evento_id = ? AND id <> ? AND NOT inscricao_talento AND NOT espaco_expositor AND NOT adicional", t.EventoID, t.ID).Find(&restantes).Error; e != nil {
+			return e
+		}
+		if e := validar(restantes); e != nil {
+			return e
+		}
+		e := tx.Delete(&atual).Error
+		var pg interface{ SQLState() string }
+		if errors.Is(e, gorm.ErrForeignKeyViolated) || (errors.As(e, &pg) && pg.SQLState() == "23503") {
+			return ErrTipoIngressoVinculado
+		}
+		return e
+	})
 }
 
 func (r *TipoIngressoRepository) BuscarPorID(id int64) (*domain.TipoIngresso, error) {
@@ -50,7 +91,7 @@ func (r *TipoIngressoRepository) ListarPorEvento(eventoID int64) ([]domain.TipoI
 func (r *TipoIngressoRepository) ContarAtivosPorEvento(eventoID int64) (int64, error) {
 	var total int64
 	err := r.db.Model(&domain.TipoIngresso{}).
-		Where("evento_id = ? AND ativo = true", eventoID).
+		Where("evento_id = ? AND ativo = true AND NOT inscricao_talento AND NOT espaco_expositor AND NOT adicional", eventoID).
 		Count(&total).Error
 	return total, err
 }
@@ -67,7 +108,7 @@ func (r *TipoIngressoRepository) ExisteComPrecoMaiorQueZero(eventoID int64) (boo
 // exibir preço/quantidade na página pública do evento.
 func (r *TipoIngressoRepository) ListarAtivosPublicoPorEvento(eventoID int64) ([]domain.TipoIngresso, error) {
 	var tipos []domain.TipoIngresso
-	if err := r.db.Where("evento_id = ? AND ativo = true", eventoID).Order("ordem, id").Find(&tipos).Error; err != nil {
+	if err := r.db.Where("evento_id = ? AND ativo = true AND NOT inscricao_talento AND NOT espaco_expositor AND NOT adicional", eventoID).Order("ordem, id").Find(&tipos).Error; err != nil {
 		return nil, err
 	}
 	return tipos, r.PreencherSessoes(tipos)
@@ -83,12 +124,14 @@ func (r *TipoIngressoRepository) PrecoMinimoPorEvento(eventoIDs []int64) (map[in
 
 	var linhas []struct {
 		EventoID      int64
-		PrecoCentavos int64
+		PrecoCentavos *int64
+		TotalTipos    int64
 	}
-	err := r.db.Model(&domain.TipoIngresso{}).
-		Select("evento_id, MIN(preco_centavos) as preco_centavos").
-		Where("evento_id IN ? AND ativo = true", eventoIDs).
-		Group("evento_id").
+	err := r.db.Table("eventos e").
+		Select("e.id AS evento_id, COUNT(ti.id) AS total_tipos, MIN(ti.preco_centavos) FILTER (WHERE ti.ativo) AS preco_centavos").
+		Joins("LEFT JOIN tipos_ingresso ti ON ti.evento_id = e.id AND NOT ti.inscricao_talento AND NOT ti.espaco_expositor AND NOT ti.adicional").
+		Where("e.id IN ?", eventoIDs).
+		Group("e.id").
 		Scan(&linhas).Error
 	if err != nil {
 		return nil, err
@@ -96,10 +139,23 @@ func (r *TipoIngressoRepository) PrecoMinimoPorEvento(eventoIDs []int64) (map[in
 
 	resultado := make(map[int64]int64, len(linhas))
 	for _, l := range linhas {
-		resultado[l.EventoID] = l.PrecoCentavos
+		if l.PrecoCentavos != nil {
+			resultado[l.EventoID] = *l.PrecoCentavos
+		} else if l.TotalTipos == 0 {
+			resultado[l.EventoID] = 0
+		}
 	}
 	return resultado, nil
 }
+
+// Sem tipos cadastrados é entrada livre; tipos inativos/esgotados não significam entrada livre.
+func (r *TipoIngressoRepository) EntradaLivre(eventoID int64) (bool, error) {
+	var n int64
+	e := r.db.Model(&domain.TipoIngresso{}).Where("evento_id = ? AND NOT inscricao_talento AND NOT espaco_expositor AND NOT adicional", eventoID).Count(&n).Error
+	return n == 0, e
+}
+
+const exprEntradaLivre = "NOT EXISTS (SELECT 1 FROM tipos_ingresso ti WHERE ti.evento_id = eventos.id AND NOT ti.inscricao_talento AND NOT ti.espaco_expositor AND NOT ti.adicional)"
 
 // PreencherSessoes carrega, em lote, as sessões de cada tipo (vazio = todas).
 func (r *TipoIngressoRepository) PreencherSessoes(tipos []domain.TipoIngresso) error {

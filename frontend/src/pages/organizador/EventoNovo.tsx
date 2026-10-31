@@ -87,14 +87,15 @@ export default function EventoNovo() {
         },
       })
       // Lotes sugeridos que o organizador manteve marcados viram tipos de ingresso.
+      const falhasIngressos: string[] = []
       for (const [i, l] of lotes.entries()) {
         if (!lotesMarcados[i]) continue
         await api(`/org/eventos/${evento.id}/ingressos`, {
           method: 'POST',
           body: { nome: l.nome, preco_centavos: l.preco_centavos, quantidade: l.quantidade, min_por_pedido: 1, max_por_pedido: 10, ativo: true },
-        }).catch(() => undefined)
+        }).catch((e: unknown) => { falhasIngressos.push(`${l.nome}: ${e instanceof ApiError ? e.message : 'não foi possível criar o ingresso'}`) })
       }
-      navigate(`/organizador/eventos/${evento.id}`, { replace: true })
+      navigate(`/organizador/eventos/${evento.id}`, { replace: true, state: { erroIngressos: falhasIngressos.length ? `O evento foi criado, mas estes ingressos não foram cadastrados: ${falhasIngressos.join('; ')}. Revise antes de publicar.` : undefined } })
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : 'Erro ao criar evento')
     }
@@ -185,7 +186,8 @@ export default function EventoNovo() {
                   <fieldset className="flex flex-col gap-2 rounded-lg border border-border p-3">
                     <legend className="px-1 text-sm font-medium text-foreground">Lotes sugeridos (criados ao continuar)</legend>
                     {lotes.map((l, i) => (
-                      <label key={i} className="flex items-start gap-2 text-sm text-foreground">
+                      <div key={i} className="flex items-start justify-between gap-2">
+                      <label className="flex min-w-0 items-start gap-2 text-sm text-foreground">
                         <input
                           type="checkbox"
                           className="mt-0.5"
@@ -197,6 +199,8 @@ export default function EventoNovo() {
                           {l.observacao && <span className="block text-xs text-muted-foreground">{l.observacao}</span>}
                         </span>
                       </label>
+                      <Button type="button" variant="ghost" size="sm" aria-label={`Excluir lote ${l.nome}`} onClick={() => { setLotes(lotes.filter((_, j) => j !== i)); setLotesMarcados(lotesMarcados.filter((_, j) => j !== i)) }}>Excluir</Button>
+                      </div>
                     ))}
                   </fieldset>
                 )}
@@ -213,6 +217,7 @@ export default function EventoNovo() {
               </>
             )}
             <CapaEvento valor={capa} aoMudar={setCapa} />
+            {!lotes.some((_, i) => lotesMarcados[i]) && <p className="text-sm text-muted-foreground">Sem ingressos cadastrados, o evento terá entrada livre e gratuita, sem ingresso ou QR. Você poderá adicionar um ingresso de preço R$ 0,00 na próxima tela se quiser controlar inscrições.</p>}
             {erro && <p className="text-sm text-destructive">{erro}</p>}
             <Button type="submit" disabled={isSubmitting}>
               Continuar

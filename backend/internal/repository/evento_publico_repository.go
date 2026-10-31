@@ -77,7 +77,7 @@ func (r *EventoRepository) ListarPublicos(f FiltrosEventoPublico) ([]domain.Even
 			Where(expressaoDistancia+" <= ?", *f.Lat, *f.Lng, *f.Lat, raio)
 	}
 	if f.SomenteGratuitos {
-		base = base.Where("EXISTS (SELECT 1 FROM tipos_ingresso ti WHERE ti.evento_id = eventos.id AND ti.ativo AND ti.preco_centavos = 0)")
+		base = base.Where(exprGratuito)
 	}
 
 	var total int64

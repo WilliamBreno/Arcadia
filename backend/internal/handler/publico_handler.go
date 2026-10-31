@@ -330,6 +330,11 @@ func (h *PublicoHandler) ObterEvento(c *gin.Context) {
 	}
 
 	listaSessoes, _ := h.sessoes.ListarPorEvento(evento.ID)
+	entradaLivre, err := h.tiposIngresso.EntradaLivre(evento.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao carregar a forma de entrada"})
+		return
+	}
 	sessoesResp := make([]sessaoResposta, 0, len(listaSessoes))
 	for i := range listaSessoes {
 		sessoesResp = append(sessoesResp, paraSessaoResposta(&listaSessoes[i]))
@@ -342,6 +347,7 @@ func (h *PublicoHandler) ObterEvento(c *gin.Context) {
 		"local":             localResposta,
 		"organizador":       organizadorResposta,
 		"ingressos":         tiposResposta,
+		"entrada_livre":     entradaLivre,
 		"taxas":             regraTaxas,
 		"vendas_encerradas": vendasEncerradas(evento, tipos, listaSessoes),
 		"pixels":            service.Pixels{Meta: evento.PixelMeta, GA4: evento.PixelGA4, TikTok: evento.PixelTikTok},

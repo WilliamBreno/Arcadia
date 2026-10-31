@@ -47,6 +47,7 @@ export default function WidgetEvento() {
           {local ? ` · ${local.nome}, ${local.cidade}/${local.uf}` : ''}
         </p>
       </div>
+      {data.entrada_livre && <p className="text-sm font-medium">Entrada livre e gratuita, sem ingresso ou QR.</p>}
       <ul className="flex flex-col divide-y divide-border">
         {ingressos.map((i) => (
           <li key={i.id} className="flex items-center justify-between gap-3 py-2 text-sm">
@@ -69,9 +70,9 @@ export default function WidgetEvento() {
         rel="noopener"
         className="rounded-lg bg-foreground px-4 py-2.5 text-center text-sm font-medium text-background transition-opacity hover:opacity-90 active:opacity-80"
       >
-        {encerradas ? 'Ver evento' : ingressos.every((i) => i.esgotado) ? 'Entrar na lista de espera' : 'Comprar ingressos'}
+        {data.entrada_livre || encerradas || ingressos.length === 0 ? 'Ver evento' : ingressos.every((i) => i.esgotado) ? 'Entrar na lista de espera' : 'Comprar ingressos'}
       </a>
-      <p className="text-center text-xs text-muted-foreground">Preço final, já com a taxa. Venda segura pelo Evve.</p>
+      {!data.entrada_livre && <p className="text-center text-xs text-muted-foreground">Preço final, já com a taxa. Venda segura pelo Evve.</p>}
     </div>
   )
 }

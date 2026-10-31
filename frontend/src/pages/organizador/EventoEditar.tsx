@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
-import { useParams } from 'react-router-dom'
+import { useLocation, useParams } from 'react-router-dom'
 import { z } from 'zod'
 
 import { Link } from 'react-router-dom'
@@ -84,6 +84,7 @@ type FormBasico = z.infer<typeof schemaBasico>
 
 export default function EventoEditar() {
   const { id } = useParams()
+  const location = useLocation()
   const queryClient = useQueryClient()
   const [erro, setErro] = useState<string | null>(null)
   const [problemasPublicacao, setProblemasPublicacao] = useState<string[] | null>(null)
@@ -98,7 +99,7 @@ export default function EventoEditar() {
     queryKey: ['org-locais'],
     queryFn: () => api<Local[]>('/org/locais'),
   })
-  const { data: tiposIngresso } = useQuery({
+  const { data: tiposIngresso, isLoading: carregandoIngressos, error: erroListaIngressos } = useQuery({
     queryKey: ['org-evento-ingressos', id],
     queryFn: () => api<TipoIngresso[]>(`/org/eventos/${id}/ingressos`),
     enabled: evento !== undefined,
@@ -359,7 +360,7 @@ export default function EventoEditar() {
 
       <SessoesCard eventoId={Number(id)} />
 
-      <TiposIngressoCard eventoId={Number(id)} tipos={tiposIngresso ?? []} />
+      <TiposIngressoCard eventoId={Number(id)} tipos={tiposIngresso ?? []} carregando={carregandoIngressos} falhaCarregamento={!!erroListaIngressos} erroInicial={(location.state as { erroIngressos?: string } | null)?.erroIngressos} />
 
       <LugaresCard eventoId={Number(id)} tipos={tiposIngresso ?? []} />
 
@@ -468,7 +469,7 @@ export default function EventoEditar() {
   )
 }
 
-function TiposIngressoCard({ eventoId, tipos }: { eventoId: number; tipos: TipoIngresso[] }) {
+function TiposIngressoCard({ eventoId, tipos, erroInicial, carregando, falhaCarregamento }: { eventoId: number; tipos: TipoIngresso[]; erroInicial?: string; carregando?: boolean; falhaCarregamento?: boolean }) {
   const queryClient = useQueryClient()
   const [novo, setNovo] = useState<{
     nome: string
@@ -483,6 +484,9 @@ function TiposIngressoCard({ eventoId, tipos }: { eventoId: number; tipos: TipoI
   const [erro, setErro] = useState<string | null>(null)
 
   const invalidar = () => queryClient.invalidateQueries({ queryKey: ['org-evento-ingressos', String(eventoId)] })
+  const [ocupado, setOcupado] = useState<number | null>(null)
+  const [erroAcao, setErroAcao] = useState<{ id: number; texto: string } | null>(null)
+  const [aviso, setAviso] = useState('')
   const { data: sessoes } = useQuery({ queryKey: ['org-sessoes', eventoId], queryFn: () => api<Sessao[]>(`/org/eventos/${eventoId}/sessoes`) })
 
   const adicionar = async () => {
@@ -531,8 +535,28 @@ function TiposIngressoCard({ eventoId, tipos }: { eventoId: number; tipos: TipoI
   }
 
   const excluir = async (tipoId: number) => {
-    await api(`/org/eventos/${eventoId}/ingressos/${tipoId}`, { method: 'DELETE' })
-    invalidar()
+    setErroAcao(null); setAviso(''); setOcupado(tipoId)
+    try {
+      await api(`/org/eventos/${eventoId}/ingressos/${tipoId}`, { method: 'DELETE' })
+      await invalidar()
+      queryClient.invalidateQueries({ queryKey: ['evento-publico'] })
+      const atuais = queryClient.getQueryData<TipoIngresso[]>(['org-evento-ingressos', String(eventoId)])
+      setAviso(atuais?.length === 0 ? 'Ingresso excluído. Sem tipos de ingresso cadastrados, o evento fica gratuito, com entrada livre, sem ingresso ou QR.' : 'Ingresso excluído.')
+    } catch (e) {
+      setErroAcao({ id: tipoId, texto: e instanceof ApiError ? e.message : 'Não foi possível excluir o ingresso. Tente novamente.' })
+    } finally { setOcupado(null) }
+  }
+
+  const alternarVendas = async (t: TipoIngresso) => {
+    setErroAcao(null); setAviso(''); setOcupado(t.id)
+    try {
+      await api(`/org/eventos/${eventoId}/ingressos/${t.id}`, { method: 'PUT', body: { ...t, ativo: !t.ativo } })
+      await invalidar()
+      queryClient.invalidateQueries({ queryKey: ['evento-publico'] })
+      setAviso(t.ativo ? 'Vendas deste ingresso desativadas. Os ingressos já emitidos e o histórico foram preservados.' : 'Vendas deste ingresso reativadas.')
+    } catch (e) {
+      setErroAcao({ id: t.id, texto: e instanceof ApiError ? e.message : 'Não foi possível alterar as vendas. Tente novamente.' })
+    } finally { setOcupado(null) }
   }
 
   return (
@@ -541,13 +565,20 @@ function TiposIngressoCard({ eventoId, tipos }: { eventoId: number; tipos: TipoI
         <CardTitle>Ingressos</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        {tipos.length === 0 && <p className="text-sm text-muted-foreground">Nenhum tipo de ingresso ainda.</p>}
+        {erroInicial && <p role="alert" className="text-sm text-destructive">{erroInicial}</p>}
+        {carregando && <p role="status" className="text-sm text-muted-foreground">Carregando ingressos…</p>}
+        {falhaCarregamento && <p role="alert" className="text-sm text-destructive">Não foi possível carregar os ingressos. Atualize a página antes de alterar esta seção.</p>}
+        {!carregando && !falhaCarregamento && tipos.length === 0 && <p role="status" className="rounded-lg bg-muted p-3 text-sm">Entrada livre e gratuita: nenhum ingresso cadastrado, sem cobrança ou emissão de QR. Para controlar inscrições e entrada, adicione um ingresso gratuito com preço R$ 0,00.</p>}
+        {tipos.length > 0 && tipos.every(t => !t.ativo) && <p className="text-sm text-muted-foreground">Todos os ingressos estão desativados. Isso interrompe as vendas; não transforma o evento em entrada livre.</p>}
+        {aviso && <p role="status" className="text-sm">{aviso}</p>}
         {tipos.map((t) => (
-          <div key={t.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+          <div key={t.id} className="flex flex-col gap-3 rounded-lg border border-border px-3 py-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-medium text-foreground">{t.nome}</p>
               <p className="text-xs text-muted-foreground">
                 {formatarCentavos(t.preco_centavos)} · {t.quantidade} unidades
+                {!t.ativo && ' · vendas desativadas'}
                 {t.lote_grupo ? ` · lote "${t.lote_grupo}" (ordem ${t.ordem})` : ''}
                 {t.meia_entrada ? ' · meia-entrada' : ''}
                 {t.sessao_ids.length > 0
@@ -557,9 +588,12 @@ function TiposIngressoCard({ eventoId, tipos }: { eventoId: number; tipos: TipoI
                     : ''}
               </p>
             </div>
-            <Button variant="destructive" size="sm" onClick={() => excluir(t.id)}>
-              Excluir
-            </Button>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <Button type="button" variant="outline" size="sm" disabled={ocupado !== null} onClick={() => alternarVendas(t)}>{t.ativo ? 'Desativar vendas' : 'Reativar vendas'}</Button>
+              <Button type="button" variant="destructive" size="sm" disabled={ocupado !== null} onClick={() => excluir(t.id)}>{ocupado === t.id ? 'Aguarde…' : 'Excluir'}</Button>
+            </div>
+            </div>
+            {erroAcao?.id === t.id && <p role="alert" className="text-sm text-destructive">{erroAcao.texto}</p>}
           </div>
         ))}
 
@@ -662,7 +696,7 @@ function TiposIngressoCard({ eventoId, tipos }: { eventoId: number; tipos: TipoI
               onChange={(e) => setNovo({ ...novo, quantidade: e.target.value })}
             />
           </div>
-          <Button type="button" onClick={adicionar} disabled={!novo.nome}>
+          <Button type="button" onClick={adicionar} disabled={!novo.nome || carregando || falhaCarregamento}>
             Adicionar
           </Button>
         </div>

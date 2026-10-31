@@ -153,7 +153,7 @@ func (r *EventoRepository) SlugColecaoExiste(slug string, excetoID int64) (bool,
 }
 
 // exprGratuito: o evento tem entrada gratuita à venda (adicional não conta).
-const exprGratuito = "EXISTS (SELECT 1 FROM tipos_ingresso ti WHERE ti.evento_id = eventos.id AND ti.ativo AND NOT ti.adicional AND ti.preco_centavos = 0)"
+const exprGratuito = "(" + exprEntradaLivre + " OR EXISTS (SELECT 1 FROM tipos_ingresso ti WHERE ti.evento_id = eventos.id AND ti.ativo AND NOT ti.inscricao_talento AND NOT ti.espaco_expositor AND NOT ti.adicional AND ti.preco_centavos = 0))"
 
 // EventosDaColecao: só publicados, públicos e futuros (o admin pode ter
 // incluído um evento que depois terminou ou foi cancelado — some sozinho).

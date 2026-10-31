@@ -126,7 +126,7 @@ func (s *TipoIngressoService) Excluir(organizadorID, eventoID, tipoID int64) err
 	if err != nil {
 		return err
 	}
-	return s.tipos.Excluir(tipo)
+	return s.tipos.Excluir(tipo, validarCotaMeia)
 }
 
 func (s *TipoIngressoService) buscarDoEvento(eventoID, tipoID int64) (*domain.TipoIngresso, error) {

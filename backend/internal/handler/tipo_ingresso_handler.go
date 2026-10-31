@@ -9,7 +9,9 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/WilliamBreno/Arcadia/backend/internal/domain"
+	"github.com/WilliamBreno/Arcadia/backend/internal/repository"
 	"github.com/WilliamBreno/Arcadia/backend/internal/service"
+	"gorm.io/gorm"
 )
 
 type TipoIngressoHandler struct {
@@ -212,6 +214,10 @@ func (h *TipoIngressoHandler) Excluir(c *gin.Context) {
 }
 
 func (h *TipoIngressoHandler) responderErro(c *gin.Context, err error) {
+	if errors.Is(err, repository.ErrTipoIngressoVinculado) {
+		c.JSON(http.StatusConflict, gin.H{"erro": err.Error()})
+		return
+	}
 	if errors.Is(err, service.ErrEventoNaoPertenceAoOrganizador) {
 		c.JSON(http.StatusForbidden, gin.H{"erro": "recurso não pertence a este organizador"})
 		return
@@ -224,5 +230,9 @@ func (h *TipoIngressoHandler) responderErro(c *gin.Context, err error) {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"erro": err.Error()})
 		return
 	}
-	c.JSON(http.StatusNotFound, gin.H{"erro": "não encontrado"})
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		c.JSON(http.StatusNotFound, gin.H{"erro": "ingresso não encontrado"})
+		return
+	}
+	c.JSON(http.StatusInternalServerError, gin.H{"erro": "não foi possível concluir a alteração do ingresso. Tente novamente."})
 }

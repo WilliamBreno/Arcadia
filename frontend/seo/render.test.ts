@@ -24,6 +24,16 @@ const taxas = {
   taxa_paga_por: 'comprador' as const,
 }
 
+test('entrada livre aparece no conteúdo público sem anunciar venda de ingressos', () => {
+  const d = evento()
+  d.ingressos = []
+  d.entrada_livre = true
+  const html = renderizarEvento(HTML, d, 'https://evve.test')
+  assert.match(html, /Entrada livre e gratuita/)
+  assert.match(html, /não exige ingresso ou QR/)
+  assert.doesNotMatch(html, /<h2>Ingressos<\/h2>/)
+})
+
 function evento(extra: Partial<EventoSEO['evento']> = {}): EventoSEO {
   return {
     evento: {

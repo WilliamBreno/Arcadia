@@ -188,7 +188,8 @@ export default function EventoDetalhe() {
 
   const { evento, local, organizador, ingressos } = data
 
-  const precisaAprovacao = evento.aprovacao_manual && solicitacao?.status !== 'aprovada'
+  const entradaLivre = data.entrada_livre === true
+  const precisaAprovacao = !entradaLivre && evento.aprovacao_manual && solicitacao?.status !== 'aprovada'
   // Item 5.5: depois do fim do evento não vende; depois do início não há garantia.
   const vendasEncerradas = data.vendas_encerradas
   const eventoComecou = !!evento.inicio_em && new Date(evento.inicio_em) <= new Date()
@@ -405,10 +406,11 @@ export default function EventoDetalhe() {
       )}
 
       <section className="mt-8">
-        <h2 className="mb-3 text-xl font-semibold text-foreground">Ingressos</h2>
+        <h2 className="mb-3 text-xl font-semibold text-foreground">{entradaLivre ? 'Entrada livre e gratuita' : 'Ingressos'}</h2>
+        {entradaLivre && <p className="rounded-lg bg-muted p-4 text-sm">Este evento não cobra entrada e não exige ingresso ou QR. Confira o local, os horários e as orientações do organizador.</p>}
         {vendasEncerradas && (
           <p className="mb-3 rounded-lg border border-border p-4 text-sm text-muted-foreground">
-            Vendas encerradas: este evento já terminou.
+            {entradaLivre ? 'Este evento já terminou.' : 'Vendas encerradas: este evento já terminou.'}
           </p>
         )}
         {precisaAprovacao && (
@@ -451,7 +453,7 @@ export default function EventoDetalhe() {
                 </p>
               </div>
             ))}
-          {ingressos.length === 0 && <p className="text-sm text-muted-foreground">Nenhum ingresso disponível no momento.</p>}
+          {!entradaLivre && ingressos.length === 0 && <p className="text-sm text-muted-foreground">Nenhum ingresso disponível no momento.</p>}
           {ingressos.map((i) => (
             <Card key={i.id}>
               <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
@@ -537,7 +539,7 @@ export default function EventoDetalhe() {
           <EscolhaLugares setores={setores} tipos={ingressos} escolhas={escolhas} aoMudar={setEscolhas} />
         )}
 
-        {extras.data && (
+        {!entradaLivre && extras.data && (
           <ExtrasCompra
             extras={extras.data}
             regra={data.taxas}
@@ -550,7 +552,7 @@ export default function EventoDetalhe() {
           />
         )}
 
-        {!precisaAprovacao && !vendasEncerradas && (
+        {!entradaLivre && !precisaAprovacao && !vendasEncerradas && (
           <CompraGrupo
             slug={evento.slug}
             tipos={ingressos.filter((i) => !tiposComMapa.has(i.id))}
@@ -641,7 +643,7 @@ export default function EventoDetalhe() {
         )}
       </section>
 
-      {!vendasEncerradas && (
+      {!entradaLivre && !vendasEncerradas && (
         <EvveGarante
           gratuito={ingressos.length > 0 && ingressos.every((i) => i.preco_centavos === 0)}
           garantiaHabilitada={evento.garantia_habilitada}
