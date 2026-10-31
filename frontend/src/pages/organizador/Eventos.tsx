@@ -33,6 +33,7 @@ export default function Eventos() {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-foreground">Meus eventos</h1>
         <div className="flex flex-wrap gap-2">
+          <Link to="/conversas-equipe" className={buttonVariants({ variant: 'outline' })}>Chat da equipe</Link>
           <Link to="/organizador/crm" className={buttonVariants({ variant: 'outline' })}>
             Contatos e e-mail
           </Link>

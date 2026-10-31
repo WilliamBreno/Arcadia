@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { Carregando } from '@/components/carregando'
 import { Button } from '@/components/ui/button'
@@ -50,6 +51,7 @@ export default function Coproducoes() {
               </p>
             </div>
             {c.status === 'ativa' && <ParteDoEvento eventoId={c.evento_id} percentual={c.percentual_bp} />}
+            {c.status === 'ativa' && <Link to={`/chat-evento/${c.evento_id}`} className="text-sm underline">Abrir chat da equipe</Link>}
             {c.proposto_bp !== null && (
               <div className="flex flex-col gap-2 rounded-lg bg-muted p-3 text-sm">
                 <p className="text-foreground">

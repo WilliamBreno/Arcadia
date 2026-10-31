@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom'
 import { VoltarLink } from '@/components/voltar-link'
 import { api, ApiError } from '@/lib/api'
 import { AvaliarFicha } from '@/components/avaliar-ficha'
+import { ApoioJurado } from '@/components/chat-jurado'
 import { Card, CardContent } from '@/components/ui/card'
 import { Carregando } from '@/components/carregando'
 
@@ -42,6 +43,7 @@ export default function AreaJurado() {
     <main className="mx-auto max-w-3xl px-4 py-12">
       <VoltarLink to={`/e/${slug}`}>Voltar ao evento</VoltarLink>
       <h1 className="mb-6 text-2xl font-semibold text-foreground">Participantes</h1>
+      <ApoioJurado key={slug} slug={slug!} />
       {fichas?.length === 0 && <p className="text-muted-foreground">Nenhum participante aprovado ainda.</p>}
       <div className="flex flex-col gap-3">
         {fichas?.map((f) => (

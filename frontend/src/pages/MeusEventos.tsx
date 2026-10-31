@@ -36,6 +36,7 @@ export default function MeusEventos() {
   return (
     <main className="mx-auto max-w-2xl px-4 py-12">
       <h1 className="mb-6 text-2xl font-semibold text-foreground">Meus eventos</h1>
+      <Link to="/conversas-equipe" className="mb-4 block rounded-xl border border-border p-4 font-medium hover:bg-muted">Conversas da equipe dos eventos →</Link>
 
       {/* Item 11.1: grupos e perfis solo. */}
       <Link
