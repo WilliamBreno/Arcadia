@@ -19,7 +19,15 @@ func (r *EventoRepository) Criar(e *domain.Evento) error {
 }
 
 func (r *EventoRepository) Salvar(e *domain.Evento) error {
-	return r.db.Save(e).Error
+	// Uma edição/publicação iniciada antes da exclusão não recria o rascunho.
+	resultado := r.db.Model(e).Select("*").Updates(e)
+	if resultado.Error != nil {
+		return resultado.Error
+	}
+	if resultado.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (r *EventoRepository) BuscarPorID(id int64) (*domain.Evento, error) {

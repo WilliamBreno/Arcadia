@@ -3,6 +3,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useLocation, useParams } from 'react-router-dom'
+import { ExcluirRecurso } from '@/components/excluir-recurso'
+import { NovoLocalEvento } from '@/components/local-evento'
 import { z } from 'zod'
 
 import { Link } from 'react-router-dom'
@@ -95,7 +97,7 @@ export default function EventoEditar() {
     queryKey: ['org-evento', id],
     queryFn: () => api<Evento>(`/org/eventos/${id}`),
   })
-  const { data: locais } = useQuery({
+  const { data: locais, isLoading: carregandoLocais, error: erroLocais } = useQuery({
     queryKey: ['org-locais'],
     queryFn: () => api<Local[]>('/org/locais'),
   })
@@ -109,6 +111,7 @@ export default function EventoEditar() {
     register,
     handleSubmit,
     reset,
+    setValue,
     control,
     watch,
     formState: { isSubmitting, errors },
@@ -218,10 +221,10 @@ export default function EventoEditar() {
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="local_id">Local</Label>
-              <select
+              <Controller name="local_id" control={control} render={({ field }) => <select
                 id="local_id"
                 className="h-8 rounded-lg border border-border bg-background px-2.5 text-sm"
-                {...register('local_id')}
+                {...field}
               >
                 <option value="">Evento online (sem local)</option>
                 {locais?.map((l) => (
@@ -229,10 +232,14 @@ export default function EventoEditar() {
                     {l.nome} — {l.cidade}/{l.uf}
                   </option>
                 ))}
-              </select>
+              </select>} />
+              <p className="text-xs text-muted-foreground">Escolha um local presencial cadastrado ou cadastre um abaixo. Para evento online, mantenha a opção sem local.</p>
+              {carregandoLocais && <p role="status" className="text-sm text-muted-foreground">Carregando locais…</p>}
+              {erroLocais && <p role="alert" className="text-sm text-destructive">Não foi possível carregar seus locais. Atualize a página para tentar novamente.</p>}
+              <NovoLocalEvento aoCriar={id => setValue('local_id', id, { shouldDirty: true })} />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="inicio_em">Início</Label>
                 <Input id="inicio_em" type="datetime-local" {...register('inicio_em')} />
@@ -359,6 +366,7 @@ export default function EventoEditar() {
       </Card>
 
       <SessoesCard eventoId={Number(id)} />
+      {evento.status === 'rascunho' && <ExcluirRecurso url={`/org/eventos/${id}`} titulo="Excluir rascunho" descricao="Remove o evento e suas configurações. Rascunhos com pedidos, inscrições ou outros registros protegidos não podem ser excluídos." destino="/organizador/eventos" />}
 
       <TiposIngressoCard eventoId={Number(id)} tipos={tiposIngresso ?? []} carregando={carregandoIngressos} falhaCarregamento={!!erroListaIngressos} erroInicial={(location.state as { erroIngressos?: string } | null)?.erroIngressos} />
 

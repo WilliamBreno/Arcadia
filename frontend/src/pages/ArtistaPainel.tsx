@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArtistaGestao, ArtistaMidiaKit } from '@/components/artista-gestao'
 import { ArtistaAgenda } from '@/components/artista-agenda'
+import { ExcluirRecurso } from '@/components/excluir-recurso'
 import { ArtistaOferta } from '@/components/artista-oferta'
 import { ArtistaOrcamentos } from '@/components/artista-orcamentos'
 import { BadgeCheck, Copy, ExternalLink, Trash2 } from 'lucide-react'
@@ -485,6 +486,7 @@ export default function ArtistaPainel() {
       <PerfilCard key={data.grupo.id} painel={data} aoSalvar={atualizar} />
       <PortfolioCard painel={data} aoMudar={atualizar} />
       {data.lider && <SeloCard painel={data} aoMudar={atualizar} />}
+      {data.lider && <ExcluirRecurso url={`/me/artistas/${data.grupo.id}`} titulo="Excluir perfil de artista" descricao="Remove este perfil, seu portfólio, agenda e convites. Sua conta Evve permanece. Históricos de contratação, atrações e inscrições vinculadas impedem a exclusão e serão informados na tela." destino="/meus-artistas" />}
     </main>
   )
 }

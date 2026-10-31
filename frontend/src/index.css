@@ -3,6 +3,8 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 
+.evve-date::-webkit-calendar-picker-indicator { display: none; }
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

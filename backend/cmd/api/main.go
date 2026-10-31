@@ -463,6 +463,7 @@ func main() {
 		autenticado.POST("/me/artistas", gruposHandler.Criar)
 		autenticado.GET("/me/artistas/:id", gruposHandler.Painel)
 		autenticado.PUT("/me/artistas/:id", gruposHandler.Atualizar)
+		autenticado.DELETE("/me/artistas/:id", gruposHandler.Excluir)
 		autenticado.POST("/me/artistas/:id/integrantes", gruposHandler.ConvidarIntegrante)
 		autenticado.PUT("/me/artistas/:id/integrantes/:integrante", gruposHandler.EditarIntegrante)
 		autenticado.DELETE("/me/artistas/:id/integrantes/:integrante", gruposHandler.RemoverIntegrante)
@@ -558,6 +559,7 @@ func main() {
 		org.POST("/eventos/:id/ingressos/por-sessao", tipoIngressoHandler.CriarPorSessao)
 		org.PUT("/eventos/:id/ingressos/:ingressoId", tipoIngressoHandler.Atualizar)
 		org.DELETE("/eventos/:id/ingressos/:ingressoId", tipoIngressoHandler.Excluir)
+		org.DELETE("/eventos/:id", eventoHandler.Excluir)
 
 		org.GET("/eventos/:id/cortesias", cortesiaHandler.Listar)
 		org.POST("/eventos/:id/cortesias", cortesiaHandler.Emitir)

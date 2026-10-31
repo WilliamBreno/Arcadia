@@ -157,6 +157,10 @@ func (s *EventoService) Listar(organizadorID int64) ([]domain.Evento, error) {
 	return s.eventos.ListarPorOrganizador(organizadorID)
 }
 
+func (s *EventoService) ExcluirRascunho(organizadorID, eventoID int64) error {
+	return s.eventos.ExcluirRascunho(organizadorID, eventoID)
+}
+
 // Publicar valida os requisitos da seção 6 do plano antes de virar o
 // status para "publicado". Regras regionais (seção 7.8) ainda não são
 // checadas aqui — a tabela regras_regionais entra no item 1.9.

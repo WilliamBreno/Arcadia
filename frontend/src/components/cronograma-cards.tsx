@@ -76,7 +76,7 @@ export function CronogramaCard({ eventoId }: { eventoId: number }) {
             </Button>
           </div>
         ))}
-        <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr_auto] items-end gap-2 border-t border-border pt-3">
+        <div className="grid grid-cols-1 items-end gap-3 border-t border-border pt-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="cg-titulo">Atividade</Label>
             <Input id="cg-titulo" value={form.titulo} onChange={(e) => setForm({ ...form, titulo: e.target.value })} />

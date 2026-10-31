@@ -8,13 +8,38 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/WilliamBreno/Arcadia/backend/internal/domain"
+	"github.com/WilliamBreno/Arcadia/backend/internal/repository"
 	"github.com/WilliamBreno/Arcadia/backend/internal/service"
+	"gorm.io/gorm"
 )
 
 type EventoHandler struct {
 	organizadorHandler  *OrganizadorHandler
 	service             *service.EventoService
 	cancelamentoService *service.CancelamentoService
+}
+
+func (h *EventoHandler) Excluir(c *gin.Context) {
+	org, ok := h.organizadorHandler.ObterOrganizadorAtual(c)
+	if !ok {
+		return
+	}
+	id, ok := idDaURL(c)
+	if !ok {
+		return
+	}
+	if err := h.service.ExcluirRascunho(org.ID, id); err != nil {
+		switch {
+		case errors.Is(err, repository.ErrExcluirRascunho):
+			c.JSON(http.StatusConflict, gin.H{"erro": err.Error()})
+		case errors.Is(err, gorm.ErrRecordNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"erro": "rascunho não encontrado"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"erro": "não foi possível excluir o rascunho"})
+		}
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
 
 func NovoEventoHandler(organizadorHandler *OrganizadorHandler, s *service.EventoService, cancelamentoService *service.CancelamentoService) *EventoHandler {

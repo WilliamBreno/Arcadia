@@ -48,6 +48,22 @@ func (h *GruposHandler) erro(c *gin.Context, err error) {
 
 func usuarioDe(c *gin.Context) int64 { return c.GetInt64(middleware.ChaveContextoUsuarioID) }
 
+func (h *GruposHandler) Excluir(c *gin.Context) {
+	id, ok := paramID(c, "id")
+	if !ok {
+		return
+	}
+	if err := h.service.Excluir(usuarioDe(c), id); err != nil {
+		if errors.Is(err, service.ErrExcluirArtista) {
+			c.JSON(http.StatusConflict, gin.H{"erro": err.Error()})
+			return
+		}
+		h.erro(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
 func paramID(c *gin.Context, nome string) (int64, bool) {
 	id, err := strconv.ParseInt(c.Param(nome), 10, 64)
 	if err != nil || id <= 0 {
