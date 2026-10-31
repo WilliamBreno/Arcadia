@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/WilliamBreno/Arcadia/backend/internal/domain"
 	"github.com/WilliamBreno/Arcadia/backend/internal/mail"
@@ -100,12 +101,14 @@ type Atracao struct {
 func (Atracao) TableName() string { return "atracoes" }
 
 type GruposService struct {
-	db          *gorm.DB
-	mail        *mail.Cliente
-	avaliacao   *AvaliacaoService
-	eventos     *EventoService
-	frontendURL string
-	nome        string
+	db                *gorm.DB
+	mail              *mail.Cliente
+	avaliacao         *AvaliacaoService
+	eventos           *EventoService
+	frontendURL       string
+	nome              string
+	kitUploadsBaseURL string
+	kitUploadsDir     string
 }
 
 func NovoGruposService(db *gorm.DB, m *mail.Cliente, a *AvaliacaoService, eventos *EventoService, frontendURL, nome string) *GruposService {
@@ -161,18 +164,29 @@ func (s *GruposService) Criar(usuarioID int64, d DadosGrupo) (*Grupo, error) {
 	if err != nil {
 		return nil, err
 	}
-	var n int64
-	s.db.Model(&Grupo{}).Where("lider_usuario_id = ?", usuarioID).Count(&n)
-	if n >= MaxGruposPorLider {
-		return nil, ErrLimiteArtistas
-	}
-	agora := time.Now()
-	g := &Grupo{Slug: s.slugLivre(d.Nome, 0), Solo: d.Solo, LiderUsuarioID: usuarioID, Publico: true, CriadoEm: agora, AtualizadoEm: agora}
-	s.aplicar(g, d)
-	if err := s.db.Create(g).Error; err != nil {
-		return nil, err
-	}
-	return g, nil
+	var g *Grupo
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		// Mesma trava do aceite de liderança: criar e receber grupos ao mesmo
+		// tempo também precisa respeitar o limite por conta.
+		var u domain.Usuario
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&u, usuarioID).Error; err != nil {
+			return err
+		}
+		var n int64
+		if err := tx.Model(&Grupo{}).Where("lider_usuario_id = ?", usuarioID).Count(&n).Error; err != nil {
+			return err
+		}
+		if n >= MaxGruposPorLider {
+			return ErrLimiteArtistas
+		}
+		local := *s
+		local.db = tx
+		agora := time.Now()
+		g = &Grupo{Slug: local.slugLivre(d.Nome, 0), Solo: d.Solo, LiderUsuarioID: usuarioID, Publico: true, CriadoEm: agora, AtualizadoEm: agora}
+		s.aplicar(g, d)
+		return tx.Create(g).Error
+	})
+	return g, err
 }
 
 func (s *GruposService) doLider(usuarioID, grupoID int64) (*Grupo, error) {
@@ -187,7 +201,7 @@ func (s *GruposService) doLider(usuarioID, grupoID int64) (*Grupo, error) {
 }
 
 func (s *GruposService) Atualizar(usuarioID, grupoID int64, d DadosGrupo) (*Grupo, error) {
-	g, err := s.doLider(usuarioID, grupoID)
+	g, err := s.doGestor(usuarioID, grupoID)
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +215,7 @@ func (s *GruposService) Atualizar(usuarioID, grupoID int64, d DadosGrupo) (*Grup
 	d.Solo = g.Solo // não muda depois de criado
 	s.aplicar(g, d)
 	g.AtualizadoEm = time.Now()
-	return g, s.db.Save(g).Error
+	return g, s.db.Model(g).Select("slug", "nome", "tipo", "bio", "cidade", "uf", "instagram", "tiktok", "youtube", "logo_url", "capa_url", "publico", "instagram_verificado_em", "instagram_pedido_em", "atualizado_em").Updates(g).Error
 }
 
 // MeuGrupoResumo aparece em "Meus grupos".
@@ -213,6 +227,7 @@ type MeuGrupoResumo struct {
 	Solo              bool   `json:"solo"`
 	LogoURL           string `json:"logo_url"`
 	Lider             bool   `json:"lider"`
+	Cogestor          bool   `json:"cogestor"`
 	MeuStatus         string `json:"meu_status,omitempty"` // integrante: ativo | convidado
 	Integrantes       int    `json:"integrantes"`
 	AtracoesPendentes int    `json:"atracoes_pendentes"`
@@ -226,18 +241,20 @@ func (s *GruposService) MeusGrupos(usuarioID int64) ([]MeuGrupoResumo, error) {
 	var linhas []MeuGrupoResumo
 	err := s.db.Raw(`
 		SELECT g.id, g.slug, g.nome, g.tipo, g.solo, g.logo_url, (g.lider_usuario_id = ?) AS lider,
+		       EXISTS (SELECT 1 FROM grupo_gestores gg WHERE gg.grupo_id = g.id AND gg.usuario_id = ?) AS cogestor,
 		       COALESCE((SELECT gi.status FROM grupo_integrantes gi WHERE gi.grupo_id = g.id AND (gi.usuario_id = ? OR gi.email = ?) AND gi.status IN ('ativo','convidado') LIMIT 1), '') AS meu_status,
 		       (SELECT count(*) FROM grupo_integrantes gi WHERE gi.grupo_id = g.id AND gi.status = 'ativo') AS integrantes,
 		       (SELECT count(*) FROM atracoes a WHERE a.grupo_id = g.id AND a.status = 'convidado') AS atracoes_pendentes
 		FROM grupos g
 		WHERE g.lider_usuario_id = ?
+		   OR EXISTS (SELECT 1 FROM grupo_gestores gg WHERE gg.grupo_id = g.id AND gg.usuario_id = ?)
 		   OR EXISTS (SELECT 1 FROM grupo_integrantes gi WHERE gi.grupo_id = g.id AND gi.usuario_id = ? AND gi.status = 'ativo')
-		ORDER BY lider DESC, g.nome`, usuarioID, usuarioID, NormalizarEmail(usuario.Email), usuarioID, usuarioID).Scan(&linhas).Error
+		ORDER BY lider DESC, g.nome`, usuarioID, usuarioID, usuarioID, NormalizarEmail(usuario.Email), usuarioID, usuarioID, usuarioID).Scan(&linhas).Error
 	if linhas == nil {
 		linhas = []MeuGrupoResumo{}
 	}
 	for i := range linhas {
-		if !linhas[i].Lider {
+		if !linhas[i].Lider && !linhas[i].Cogestor {
 			linhas[i].AtracoesPendentes = 0
 		}
 	}
@@ -327,7 +344,7 @@ func (s *GruposService) atracoes(grupoID int64, status []string, soPublicos bool
 
 // Painel: tudo o que o líder gerencia.
 func (s *GruposService) Painel(usuarioID, grupoID int64) (*GrupoPainel, error) {
-	g, err := s.doLider(usuarioID, grupoID)
+	g, err := s.doGestor(usuarioID, grupoID)
 	if err != nil {
 		return nil, err
 	}
@@ -446,7 +463,7 @@ func novoTokenGrupo() (plano, hash string) { return novoTokenAutorizacao() }
 // ConvidarIntegrante: o líder convida pelo e-mail. Se for o próprio
 // e-mail do líder, devolve o token para ele aceitar na hora.
 func (s *GruposService) ConvidarIntegrante(usuarioID, grupoID int64, d DadosIntegrante) (*GrupoIntegrante, string, error) {
-	g, err := s.doLider(usuarioID, grupoID)
+	g, err := s.doGestor(usuarioID, grupoID)
 	if err != nil {
 		return nil, "", err
 	}
@@ -459,7 +476,11 @@ func (s *GruposService) ConvidarIntegrante(usuarioID, grupoID int64, d DadosInte
 		return nil, "", err
 	}
 	proprio := NormalizarEmail(lider.Email) == d.Email
-	if g.Solo && !proprio {
+	var titular domain.Usuario
+	if err := s.db.First(&titular, g.LiderUsuarioID).Error; err != nil {
+		return nil, "", err
+	}
+	if g.Solo && NormalizarEmail(titular.Email) != d.Email {
 		return nil, "", ErrSoloUmIntegrante
 	}
 	var ativos int64
@@ -753,7 +774,7 @@ func (s *GruposService) DecidirAutorizacao(token string, autorizar, foto bool) (
 
 // DadosEdicaoIntegrante: o líder ajusta nome, função e ano de início.
 func (s *GruposService) EditarIntegrante(usuarioID, grupoID, integranteID int64, d DadosIntegrante) error {
-	if _, err := s.doLider(usuarioID, grupoID); err != nil {
+	if _, err := s.doGestor(usuarioID, grupoID); err != nil {
 		return err
 	}
 	var i GrupoIntegrante
@@ -769,7 +790,7 @@ func (s *GruposService) EditarIntegrante(usuarioID, grupoID, integranteID int64,
 }
 
 func (s *GruposService) RemoverIntegrante(usuarioID, grupoID, integranteID int64) error {
-	g, err := s.doLider(usuarioID, grupoID)
+	g, err := s.doGestor(usuarioID, grupoID)
 	if err != nil {
 		return err
 	}
@@ -813,7 +834,7 @@ type DadosMidia struct {
 }
 
 func (s *GruposService) AdicionarMidia(usuarioID, grupoID int64, d DadosMidia) (*GrupoMidia, error) {
-	if _, err := s.doLider(usuarioID, grupoID); err != nil {
+	if _, err := s.doGestor(usuarioID, grupoID); err != nil {
 		return nil, err
 	}
 	d.Legenda = limpar(d.Legenda)
@@ -851,7 +872,7 @@ func (s *GruposService) AdicionarMidia(usuarioID, grupoID int64, d DadosMidia) (
 }
 
 func (s *GruposService) RemoverMidia(usuarioID, grupoID, midiaID int64) error {
-	if _, err := s.doLider(usuarioID, grupoID); err != nil {
+	if _, err := s.doGestor(usuarioID, grupoID); err != nil {
 		return err
 	}
 	res := s.db.Where("id = ? AND grupo_id = ?", midiaID, grupoID).Delete(&GrupoMidia{})
@@ -1131,6 +1152,7 @@ type GrupoPublico struct {
 	Passadas          []AtracaoVisao      `json:"passadas"`
 	Resultados        []ResultadoGrupo    `json:"resultados"`
 	Indexar           bool                `json:"indexar"`
+	Agenda            []AgendaArtista     `json:"agenda"`
 }
 
 func (s *GruposService) integrantesPublicos(grupoID int64, agora time.Time) ([]IntegrantePublico, int, bool) {
@@ -1205,6 +1227,11 @@ func (s *GruposService) Publico(slug string) (*GrupoPublico, error) {
 		}
 	}
 	p.Indexar = !(g.Solo && temMenor)
+	var err error
+	p.Agenda, err = s.agenda(g.ID, true)
+	if err != nil {
+		return nil, err
+	}
 	return p, nil
 }
 

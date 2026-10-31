@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 
 import { ApiError } from '@/lib/api'
@@ -22,6 +22,8 @@ type FormValues = z.infer<typeof schema>
 export default function Cadastro() {
   const { cadastrar } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const destino = (location.state as { de?: string } | null)?.de ?? '/'
   const [erro, setErro] = useState<string | null>(null)
 
   const {
@@ -34,7 +36,7 @@ export default function Cadastro() {
     setErro(null)
     try {
       await cadastrar(dados.nome, dados.email, dados.senha)
-      navigate('/', { replace: true })
+      navigate(destino, { replace: true })
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : 'Erro ao cadastrar')
     }
@@ -70,7 +72,7 @@ export default function Cadastro() {
           </form>
           <p className="mt-4 text-center text-sm text-muted-foreground">
             Já tem conta?{' '}
-            <Link to="/login" className="text-primary underline-offset-4 hover:underline">
+            <Link to="/login" state={{ de: destino }} className="text-primary underline-offset-4 hover:underline">
               Entrar
             </Link>
           </p>

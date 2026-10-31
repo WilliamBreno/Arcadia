@@ -167,6 +167,7 @@ func main() {
 	temasHandler := handler.NovoTemasHandler(organizadorHandler, eventoService, eventoRepo)
 	// Item 11.1: grupos e artistas solo.
 	gruposService := service.NovoGruposService(db, mailCliente, avaliacaoService, eventoService, cfg.FrontendURL, cfg.NomePlataforma)
+	gruposService.ConfigurarImagensMidiaKit(cfg.UploadsBaseURL, cfg.UploadsDir)
 	service.PodeInscreverPeloGrupo = gruposService.PodeInscreverPeloGrupo
 	gruposHandler := handler.NovoGruposHandler(organizadorHandler, eventoRepo, gruposService)
 	fichaHandler := handler.NovoFichaHandler(eventoRepo, organizadorHandler, fichaService)
@@ -439,6 +440,16 @@ func main() {
 		autenticado.POST("/eventos/:slug/inscricao", fichaHandler.Inscrever)
 		// Item 11.1: grupos (líder e integrantes).
 		autenticado.GET("/me/artistas", gruposHandler.Meus)
+		autenticado.GET("/me/artistas/:id/gestao", gruposHandler.Gestao)
+		autenticado.POST("/me/artistas/:id/gestao", gruposHandler.ConvidarGestao)
+		autenticado.DELETE("/me/artistas/:id/gestao/:alvo", gruposHandler.RemoverGestao)
+		autenticado.GET("/me/artistas-gestao/:token", gruposHandler.VerGestaoConvite)
+		autenticado.POST("/me/artistas-gestao/:token", gruposHandler.DecidirGestaoConvite)
+		autenticado.GET("/me/artistas/:id/agenda", gruposHandler.Agenda)
+		autenticado.POST("/me/artistas/:id/agenda", gruposHandler.SalvarAgenda)
+		autenticado.PUT("/me/artistas/:id/agenda/:agenda", gruposHandler.SalvarAgenda)
+		autenticado.DELETE("/me/artistas/:id/agenda/:agenda", gruposHandler.RemoverAgenda)
+		autenticado.GET("/me/artistas/:id/midia-kit", gruposHandler.MidiaKit)
 		autenticado.POST("/me/artistas", gruposHandler.Criar)
 		autenticado.GET("/me/artistas/:id", gruposHandler.Painel)
 		autenticado.PUT("/me/artistas/:id", gruposHandler.Atualizar)

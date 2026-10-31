@@ -75,7 +75,7 @@ export default function MeusArtistas() {
                 <p className="truncate font-medium text-foreground">{g.nome}</p>
                 <p className="text-sm text-muted-foreground">
                   {g.solo ? `Solo · ${nomeTipoArtista(g.tipo)}` : `${nomeTipoArtista(g.tipo)} · ${g.integrantes} ${g.integrantes === 1 ? 'integrante' : 'integrantes'}`}
-                  {g.lider ? ' · você é o líder' : ' · você é integrante'}
+                  {g.lider ? ' · você é o líder' : g.cogestor ? ' · você é cogestor' : ' · você é integrante'}
                 </p>
                 {g.atracoes_pendentes > 0 && (
                   <p className="text-sm font-medium text-foreground">
@@ -88,7 +88,7 @@ export default function MeusArtistas() {
               <Link to={`/artista/${g.slug}`} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
                 Ver
               </Link>
-              {g.lider ? (
+              {g.lider || g.cogestor ? (
                 <Link to={`/meus-artistas/${g.id}`} className={buttonVariants({ size: 'sm' })}>
                   Gerenciar
                 </Link>
@@ -147,7 +147,7 @@ export default function MeusArtistas() {
                   ))}
                 </select>
               </div>
-              <p className="text-xs text-muted-foreground">Você será o líder: só você edita o perfil e convida os integrantes. Depois dá para completar foto, Instagram e o portfólio.</p>
+              <p className="text-xs text-muted-foreground">Você será o líder e poderá convidar cogestores para ajudar. Depois dá para completar foto, Instagram e portfólio e definir a liderança por convite ao e-mail da pessoa.</p>
               <div className="flex gap-2">
                 <Button type="submit" disabled={enviando || nome.trim().length < 2}>
                   {enviando ? 'Criando…' : 'Criar perfil'}

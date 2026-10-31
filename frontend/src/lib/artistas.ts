@@ -65,6 +65,7 @@ export type ArtistaPublico = {
   passadas: ApresentacaoArtista[]
   resultados: ResultadoArtista[]
   indexar: boolean
+  agenda: AgendaArtista[]
 }
 
 export type ArtistaItem = {
@@ -89,6 +90,7 @@ export type MeuArtista = {
   solo: boolean
   logo_url: string
   lider: boolean
+  cogestor: boolean
   meu_status?: string
   integrantes: number
   atracoes_pendentes: number
@@ -127,6 +129,7 @@ export type IntegrantePainel = {
 }
 
 export type PainelArtista = {
+  lider: boolean
   grupo: DadosArtista & { id: number; slug: string; solo: boolean; publico: boolean }
   integrantes: IntegrantePainel[]
   midias: Midia[]
@@ -161,6 +164,13 @@ export type AutorizacaoIntegrante = {
 }
 
 export type PedidoSeloInstagram = { grupo_id: number; nome: string; slug: string; instagram: string; codigo: string; pedido_em: string }
+
+export type AgendaArtista = { id: number; tipo: 'apresentacao' | 'bloqueio'; titulo: string; inicio: string; fim: string; publico: boolean }
+export type GestaoArtista = {
+  lider: boolean
+  gestores: { usuario_id: number; email: string; lider: boolean }[]
+  convites: { id: number; email: string; papel: string; antigo_cogestor: boolean; expira_em: string }[]
+}
 
 export const obterArtista = (slug: string) => api<ArtistaPublico>(`/artistas/${encodeURIComponent(slug)}`, { semAuth: true })
 export const listarMeusArtistas = () => api<MeuArtista[]>('/me/artistas')

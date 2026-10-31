@@ -32,6 +32,7 @@ func (h *GruposHandler) erro(c *gin.Context, err error) {
 	case errors.Is(err, service.ErrIntegranteDuplicado), errors.Is(err, service.ErrLiderNaoSai), errors.Is(err, service.ErrAtracaoInvalida):
 		c.JSON(http.StatusConflict, gin.H{"erro": err.Error()})
 	case errors.Is(err, service.ErrArtistaInvalido), errors.Is(err, service.ErrIntegranteInvalido), errors.Is(err, service.ErrMidiaInvalida),
+		errors.Is(err, service.ErrGestaoArtista), errors.Is(err, service.ErrAgendaArtista),
 		errors.Is(err, service.ErrLimiteArtistas), errors.Is(err, service.ErrLimiteIntegrantes), errors.Is(err, service.ErrLimiteMidias),
 		errors.Is(err, service.ErrSoloUmIntegrante):
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"erro": err.Error()})
@@ -167,7 +168,7 @@ func (h *GruposHandler) responderPainel(c *gin.Context, grupoID int64) {
 		h.erro(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"grupo": p.Grupo.ParaLider(), "integrantes": p.Integrantes, "midias": p.Midias, "atracoes": p.Atracoes,
+	c.JSON(http.StatusOK, gin.H{"grupo": p.Grupo.ParaLider(), "lider": p.Grupo.LiderUsuarioID == usuarioDe(c), "integrantes": p.Integrantes, "midias": p.Midias, "atracoes": p.Atracoes,
 		"instagram_codigo": p.InstagramCodigo, "instagram_pedido": p.InstagramPedido, "instagram_verificado": p.InstagramVerificado})
 }
 

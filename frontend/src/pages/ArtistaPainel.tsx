@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { ArtistaGestao, ArtistaAgenda, ArtistaMidiaKit } from '@/components/artista-gestao'
 import { BadgeCheck, Copy, ExternalLink, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -457,7 +458,7 @@ export default function ArtistaPainel() {
 
   if (isLoading) return <Carregando />
   if (error instanceof ApiError || !data) {
-    return <p className="p-8 text-center text-muted-foreground">{error instanceof ApiError && error.status === 403 ? 'Só o líder gerencia este perfil.' : 'Perfil não encontrado.'}</p>
+    return <p className="p-8 text-center text-muted-foreground">{error instanceof ApiError && error.status === 403 ? 'Só o líder e os cogestores gerenciam este perfil.' : 'Perfil não encontrado.'}</p>
   }
 
   return (
@@ -469,11 +470,14 @@ export default function ArtistaPainel() {
           Ver perfil público
         </Link>
       </div>
-      <AtracoesCard painel={data} aoMudar={atualizar} />
+      <ArtistaGestao id={data.grupo.id} solo={data.grupo.solo} />
+      <ArtistaAgenda id={data.grupo.id} />
+      <ArtistaMidiaKit id={data.grupo.id} />
+      {data.lider && <AtracoesCard painel={data} aoMudar={atualizar} />}
       <IntegrantesCard painel={data} aoMudar={atualizar} />
       <PerfilCard key={data.grupo.id} painel={data} aoSalvar={atualizar} />
       <PortfolioCard painel={data} aoMudar={atualizar} />
-      <SeloCard painel={data} aoMudar={atualizar} />
+      {data.lider && <SeloCard painel={data} aoMudar={atualizar} />}
     </main>
   )
 }

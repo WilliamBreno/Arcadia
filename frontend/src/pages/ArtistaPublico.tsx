@@ -172,6 +172,12 @@ export default function ArtistaPublico() {
         )}
         {data.bio && <p className="mt-4 max-w-2xl whitespace-pre-line text-foreground text-pretty">{data.bio}</p>}
       </header>
+      {data.agenda?.length > 0 && <section className="mx-4 my-6 rounded-xl border border-border p-4">
+        <h2 className="mb-3 font-semibold">Agenda pública</h2>
+        <ul className="flex flex-col gap-3">{data.agenda.map(a => <li key={a.id} className="text-sm">
+          <p className="font-medium">{a.titulo}</p><p className="text-muted-foreground">{a.inicio.split('-').reverse().join('/')} a {a.fim.split('-').reverse().join('/')}</p>
+        </li>)}</ul>
+      </section>}
 
       {totalIntegrantes > 0 && (
         <section aria-labelledby="titulo-integrantes" className="mt-10 px-4">
