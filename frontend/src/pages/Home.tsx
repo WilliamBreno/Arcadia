@@ -10,6 +10,8 @@ import { EventoCard } from '@/components/evento-card'
 import { TrilhoEventos } from '@/components/trilho-eventos'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useAuth } from '@/hooks/use-auth'
+import type { EventoPublicoItem } from '@/lib/publico'
 
 const NOME_PLATAFORMA = import.meta.env.VITE_NOME_PLATAFORMA ?? 'Evve'
 
@@ -29,6 +31,9 @@ export default function Home() {
   // Item 6.2: vitrine (cidades, destaques e coleções). Some durante a busca.
   const descoberta = useQuery({ queryKey: ['descoberta', ''], queryFn: () => obterDescoberta() })
   const destaques = useQuery({ queryKey: ['destaques', ''], queryFn: () => obterDestaques() })
+  // Item 10.5: recomendações pelo histórico de compras de quem está logado.
+  const { usuario } = useAuth()
+  const paraVoce = useQuery({ queryKey: ['para-voce', usuario?.id], enabled: !!usuario, queryFn: () => api<EventoPublicoItem[]>('/me/para-voce'), retry: false })
   const colecoes = useQuery({ queryKey: ['colecoes'], queryFn: listarColecoes })
   const vitrine = !buscaAplicada
 
@@ -80,6 +85,9 @@ export default function Home() {
         ))}
       </nav>
 
+      {vitrine && paraVoce.data && paraVoce.data.length > 0 && (
+        <TrilhoEventos titulo="Para você" subtitulo="Pelo que você já comprou" eventos={paraVoce.data} />
+      )}
       {vitrine && destaques.data && (
         <>
           <TrilhoEventos titulo="Em alta" subtitulo="Os mais comprados nos últimos 7 dias" eventos={destaques.data.em_alta} ranking />

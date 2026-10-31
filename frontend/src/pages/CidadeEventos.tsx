@@ -2,6 +2,8 @@ import { useQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 
+import { LinksFeed } from '@/components/links-feed'
+
 import { api, ApiError } from '@/lib/api'
 import type { EventoPublicoItem } from '@/lib/publico'
 import { listarEventos, obterDescoberta, obterDestaques, QUANDO } from '@/lib/descoberta'
@@ -94,6 +96,7 @@ export default function CidadeEventos() {
       <p className="mt-1 text-muted-foreground">
         {cidade.cidade}/{cidade.uf} · {eventos.data ? `${eventos.data.total} evento(s)` : `${cidade.eventos} evento(s) programados`}
       </p>
+      {!categoria && <LinksFeed caminho={`/feeds/cidades/${cidade.slug}`} className="mt-2" />}
       {categoria && (
         <div className="mt-3">
           <BotaoSeguir

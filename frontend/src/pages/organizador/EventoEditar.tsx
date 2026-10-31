@@ -21,6 +21,7 @@ import { VotacaoCard } from '@/components/concurso-publico'
 import { SolicitacoesCard } from '@/components/solicitacoes-card'
 import { CuponsCard } from '@/components/cupons-card'
 import { DivulgacaoCard } from '@/components/divulgacao-card'
+import { ArteStories } from '@/components/arte-stories'
 import { PerguntasCard } from '@/components/perguntas-card'
 import { obterFinanceiroEvento } from '@/lib/financeiro'
 import { obterVendas } from '@/lib/vendas'
@@ -378,6 +379,7 @@ export default function EventoEditar() {
       <DestaqueCard eventoId={Number(id)} publicado={evento.status === 'publicado'} />
 
       <DivulgacaoCard eventoId={Number(id)} slug={evento.slug} ingressos={tiposIngresso?.filter((t) => t.ativo).length ?? 1} />
+      <ArteStories slug={evento.slug} />
 
       <PerguntasCard eventoId={Number(id)} tipos={tiposIngresso ?? []} />
 

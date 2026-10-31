@@ -9,7 +9,7 @@ func configProducaoValida() Config {
 	return Config{
 		AmbienteApp: "production", JWTSecret: "0123456789abcdef0123456789abcdef", CronSecret: "cron-secret-bem-grande",
 		FrontendURL: "https://evve.app", BackendURL: "https://api.evve.app", DatabaseURL: "postgres://u:p@db.exemplo.com/evve",
-		StorageDriver: "s3", MercadoPagoAccessToken: "APP_USR-x", MercadoPagoWebhookSecret: "w", MercadoPagoPublicKey: "APP_USR-pub", MercadoPagoPayoutChavePrivada: "pem", SuporteEmail: "suporte@evve.app", ResendAPIKey: "re_x",
+		StorageDriver: "s3", MercadoPagoAccessToken: "APP_USR-x", MercadoPagoWebhookSecret: "w", MercadoPagoPublicKey: "APP_USR-pub", MercadoPagoPayoutChavePrivada: "pem", SuporteEmail: "suporte@evve.app", AnthropicAPIKey: "sk-ant-x", ResendAPIKey: "re_x",
 		EmailRemetente: "Evve <no-reply@evve.app>", AlertaWebhookURL: "https://discord.example/webhook",
 	}
 }

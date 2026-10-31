@@ -7,6 +7,9 @@ import { z } from 'zod'
 import { api, ApiError } from '@/lib/api'
 import type { Evento } from '@/lib/evento'
 import { CapaEvento } from '@/components/capa-evento'
+import { CriacaoRapida, type LoteSugerido, type Rascunho } from '@/components/criacao-rapida'
+import { Textarea } from '@/components/ui/textarea'
+import { formatarCentavos } from '@/lib/evento'
 import { CategoriaSelect } from '@/components/categoria-select'
 import { Carregando } from '@/components/carregando'
 import { VoltarLink } from '@/components/voltar-link'
@@ -31,6 +34,14 @@ export default function EventoNovo() {
   const [params] = useSearchParams()
   const [erro, setErro] = useState<string | null>(null)
   const [capa, setCapa] = useState('')
+  // Item 10.5: o rascunho (link ou IA) preenche estes campos para revisão.
+  const [descricao, setDescricao] = useState('')
+  const [inicio, setInicio] = useState('')
+  const [fim, setFim] = useState('')
+  const [onde, setOnde] = useState('')
+  const [lotes, setLotes] = useState<LoteSugerido[]>([])
+  const [lotesMarcados, setLotesMarcados] = useState<boolean[]>([])
+  const [dicas, setDicas] = useState<string[]>([])
 
   const { organizador, carregando } = useOrganizador()
   const {
@@ -38,14 +49,51 @@ export default function EventoNovo() {
     handleSubmit,
     control,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { titulo: params.get('titulo')?.slice(0, 200) ?? '', tipo_acesso: params.get('tipo') === 'cadastro' ? 'cadastro' : 'ingresso', categoria: '' } })
   const tipoAcesso = watch('tipo_acesso')
 
+  const paraLocal = (iso?: string | null) => {
+    if (!iso) return ''
+    const d = new Date(iso)
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+  }
+  const preencher = (r: Rascunho) => {
+    if (r.titulo) setValue('titulo', r.titulo.slice(0, 200), { shouldValidate: true })
+    if (r.categoria) setValue('categoria', r.categoria)
+    if (r.descricao) setDescricao(r.descricao)
+    if (r.inicio_em) setInicio(paraLocal(r.inicio_em))
+    if (r.fim_em) setFim(paraLocal(r.fim_em))
+    if (r.onde) setOnde(r.onde)
+    if (r.lotes) {
+      setLotes(r.lotes)
+      setLotesMarcados(r.lotes.map(() => true))
+    }
+    if (r.dicas) setDicas(r.dicas)
+  }
+
   const aoEnviar = async (dados: FormValues) => {
     setErro(null)
     try {
-      const evento = await api<Evento>('/org/eventos', { method: 'POST', body: { ...dados, capa_url: capa } })
+      const evento = await api<Evento>('/org/eventos', {
+        method: 'POST',
+        body: {
+          ...dados,
+          capa_url: capa,
+          descricao,
+          inicio_em: inicio ? new Date(inicio).toISOString() : undefined,
+          fim_em: fim ? new Date(fim).toISOString() : undefined,
+        },
+      })
+      // Lotes sugeridos que o organizador manteve marcados viram tipos de ingresso.
+      for (const [i, l] of lotes.entries()) {
+        if (!lotesMarcados[i]) continue
+        await api(`/org/eventos/${evento.id}/ingressos`, {
+          method: 'POST',
+          body: { nome: l.nome, preco_centavos: l.preco_centavos, quantidade: l.quantidade, min_por_pedido: 1, max_por_pedido: 10, ativo: true },
+        }).catch(() => undefined)
+      }
       navigate(`/organizador/eventos/${evento.id}`, { replace: true })
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : 'Erro ao criar evento')
@@ -88,6 +136,7 @@ export default function EventoNovo() {
           <CardTitle>Novo evento</CardTitle>
         </CardHeader>
         <CardContent>
+          <CriacaoRapida titulo={watch('titulo') ?? ''} categoria={watch('categoria') ?? ''} aoPreencher={preencher} />
           <form onSubmit={handleSubmit(aoEnviar)} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="titulo">Título</Label>
@@ -115,6 +164,54 @@ export default function EventoNovo() {
               </select>
               <p className="text-xs text-muted-foreground">{DESCRICAO_TIPO_ACESSO[tipoAcesso]}</p>
             </div>
+            {(descricao || inicio || lotes.length > 0) && (
+              <>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="descricao-novo">Descrição</Label>
+                  <Textarea id="descricao-novo" rows={8} value={descricao} onChange={(e) => setDescricao(e.target.value)} />
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="inicio-novo">Início</Label>
+                    <Input id="inicio-novo" type="datetime-local" value={inicio} onChange={(e) => setInicio(e.target.value)} />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="fim-novo">Fim</Label>
+                    <Input id="fim-novo" type="datetime-local" value={fim} onChange={(e) => setFim(e.target.value)} />
+                  </div>
+                </div>
+                {onde && <p className="text-sm text-muted-foreground">Local na página original: {onde}. Cadastre o local na próxima tela.</p>}
+                {lotes.length > 0 && (
+                  <fieldset className="flex flex-col gap-2 rounded-lg border border-border p-3">
+                    <legend className="px-1 text-sm font-medium text-foreground">Lotes sugeridos (criados ao continuar)</legend>
+                    {lotes.map((l, i) => (
+                      <label key={i} className="flex items-start gap-2 text-sm text-foreground">
+                        <input
+                          type="checkbox"
+                          className="mt-0.5"
+                          checked={!!lotesMarcados[i]}
+                          onChange={(e) => setLotesMarcados(lotesMarcados.map((m, j) => (j === i ? e.target.checked : m)))}
+                        />
+                        <span>
+                          <strong>{l.nome}</strong> · {formatarCentavos(l.preco_centavos)} · {l.quantidade} ingressos
+                          {l.observacao && <span className="block text-xs text-muted-foreground">{l.observacao}</span>}
+                        </span>
+                      </label>
+                    ))}
+                  </fieldset>
+                )}
+                {dicas.length > 0 && (
+                  <div className="rounded-lg bg-muted p-3 text-sm">
+                    <p className="font-medium text-foreground">Dicas para vender mais</p>
+                    <ul className="mt-1 list-disc pl-5 text-muted-foreground">
+                      {dicas.map((d) => (
+                        <li key={d}>{d}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
+            )}
             <CapaEvento valor={capa} aoMudar={setCapa} />
             {erro && <p className="text-sm text-destructive">{erro}</p>}
             <Button type="submit" disabled={isSubmitting}>

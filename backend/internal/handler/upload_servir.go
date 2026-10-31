@@ -25,6 +25,8 @@ func ServirUpload(db *gorm.DB, pasta string) gin.HandlerFunc {
 			return
 		}
 		c.Header("X-Content-Type-Options", "nosniff")
+		// Item 10.5: a arte para Stories desenha a capa no navegador (canvas).
+		c.Header("Access-Control-Allow-Origin", "*")
 		if dados, tipo, err := storage.LerDoBanco(db, nome); err == nil && dados != nil {
 			c.Header("Cache-Control", "public, max-age=31536000, immutable")
 			c.Data(http.StatusOK, tipo, dados)

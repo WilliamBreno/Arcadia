@@ -8,6 +8,7 @@ import { api, ApiError } from '@/lib/api'
 import type { OrganizadorDetalhe } from '@/lib/publico'
 import { EventoCard } from '@/components/evento-card'
 import { BotaoSeguir } from '@/components/botao-seguir'
+import { LinksFeed } from '@/components/links-feed'
 import { Carregando } from '@/components/carregando'
 import { Estrelas } from '@/components/estrelas'
 import { formatarMedia } from '@/lib/avaliacoes'
@@ -43,6 +44,7 @@ export default function OrganizadorPublico() {
             </span>
           )}
         </div>
+        <LinksFeed caminho={`/feeds/organizadores/${data.organizador.slug}`} className="mt-3 justify-center" />
         {data.avaliacoes?.mostrar_media && (
           <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
             <span className="font-semibold tabular-nums text-foreground">{formatarMedia(data.avaliacoes.media)}</span>

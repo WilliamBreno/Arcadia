@@ -255,6 +255,9 @@ func main() {
 	expositorHandler := handler.NovoExpositorHandler(expositorService, eventoRepo, organizadorHandler)
 	// Item 9.6: painel ao vivo, importados e credenciais.
 	diaHandler := handler.NovoDiaDoEventoHandler(checkinService, service.NovoDiaDoEventoService(db, eventoRepo, cfg.JWTSecret), organizadorHandler)
+	// Item 10.5: criação rápida (IA e importação), recomendações e feeds.
+	criacaoHandler := handler.NovoCriacaoRapidaHandler(service.NovoCriacaoRapidaService(db, cfg.AnthropicAPIKey), organizadorHandler,
+		eventoRepo, localRepo, organizadorRepo, publicoHandler, cfg.FrontendURL)
 	// Item 10.4: Plano Pro e destaque na vitrine (cobranças da Evve).
 	plataformaService := service.NovoPlataformaService(db, mpCliente, configPlataformaRepo, usuarioRepo, mailCliente, cfg.BackendURL, cfg.FrontendURL)
 	checkoutService.DefinirPlataforma(plataformaService)
@@ -318,6 +321,11 @@ func main() {
 		v1.GET("/status/avisos", ajudaHandler.Avisos)
 		v1.GET("/eventos/:slug/extras", extrasHandler.Extras)
 		v1.GET("/patrocinados", plataformaHandler.Patrocinados)
+		v1.GET("/eventos/:slug/recomendados", criacaoHandler.Recomendados)
+		v1.GET("/feeds/organizadores/:slug/eventos.rss", criacaoHandler.FeedOrganizador("rss"))
+		v1.GET("/feeds/organizadores/:slug/eventos.ics", criacaoHandler.FeedOrganizador("ics"))
+		v1.GET("/feeds/cidades/:slug/eventos.rss", criacaoHandler.FeedCidade("rss"))
+		v1.GET("/feeds/cidades/:slug/eventos.ics", criacaoHandler.FeedCidade("ics"))
 		v1.GET("/grupos/:token", middleware.AutenticacaoOpcional(jwtService), extrasHandler.VerGrupo)
 		v1.GET("/certificados/:codigo", posEventoHandler.Validar)
 		v1.GET("/certificados/:codigo/pdf", posEventoHandler.PDF)
@@ -464,6 +472,7 @@ func main() {
 		autenticado.GET("/checkin/eventos/:id/portoes", diaHandler.Portoes)
 		autenticado.GET("/me/certificados", posEventoHandler.Meus)
 		autenticado.GET("/me/adicionais", extrasHandler.MeusAdicionais)
+		autenticado.GET("/me/para-voce", criacaoHandler.ParaVoce)
 		autenticado.GET("/me/grupos", extrasHandler.MeusGrupos)
 		autenticado.POST("/eventos/:slug/grupos", extrasHandler.CriarGrupo)
 		autenticado.POST("/grupos/:token/cancelar", extrasHandler.CancelarGrupo)
@@ -570,6 +579,9 @@ func main() {
 		org.GET("/minha-funcao", organizadorHandler.MinhaFuncao)
 		org.GET("/eventos/:id/extras", extrasHandler.OrgListar)
 		org.GET("/pro", plataformaHandler.Situacao)
+		org.GET("/criacao-rapida", criacaoHandler.Situacao)
+		org.POST("/criacao-rapida/ia", middleware.LimitarPorJanela(limiteRepo, "ia", 10, time.Minute), criacaoHandler.GerarIA)
+		org.POST("/criacao-rapida/importar", middleware.LimitarPorJanela(limiteRepo, "importar", 20, time.Minute), criacaoHandler.Importar)
 		org.POST("/pro/cobrancas", plataformaHandler.ComprarPro)
 		org.GET("/destaques", plataformaHandler.MeusDestaques)
 		org.POST("/destaques", plataformaHandler.ComprarDestaque)

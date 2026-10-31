@@ -61,6 +61,10 @@ type Config struct {
 
 	// SuporteEmail recebe as mensagens da central de ajuda (item 9.9).
 	SuporteEmail string
+
+	// AnthropicAPIKey liga o rascunho de evento com IA (item 10.5).
+	// Vazia: o botão de IA não aparece.
+	AnthropicAPIKey string
 }
 
 func getEnv(chave, padrao string) string {
@@ -132,6 +136,8 @@ func Carregar() Config {
 		CronSecret: getEnv("CRON_SECRET", ""),
 
 		SuporteEmail: getEnv("SUPORTE_EMAIL", ""),
+
+		AnthropicAPIKey: getEnv("ANTHROPIC_API_KEY", ""),
 	}
 	// Endereço público dos uploads: sem UPLOADS_BASE_URL, é o próprio site
 	// (FRONTEND_URL/api/v1/uploads, que a Vercel repassa para a API). Antes o
@@ -193,6 +199,9 @@ func (c Config) ValidarProducao() (erros []error, avisos []string) {
 	}
 	if c.AlertaWebhookURL == "" {
 		avisos = append(avisos, "ALERTA_WEBHOOK_URL vazio: erros 500 só aparecem no log (configure um webhook do Discord/Slack)")
+	}
+	if c.AnthropicAPIKey == "" {
+		avisos = append(avisos, "ANTHROPIC_API_KEY vazia: rascunho de evento com IA desligado")
 	}
 	if c.SuporteEmail == "" {
 		avisos = append(avisos, "SUPORTE_EMAIL vazio: as mensagens da central de ajuda ficam só no banco (veja em /admin/suporte)")

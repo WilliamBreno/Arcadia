@@ -304,7 +304,7 @@ func (s *PlataformaService) Patrocinados(alvoTipo, alvoValor string, limite int)
 	var eventos []domain.Evento
 	err := s.db.Raw(`SELECT e.* FROM eventos e JOIN destaques d ON d.evento_id = e.id
 		WHERE d.alvo_tipo = ? AND d.alvo_valor = ? AND d.dia = CURRENT_DATE AND d.status = 'pago'
-		AND e.status = 'publicado' AND e.inicio_em > now()
+		AND e.status = 'publicado' AND e.visibilidade = 'publico' AND e.inicio_em > now()
 		ORDER BY d.criado_em LIMIT ?`, alvoTipo, alvoValor, limite).Scan(&eventos).Error
 	return eventos, err
 }

@@ -205,3 +205,61 @@ func (r *EventoRepository) IDsPorSlugs(slugs []string) (map[string]int64, error)
 	}
 	return m, err
 }
+
+// ---------- item 10.5: recomendações e feeds ----------
+
+// TambemCompraram: eventos futuros comprados por quem comprou este, só com
+// pelo menos `minimo` pessoas em comum (ninguém é identificado).
+func (r *EventoRepository) TambemCompraram(eventoID int64, minimo, limite int) ([]domain.Evento, error) {
+	var eventos []domain.Evento
+	comuns := r.db.Raw(`SELECT p2.evento_id, count(DISTINCT p2.usuario_id) AS pessoas
+		FROM pedidos p1 JOIN itens_pedido i1 ON i1.pedido_id = p1.id AND i1.status IN ('pago', 'utilizado') AND NOT i1.adicional
+		JOIN pedidos p2 ON p2.usuario_id = p1.usuario_id AND p2.evento_id <> p1.evento_id AND p2.canal = 'online'
+		JOIN itens_pedido i2 ON i2.pedido_id = p2.id AND i2.status IN ('pago', 'utilizado') AND NOT i2.adicional
+		WHERE p1.evento_id = ? AND p1.canal = 'online' AND NOT i1.cortesia AND NOT i2.cortesia
+		GROUP BY p2.evento_id HAVING count(DISTINCT p2.usuario_id) >= ?`, eventoID, minimo)
+	err := r.publicosFuturos().Select("eventos.*").
+		Joins("JOIN (?) AS comuns ON comuns.evento_id = eventos.id", comuns).
+		Order("comuns.pessoas DESC, eventos.inicio_em").Limit(limite).Find(&eventos).Error
+	return eventos, err
+}
+
+// Parecidos: mesma categoria e mesma cidade (sem a cidade, só a categoria).
+func (r *EventoRepository) Parecidos(e *domain.Evento, cidade, uf string, limite int) ([]domain.Evento, error) {
+	var eventos []domain.Evento
+	q := filtrarCidade(r.publicosFuturos(), cidade, uf).Select("eventos.*").
+		Where("eventos.id <> ? AND eventos.categoria = ?", e.ID, e.Categoria)
+	err := q.Order("eventos.inicio_em").Limit(limite).Find(&eventos).Error
+	return eventos, err
+}
+
+// ParaVoce: de quem a pessoa segue e das categorias e cidades em que ela
+// já comprou, sem os eventos que ela já tem.
+func (r *EventoRepository) ParaVoce(usuarioID int64, limite int) ([]domain.Evento, error) {
+	var eventos []domain.Evento
+	err := r.publicosFuturos().Select("eventos.*").
+		Where(`NOT EXISTS (SELECT 1 FROM pedidos p JOIN itens_pedido i ON i.pedido_id = p.id
+			WHERE p.evento_id = eventos.id AND p.usuario_id = ? AND i.status IN ('reservado', 'pago', 'utilizado'))`, usuarioID).
+		Where(`eventos.organizador_id IN (SELECT CAST(alvo AS BIGINT) FROM seguindo WHERE usuario_id = ? AND tipo = 'organizador' AND alvo ~ '^[0-9]+$')
+			OR EXISTS (SELECT 1 FROM pedidos p JOIN itens_pedido i ON i.pedido_id = p.id AND i.status IN ('pago', 'utilizado')
+				JOIN eventos ev ON ev.id = p.evento_id LEFT JOIN locais lo ON lo.id = ev.local_id
+				WHERE p.usuario_id = ? AND ev.categoria = eventos.categoria AND ev.categoria <> ''
+				AND (lo.cidade IS NULL OR lo.cidade = locais.cidade))`, usuarioID, usuarioID).
+		Order("eventos.inicio_em").Limit(limite).Find(&eventos).Error
+	return eventos, err
+}
+
+// FeedOrganizador / FeedCidade: eventos públicos futuros para os feeds.
+func (r *EventoRepository) FeedOrganizador(organizadorID int64, limite int) ([]domain.Evento, error) {
+	var eventos []domain.Evento
+	err := r.publicosFuturos().Select("eventos.*").Where("eventos.organizador_id = ?", organizadorID).
+		Order("eventos.inicio_em").Limit(limite).Find(&eventos).Error
+	return eventos, err
+}
+
+func (r *EventoRepository) FeedCidade(cidade, uf string, limite int) ([]domain.Evento, error) {
+	var eventos []domain.Evento
+	err := filtrarCidade(r.publicosFuturos(), cidade, uf).Select("eventos.*").
+		Order("eventos.inicio_em").Limit(limite).Find(&eventos).Error
+	return eventos, err
+}
