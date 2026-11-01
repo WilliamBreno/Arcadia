@@ -4,7 +4,7 @@ import { ArtistaAgenda } from '@/components/artista-agenda'
 import { ExcluirRecurso } from '@/components/excluir-recurso'
 import { ArtistaOferta } from '@/components/artista-oferta'
 import { ArtistaOrcamentos } from '@/components/artista-orcamentos'
-import { BadgeCheck, Copy, ExternalLink, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, BadgeCheck, Copy, ExternalLink, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
@@ -22,6 +22,36 @@ import { obterPainelArtista, textoAnos, tiposArtista, type DadosArtista, type Pa
 
 const msg = (e: unknown, padrao: string) => (e instanceof ApiError ? e.message : padrao)
 const dataCurta = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '')
+
+function useOrdem(painel: PainelArtista, integrantes: boolean, aoMudar: (p: PainelArtista) => void, setErro: (erro: string | null) => void) {
+  const [salvando, setSalvando] = useState(false)
+  const mover = async (indice: number, deslocamento: number) => {
+    if (salvando) return
+    const ids = (integrantes ? painel.integrantes : painel.midias).map((item) => item.id)
+    const destino = indice + deslocamento
+    if (destino < 0 || destino >= ids.length) return
+    const anterior = ids[indice]
+    ids[indice] = ids[destino]
+    ids[destino] = anterior
+    setSalvando(true)
+    setErro(null)
+    try {
+      aoMudar(await api<PainelArtista>(`/me/artistas/${painel.grupo.id}/ordem-${integrantes ? 'integrantes' : 'midias'}`, { method: 'PUT', body: { ids } }))
+    } catch (err) {
+      setErro(msg(err, 'Não foi possível salvar a ordem.'))
+    } finally {
+      setSalvando(false)
+    }
+  }
+  return { salvando, mover }
+}
+
+function BotoesOrdem({ indice, total, nome, salvando, mover }: { indice: number; total: number; nome: string; salvando: boolean; mover: (indice: number, deslocamento: number) => void }) {
+  return <div className="flex shrink-0 gap-1">
+    <Button type="button" size="icon" variant="outline" disabled={salvando || indice === 0} aria-label={`Mover ${nome} para antes`} onClick={() => mover(indice, -1)}><ArrowUp className="size-4" aria-hidden="true" /></Button>
+    <Button type="button" size="icon" variant="outline" disabled={salvando || indice === total - 1} aria-label={`Mover ${nome} para depois`} onClick={() => mover(indice, 1)}><ArrowDown className="size-4" aria-hidden="true" /></Button>
+  </div>
+}
 
 function Aviso({ erro, ok }: { erro: string | null; ok?: string | null }) {
   if (erro)
@@ -146,6 +176,7 @@ function IntegrantesCard({ painel, aoMudar }: { painel: PainelArtista; aoMudar: 
   const [ok, setOk] = useState<string | null>(null)
   const solo = painel.grupo.solo
   const podeConvidar = !solo || painel.integrantes.length === 0
+  const ordem = useOrdem(painel, true, aoMudar, setErro)
 
   const convidar = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -191,10 +222,11 @@ function IntegrantesCard({ painel, aoMudar }: { painel: PainelArtista; aoMudar: 
         </p>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
+        {!solo && painel.integrantes.length > 1 && <p className="text-xs text-muted-foreground">Use as setas para ordenar os integrantes no perfil público. A ordem é salva automaticamente.</p>}
         {painel.integrantes.length > 0 && (
           <ul className="flex flex-col divide-y divide-border rounded-xl border border-border">
-            {painel.integrantes.map((i) => (
-              <li key={i.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+            {painel.integrantes.map((i, indice) => (
+              <li key={i.id} className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5">
                 <div className="flex min-w-0 items-center gap-3">
                   <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-sm font-semibold text-foreground">
                     {i.foto_url ? <img src={i.foto_url} alt="" className="size-full object-cover" /> : i.nome_artistico.slice(0, 1).toUpperCase()}
@@ -211,6 +243,7 @@ function IntegrantesCard({ painel, aoMudar }: { painel: PainelArtista; aoMudar: 
                     {i.pendente && i.status !== 'convidado' && <p className="text-xs text-foreground">{i.pendente}</p>}
                   </div>
                 </div>
+                {!solo && <BotoesOrdem indice={indice} total={painel.integrantes.length} nome={i.nome_artistico} {...ordem} />}
                 {!(solo && i.sou_eu) && (
                   <Button size="sm" variant="ghost" aria-label={`Tirar ${i.nome_artistico}`} onClick={() => remover(i.id, i.nome_artistico)}>
                     <Trash2 className="size-4" aria-hidden="true" />
@@ -220,6 +253,7 @@ function IntegrantesCard({ painel, aoMudar }: { painel: PainelArtista; aoMudar: 
             ))}
           </ul>
         )}
+        <Aviso erro={erro} />
         {podeConvidar && (
           <form onSubmit={convidar} className="flex flex-col gap-3 rounded-xl bg-muted p-3">
             <p className="text-sm font-medium text-foreground">{solo ? 'Entrar no perfil' : 'Convidar integrante'}</p>
@@ -241,7 +275,7 @@ function IntegrantesCard({ painel, aoMudar }: { painel: PainelArtista; aoMudar: 
                 <Input id="i-desde" inputMode="numeric" maxLength={4} placeholder="2018" value={desde} onChange={(e) => setDesde(e.target.value.replace(/\D/g, ''))} />
               </div>
             </div>
-            <Aviso erro={erro} ok={ok} />
+            <Aviso erro={null} ok={ok} />
             <Button type="submit" size="sm" className="self-start">
               {solo ? 'Continuar' : 'Enviar convite'}
             </Button>
@@ -257,6 +291,7 @@ function PortfolioCard({ painel, aoMudar }: { painel: PainelArtista; aoMudar: (p
   const [video, setVideo] = useState('')
   const [legenda, setLegenda] = useState('')
   const [erro, setErro] = useState<string | null>(null)
+  const ordem = useOrdem(painel, false, aoMudar, setErro)
   const adicionar = async (tipo: 'foto' | 'video', url: string) => {
     setErro(null)
     try {
@@ -278,12 +313,12 @@ function PortfolioCard({ painel, aoMudar }: { painel: PainelArtista; aoMudar: (p
     <Card>
       <CardHeader>
         <CardTitle>Portfólio</CardTitle>
-        <p className="text-sm text-muted-foreground">Fotos e vídeos de apresentações. Vídeos por link do YouTube, Instagram ou TikTok. Até 40 itens.</p>
+        <p className="text-sm text-muted-foreground">Fotos e vídeos de apresentações. Vídeos por link do YouTube, Instagram ou TikTok. Até 40 itens. Use as setas para mudar a ordem; ela é salva automaticamente.</p>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {painel.midias.length > 0 && (
-          <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-            {painel.midias.map((m) => (
+          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {painel.midias.map((m, indice) => (
               <li key={m.id} className="relative overflow-hidden rounded-lg bg-muted">
                 {m.tipo === 'foto' ? (
                   <img src={m.url} alt={m.legenda} className="aspect-square w-full object-cover" />
@@ -292,6 +327,7 @@ function PortfolioCard({ painel, aoMudar }: { painel: PainelArtista; aoMudar: (p
                     Vídeo · {m.plataforma ?? 'link'}
                   </a>
                 )}
+                <div className="p-2"><BotoesOrdem indice={indice} total={painel.midias.length} nome={m.legenda || `item ${indice + 1}`} {...ordem} /></div>
                 <button
                   type="button"
                   aria-label="Remover"

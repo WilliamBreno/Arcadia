@@ -48,6 +48,27 @@ func (h *GruposHandler) erro(c *gin.Context, err error) {
 
 func usuarioDe(c *gin.Context) int64 { return c.GetInt64(middleware.ChaveContextoUsuarioID) }
 
+func (h *GruposHandler) ReordenarIntegrantes(c *gin.Context) { h.reordenar(c, true) }
+func (h *GruposHandler) ReordenarMidias(c *gin.Context)      { h.reordenar(c, false) }
+func (h *GruposHandler) reordenar(c *gin.Context, integrantes bool) {
+	id, ok := paramID(c, "id")
+	if !ok {
+		return
+	}
+	var req struct {
+		IDs []int64 `json:"ids"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.IDs == nil || len(req.IDs) > service.MaxIntegrantesGrupo {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "informe a lista de IDs na ordem desejada"})
+		return
+	}
+	if err := h.service.Reordenar(usuarioDe(c), id, req.IDs, integrantes); err != nil {
+		h.erro(c, err)
+		return
+	}
+	h.responderPainel(c, id)
+}
+
 func (h *GruposHandler) Excluir(c *gin.Context) {
 	id, ok := paramID(c, "id")
 	if !ok {

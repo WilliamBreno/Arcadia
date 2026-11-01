@@ -18,7 +18,10 @@ type SEOHandler struct {
 	eventos     *repository.EventoRepository
 	frontendURL string
 	talentos    func() []string
+	artistas    func() ([]string, error)
 }
+
+func (h *SEOHandler) DefinirArtistas(f func() ([]string, error)) { h.artistas = f }
 
 // DefinirTalentos liga os perfis de talento ao sitemap (item 8.1).
 func (h *SEOHandler) DefinirTalentos(f func() []string) { h.talentos = f }
@@ -86,6 +89,20 @@ func (h *SEOHandler) Sitemap(c *gin.Context) {
 		for _, slug := range h.talentos() {
 			mapa.URLs = append(mapa.URLs, urlSitemap{Loc: h.frontendURL + "/t/" + slug, ChangeFreq: "weekly"})
 		}
+	}
+	if h.artistas != nil {
+		slugs, err := h.artistas()
+		if err != nil {
+			c.String(http.StatusInternalServerError, "erro ao gerar sitemap")
+			return
+		}
+		mapa.URLs = append(mapa.URLs, urlSitemap{Loc: h.frontendURL + "/artistas", ChangeFreq: "daily"})
+		for _, slug := range slugs {
+			mapa.URLs = append(mapa.URLs, urlSitemap{Loc: h.frontendURL + "/artista/" + slug, ChangeFreq: "weekly"})
+		}
+	}
+	if len(mapa.URLs) > limiteSitemap {
+		mapa.URLs = mapa.URLs[:limiteSitemap]
 	}
 	corpo, err := xml.MarshalIndent(mapa, "", "  ")
 	if err != nil {

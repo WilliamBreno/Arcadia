@@ -374,6 +374,7 @@ func main() {
 		// Item 6.1: sitemap e robots (a Vercel reescreve /sitemap.xml e /robots.txt para cá).
 		seoHandler := handler.NovoSEOHandler(eventoRepo, cfg.FrontendURL)
 		seoHandler.DefinirTalentos(talentoService.ParaSitemap)
+		seoHandler.DefinirArtistas(gruposService.ArtistasParaSitemap)
 		v1.GET("/seo/sitemap.xml", seoHandler.Sitemap)
 		v1.GET("/seo/robots.txt", seoHandler.Robots)
 		v1.GET("/eventos/:slug/resultado", avaliacaoHandler.ResultadoPublico)
@@ -487,6 +488,8 @@ func main() {
 		autenticado.PUT("/me/artistas/:id", gruposHandler.Atualizar)
 		autenticado.DELETE("/me/artistas/:id", gruposHandler.Excluir)
 		autenticado.POST("/me/artistas/:id/integrantes", gruposHandler.ConvidarIntegrante)
+		autenticado.PUT("/me/artistas/:id/ordem-integrantes", gruposHandler.ReordenarIntegrantes)
+		autenticado.PUT("/me/artistas/:id/ordem-midias", gruposHandler.ReordenarMidias)
 		autenticado.PUT("/me/artistas/:id/integrantes/:integrante", gruposHandler.EditarIntegrante)
 		autenticado.DELETE("/me/artistas/:id/integrantes/:integrante", gruposHandler.RemoverIntegrante)
 		autenticado.POST("/me/artistas/:id/sair", gruposHandler.Sair)
