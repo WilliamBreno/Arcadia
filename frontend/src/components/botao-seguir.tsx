@@ -1,5 +1,6 @@
 import { Bell, BellRing } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
 
 import { useSeguindo, type TipoSeguir } from '@/lib/seguir'
 
@@ -24,18 +25,18 @@ export function BotaoSeguir({ tipo, alvo, rotulo, texto }: Props) {
   }
 
   return (
-    <button
+    <Button
+      variant={ativo ? 'secondary' : 'default'}
+      size="sm"
       type="button"
       onClick={alternar}
       disabled={ocupado}
       aria-pressed={ativo}
       title={ativo ? 'Você recebe por e-mail os eventos novos. Clique para deixar de seguir.' : 'Receba por e-mail os eventos novos'}
-      className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors active:scale-95 disabled:opacity-60 ${
-        ativo ? 'bg-muted text-foreground hover:bg-foreground/10' : 'bg-primary text-primary-foreground hover:opacity-90'
-      }`}
+      className="rounded-full"
     >
       {ativo ? <BellRing className="size-4" aria-hidden="true" /> : <Bell className="size-4" aria-hidden="true" />}
       {ativo ? 'Seguindo' : (texto ?? 'Seguir')}
-    </button>
+    </Button>
   )
 }

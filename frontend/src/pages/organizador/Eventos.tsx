@@ -8,6 +8,7 @@ import type { Evento } from '@/lib/evento'
 import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { AvisoPix } from '@/components/campos-pix'
+import { MessageCircle, Plus } from 'lucide-react'
 
 const rotuloStatus: Record<Evento['status'], string> = {
   rascunho: 'Rascunho',
@@ -28,38 +29,14 @@ export default function Eventos() {
   if (!organizador) return <Navigate to="/organizador/perfil" replace />
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-12">
+    <main className="mx-auto max-w-4xl px-4 py-10 sm:py-12">
       <AvisoPix />
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-foreground">Meus eventos</h1>
-        <div className="flex flex-wrap gap-2">
-          <Link to="/conversas-equipe" className={buttonVariants({ variant: 'outline' })}>Chat da equipe</Link>
-          <Link to="/organizador/crm" className={buttonVariants({ variant: 'outline' })}>
-            Contatos e e-mail
-          </Link>
-          <Link to="/organizador/circuitos" className={buttonVariants({ variant: 'outline' })}>
-            Circuitos
-          </Link>
-          <Link to="/organizador/relatorios" className={buttonVariants({ variant: 'outline' })}>
-            Relatórios
-          </Link>
-          <Link to="/organizador/api" className={buttonVariants({ variant: 'outline' })}>
-            API
-          </Link>
-          <Link to="/organizador/equipe" className={buttonVariants({ variant: 'outline' })}>
-            Equipe
-          </Link>
-          <Link to="/organizador/coproducoes" className={buttonVariants({ variant: 'outline' })}>
-            Coproduções
-          </Link>
-          <Link to="/organizador/pro" className={buttonVariants({ variant: 'outline' })}>
-            Evve Pro
-          </Link>
-          <Link to="/organizador/repasses" className={buttonVariants({ variant: 'outline' })}>
-            Repasses
-          </Link>
+        <div><p className="mb-1 text-xs font-semibold uppercase tracking-widest text-primary">Área do organizador</p><h1 className="text-2xl font-semibold text-foreground">Meus eventos</h1><p className="mt-2 text-sm text-muted-foreground">Crie, acompanhe e prepare seu próximo evento.</p></div>
+        <div className="evve-actions">
+          <Link to="/conversas-equipe" className={buttonVariants({ variant: 'outline' })}><MessageCircle aria-hidden="true" />Chat da equipe</Link>
           <Link to="/organizador/eventos/novo" className={buttonVariants()}>
-            Novo evento
+            <Plus aria-hidden="true" />Novo evento
           </Link>
         </div>
       </div>

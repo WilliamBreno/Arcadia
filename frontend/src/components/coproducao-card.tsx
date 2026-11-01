@@ -114,7 +114,7 @@ export function CoproducaoCard({ eventoId }: { eventoId: number }) {
                     </Button>
                   </div>
                 ) : (
-                  <div className="flex gap-2">
+                  <div className="evve-actions flex gap-2">
                     <Button size="sm" variant="outline" onClick={() => setEditando({ id: c.id, pct: String((c.proposto_bp ?? c.percentual_bp) / 100).replace('.', ',') })}>
                       Mudar percentual
                     </Button>

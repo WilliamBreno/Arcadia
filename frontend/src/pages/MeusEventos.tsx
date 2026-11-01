@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 
@@ -112,13 +113,13 @@ function VoceSegue() {
             <span className="text-foreground">
               {s.rotulo || s.alvo} <span className="text-xs text-muted-foreground">({s.tipo === 'organizador' ? 'organizador' : 'categoria'})</span>
             </span>
-            <button
+            <Button variant="link" size="sm"
               type="button"
               onClick={() => deixar.mutate({ tipo: s.tipo, alvo: s.alvo })}
               className="text-sm font-medium text-foreground underline underline-offset-4"
             >
               Deixar de seguir
-            </button>
+            </Button>
           </li>
         ))}
       </ul>

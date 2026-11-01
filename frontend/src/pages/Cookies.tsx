@@ -53,7 +53,7 @@ export default function Cookies() {
         <p className="text-foreground" role="status">
           {situacao}
         </p>
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="evve-actions mt-3 flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => salvarEscolha(false)}>
             Recusar pixels
           </Button>

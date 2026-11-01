@@ -83,14 +83,14 @@ export function PagamentoNaPagina({ pedidoId, totalCentavos, maxParcelas, aoConf
         </p>
       )}
       {metodo === 'cartao' && publicKey && !cartaoFalhou && typeof pedidoId === 'number' && (
-        <button
+        <Button variant="link" size="sm"
           type="button"
           onClick={pagarNoSiteDoMP}
           disabled={redirecionando}
           className="self-center text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
         >
           {redirecionando ? 'Abrindo o Mercado Pago…' : 'Prefere pagar no site do Mercado Pago (cartão ou saldo da conta)?'}
-        </button>
+        </Button>
       )}
       <p className="text-center text-xs text-muted-foreground">Pagamento processado com segurança pelo Mercado Pago.</p>
     </div>
@@ -224,9 +224,9 @@ function BlocoPix({ pedidoId, aoConfirmar }: { pedidoId: AlvoPagamento; aoConfir
         <span className="size-2 animate-pulse rounded-full bg-primary" aria-hidden="true" />
         Aguardando o pagamento…
       </p>
-      <button type="button" onClick={jaPaguei} disabled={verificando} className="text-sm text-foreground underline underline-offset-4">
+      <Button variant="link" size="sm" type="button" onClick={jaPaguei} disabled={verificando} className="text-sm text-foreground underline underline-offset-4">
         {verificando ? 'Conferindo…' : 'Já paguei'}
-      </button>
+      </Button>
       {aviso && <p className="text-center text-xs text-muted-foreground">{aviso}</p>}
       {erro && (
         <p role="alert" className="text-sm text-destructive">

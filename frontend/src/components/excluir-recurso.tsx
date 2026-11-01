@@ -25,7 +25,7 @@ export function ExcluirRecurso({ url, titulo, descricao, destino }: { url: strin
   return <section className="mt-6 flex flex-col items-start gap-3 rounded-xl border border-border p-4">
     <h2 className="font-semibold">{titulo}</h2>
     <p className="text-sm text-muted-foreground">{descricao}</p>
-    {confirmando ? <><p className="text-sm">Confirma a exclusão? Esta ação não pode ser desfeita.</p><div className="flex flex-wrap gap-2"><Button type="button" variant="destructive" disabled={ocupado} onClick={excluir}>{ocupado ? 'Excluindo…' : 'Confirmar exclusão'}</Button><Button type="button" variant="outline" disabled={ocupado} onClick={() => { setConfirmando(false); setErro('') }}>Manter</Button></div></> : <Button type="button" variant="destructive" onClick={() => setConfirmando(true)}>{titulo}</Button>}
+    {confirmando ? <><p className="text-sm">Confirma a exclusão? Esta ação não pode ser desfeita.</p><div className="evve-actions flex flex-wrap gap-2"><Button type="button" variant="destructive" disabled={ocupado} onClick={excluir}>{ocupado ? 'Excluindo…' : 'Confirmar exclusão'}</Button><Button type="button" variant="outline" disabled={ocupado} onClick={() => { setConfirmando(false); setErro('') }}>Manter</Button></div></> : <Button type="button" variant="destructive" onClick={() => setConfirmando(true)}>{titulo}</Button>}
     {erro && <p role="alert" className="text-sm text-destructive">{erro}</p>}
   </section>
 }

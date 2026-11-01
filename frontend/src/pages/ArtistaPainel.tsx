@@ -47,7 +47,7 @@ function useOrdem(painel: PainelArtista, integrantes: boolean, aoMudar: (p: Pain
 }
 
 function BotoesOrdem({ indice, total, nome, salvando, mover }: { indice: number; total: number; nome: string; salvando: boolean; mover: (indice: number, deslocamento: number) => void }) {
-  return <div className="flex shrink-0 gap-1">
+  return <div className="evve-actions flex shrink-0 gap-1">
     <Button type="button" size="icon" variant="outline" disabled={salvando || indice === 0} aria-label={`Mover ${nome} para antes`} onClick={() => mover(indice, -1)}><ArrowUp className="size-4" aria-hidden="true" /></Button>
     <Button type="button" size="icon" variant="outline" disabled={salvando || indice === total - 1} aria-label={`Mover ${nome} para depois`} onClick={() => mover(indice, 1)}><ArrowDown className="size-4" aria-hidden="true" /></Button>
   </div>
@@ -464,7 +464,7 @@ function AtracoesCard({ painel, aoMudar }: { painel: PainelArtista; aoMudar: (p:
                   {a.cidade && ` · ${a.cidade}/${a.uf}`} · {rotulo[a.status]}
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="evve-actions flex gap-2">
                 {a.status !== 'confirmado' && (
                   <Button size="sm" onClick={() => decidir(a.id, true)}>
                     Confirmar

@@ -52,7 +52,7 @@ export function SolicitacoesCard({ eventoId }: { eventoId: number }) {
                 {s.usuario_email} · {rotulo[s.status]}
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="evve-actions flex gap-2">
               {s.status !== 'aprovada' && (
                 <Button size="sm" onClick={() => decidir(s.id, 'aprovar')}>
                   Aprovar

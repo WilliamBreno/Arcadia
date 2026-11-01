@@ -107,7 +107,7 @@ export default function AutorizarPerfil() {
           {erro}
         </p>
       )}
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="evve-actions mt-4 flex flex-wrap gap-2">
         <Button onClick={() => decidir(true)} disabled={enviando}>
           {data.autorizado ? 'Salvar' : 'Autorizar o perfil'}
         </Button>

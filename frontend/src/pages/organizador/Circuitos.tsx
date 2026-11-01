@@ -107,7 +107,7 @@ export default function Circuitos() {
                       <Link to={`/e/${p.evento_slug}`} className="text-sm text-foreground underline-offset-4 hover:underline">
                         {p.evento_titulo}
                       </Link>
-                      <div className="flex gap-2">
+                      <div className="evve-actions flex gap-2">
                         <Button size="sm" onClick={() => decidir(p.id, true)}>
                           Aceitar
                         </Button>

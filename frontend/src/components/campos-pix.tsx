@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import type { UseFormRegister, FieldValues, Path } from 'react-hook-form'
 
 import { Input } from '@/components/ui/input'
+import { buttonVariants } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { useOrganizador } from '@/hooks/use-organizador'
 
@@ -72,7 +73,7 @@ export function AvisoPix() {
       </div>
       <Link
         to="/organizador/perfil#pix"
-        className="inline-flex h-8 shrink-0 items-center justify-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground"
+        className={buttonVariants()}
       >
         Cadastrar Pix
       </Link>

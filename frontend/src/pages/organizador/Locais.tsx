@@ -49,7 +49,7 @@ export default function Locais() {
                   {local.capacidade ? ` · capacidade ${local.capacidade}` : ''}
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="evve-actions flex gap-2">
                 <Link
                   to={`/organizador/locais/${local.id}`}
                   className={buttonVariants({ variant: 'outline', size: 'sm' })}

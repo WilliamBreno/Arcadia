@@ -89,7 +89,7 @@ export function DiaDoEventoCard({ eventoId }: { eventoId: number }) {
         <p className="text-sm text-muted-foreground">Painel ao vivo, portões, ingressos vendidos em outras plataformas e credenciais impressas.</p>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        <div className="flex flex-wrap gap-2">
+        <div className="evve-actions flex flex-wrap gap-2">
           <Link to={`/ao-vivo/${eventoId}`} className={buttonVariants({ size: 'sm' })}>
             Abrir painel ao vivo
           </Link>
@@ -149,7 +149,7 @@ export function DiaDoEventoCard({ eventoId }: { eventoId: number }) {
             <input ref={arquivo} type="file" accept=".csv,text/csv" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={(e) => importar(e.target.files?.[0])} />
           </div>
           {importados.data && importados.data.total > 0 && (
-            <div className="flex flex-wrap gap-2">
+            <div className="evve-actions flex flex-wrap gap-2">
               <Button
                 type="button"
                 size="sm"
@@ -240,7 +240,7 @@ export function DiaDoEventoCard({ eventoId }: { eventoId: number }) {
               ))}
             </ul>
           )}
-          <div className="flex flex-wrap gap-2">
+          <div className="evve-actions flex flex-wrap gap-2">
             <Link to={`/organizador/eventos/${eventoId}/credenciais/imprimir`} className={buttonVariants({ size: 'sm', variant: 'outline' })}>
               Imprimir crachás (A4)
             </Link>

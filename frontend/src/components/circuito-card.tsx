@@ -153,7 +153,7 @@ export function CircuitoCard({ eventoId }: { eventoId: number }) {
                   <span className="text-muted-foreground">· top {s.vagas} de cada categoria</span>
                 </p>
                 {s.status === 'pendente' ? (
-                  <div className="flex gap-2">
+                  <div className="evve-actions flex gap-2">
                     <Button size="sm" onClick={() => rodar(() => decidirSeletiva(eventoId, s.id, true))}>
                       Aceitar
                     </Button>

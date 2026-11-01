@@ -447,7 +447,7 @@ export default function Checkin() {
             ? `Pacote salvo neste aparelho: ${pacoteInfo.total} ingresso(s), baixado em ${new Date(pacoteInfo.geradoEm).toLocaleString('pt-BR')}.`
             : 'Baixe o pacote ANTES do evento, com internet, para poder validar sem sinal. Não vale para evento com QR rotativo.'}
         </p>
-        <div className="flex gap-2">
+        <div className="evve-actions flex gap-2">
           <Button variant="outline" size="sm" onClick={baixar} disabled={!online}>
             {pacoteInfo ? 'Atualizar pacote' : 'Baixar pacote offline'}
           </Button>

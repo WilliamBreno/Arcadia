@@ -87,7 +87,7 @@ export default function MeusArtistas() {
                 )}
               </div>
             </div>
-            <div className="flex shrink-0 gap-2">
+            <div className="evve-actions flex shrink-0 gap-2">
               <Link to={`/artista/${g.slug}`} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
                 Ver
               </Link>
@@ -151,7 +151,7 @@ export default function MeusArtistas() {
                 </select>
               </div>
               <p className="text-xs text-muted-foreground">Você será o líder e poderá convidar cogestores para ajudar. Depois dá para completar foto, Instagram e portfólio e definir a liderança por convite ao e-mail da pessoa.</p>
-              <div className="flex gap-2">
+              <div className="evve-actions flex gap-2">
                 <Button type="submit" disabled={enviando || nome.trim().length < 2}>
                   {enviando ? 'Criando…' : 'Criar perfil'}
                 </Button>

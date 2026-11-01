@@ -13,13 +13,13 @@ const links = [
 // Navegação entre as telas do admin da plataforma.
 export function AdminNav() {
   return (
-    <nav className="mb-6 flex flex-wrap gap-4 border-b border-border text-sm" aria-label="Admin">
+    <nav className="mb-6 flex flex-wrap gap-1 rounded-2xl border border-border bg-card p-2 text-sm shadow-xs" aria-label="Admin">
       {links.map((l) => (
         <NavLink
           key={l.to}
           to={l.to}
           className={({ isActive }) =>
-            `-mb-px border-b-2 pb-2 ${isActive ? 'border-primary font-medium text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`
+            `evve-nav-link ${isActive ? 'bg-accent font-semibold text-accent-foreground' : ''}`
           }
         >
           {l.rotulo}

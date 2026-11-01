@@ -83,7 +83,7 @@ export function RevenderIngresso({ itemId, precoCentavos, revenda }: Props) {
         </li>
         <li>Até vender, o ingresso continua seu, e você pode retirar da revenda. Se não vender até o início do evento, ele continua válido.</li>
       </ul>
-      <div className="flex gap-2">
+      <div className="evve-actions flex gap-2">
         <Button size="sm" disabled={enviando} onClick={() => agir('POST')}>
           {enviando ? 'Anunciando…' : 'Pôr à venda'}
         </Button>

@@ -108,7 +108,7 @@ export default function Certificado() {
             <div className="mt-3 flex flex-col gap-2">
               <Label htmlFor="nome-certificado">Nome no certificado</Label>
               <Input id="nome-certificado" value={nome} onChange={(e) => setNome(e.target.value)} maxLength={160} />
-              <div className="flex gap-2">
+              <div className="evve-actions flex gap-2">
                 <Button onClick={corrigir} disabled={nome.trim().length < 3}>
                   Salvar nome
                 </Button>

@@ -130,7 +130,7 @@ function Ingresso({ tabela }: { tabela: TabelaTaxas }) {
         <Recorte className="-top-3.5 -left-4" />
         <Recorte className="-bottom-3.5 -left-4" />
       </div>
-      <div aria-hidden="true" className="relative md:hidden" style={{ height: 0, borderTop: '6px dotted var(--muted)' }}>
+      <div aria-hidden="true" className="relative overflow-x-clip md:hidden" style={{ height: 0, borderTop: '6px dotted var(--muted)' }}>
         <Recorte className="-left-3.5 -top-4" />
         <Recorte className="-right-3.5 -top-4" />
       </div>
@@ -222,8 +222,8 @@ function Tabela({ tabela }: { tabela: TabelaTaxas }) {
               {g.itens.map((it) => (
                 <li key={it.nome}>
                   <div className="flex items-baseline gap-2 text-base text-foreground">
-                    <span className="shrink-0">{it.nome}</span>
-                    <span aria-hidden="true" className="flex-1" style={{ borderBottom: '4px dotted var(--border)', transform: 'translateY(-4px)' }} />
+                    <span className="min-w-0">{it.nome}</span>
+                    <span aria-hidden="true" className="min-w-3 flex-1" style={{ borderBottom: '4px dotted var(--border)', transform: 'translateY(-4px)' }} />
                     <span className="shrink-0 font-semibold tabular-nums">{it.valor}</span>
                   </div>
                   {it.nota && <p className="mt-1 max-w-xs text-sm text-muted-foreground">{it.nota}</p>}

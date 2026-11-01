@@ -75,7 +75,7 @@ export function CapaEvento({ valor, aoMudar }: { valor: string; aoMudar: (url: s
         </p>
       )}
       {valor && (
-        <div className="flex gap-2">
+        <div className="evve-actions flex gap-2">
           <Button type="button" size="sm" variant="outline" disabled={enviando} onClick={() => entrada.current?.click()}>
             Trocar imagem
           </Button>

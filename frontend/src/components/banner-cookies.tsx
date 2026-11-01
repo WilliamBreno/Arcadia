@@ -25,7 +25,7 @@ export function BannerCookies() {
             Saiba mais
           </Link>
         </p>
-        <div className="flex shrink-0 gap-2">
+        <div className="evve-actions flex shrink-0 gap-2">
           <Button variant="outline" onClick={() => salvarEscolha(false)}>
             Recusar
           </Button>

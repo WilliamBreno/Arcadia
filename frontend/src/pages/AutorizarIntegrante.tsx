@@ -93,7 +93,7 @@ export default function AutorizarIntegrante() {
       </p>
       {aviso && <p role="status" className="mt-2 text-sm text-muted-foreground">{aviso}</p>}
       {erro && <p role="alert" className="mt-2 text-sm text-destructive">{erro}</p>}
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="evve-actions mt-4 flex flex-wrap gap-2">
         <Button onClick={() => decidir(true)} disabled={enviando}>Autorizar</Button>
         <Button variant="outline" onClick={() => decidir(false)} disabled={enviando}>
           {data.autorizado ? 'Desautorizar' : 'Não autorizar'}

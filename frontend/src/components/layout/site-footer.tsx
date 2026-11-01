@@ -4,8 +4,8 @@ const NOME_PLATAFORMA = import.meta.env.VITE_NOME_PLATAFORMA ?? 'Evve'
 
 export function SiteFooter() {
   return (
-    <footer className="border-border border-t">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-6 gap-y-2 px-4 py-6 text-sm text-muted-foreground">
+    <footer className="border-t border-border bg-card">
+      <nav aria-label="Links do rodapé" className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-6 gap-y-2 px-4 py-6 text-sm text-muted-foreground">
         <Link to="/quanto-custa" className="hover:text-foreground">
           Quanto custa
         </Link>
@@ -30,7 +30,7 @@ export function SiteFooter() {
         <span>
           © {new Date().getFullYear()} {NOME_PLATAFORMA}
         </span>
-      </div>
+      </nav>
     </footer>
   )
 }

@@ -47,9 +47,9 @@ export default function Login() {
     return (
       <main className="mx-auto flex max-w-sm flex-col justify-center gap-3 px-4 py-24">
         <EntrarComCodigo titulo="Entrar com código" aoEntrar={() => navigate(destino, { replace: true })} />
-        <button type="button" onClick={() => setComCodigo(false)} className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground">
+        <Button variant="link" size="sm" type="button" onClick={() => setComCodigo(false)} className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground">
           Entrar com senha
-        </button>
+        </Button>
       </main>
     )
   }

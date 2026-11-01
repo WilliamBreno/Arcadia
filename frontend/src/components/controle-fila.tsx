@@ -43,14 +43,14 @@ export function ControleFila({ slug, tipoId, max, entrada, logado, aoMudar, pedi
         <span className="text-xs text-muted-foreground">
           {entrada.quantidade} {entrada.quantidade === 1 ? 'ingresso' : 'ingressos'}
         </span>
-        <button
+        <Button variant="link" size="sm"
           type="button"
           disabled={enviando}
           onClick={() => agir(() => sairDaFila(slug, tipoId))}
           className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
         >
           Sair da lista
-        </button>
+        </Button>
         {erro && <span className="text-xs text-destructive">{erro}</span>}
       </div>
     )

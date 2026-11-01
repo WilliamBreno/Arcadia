@@ -69,7 +69,7 @@ export default function AdminArtistas() {
                 <p className="text-sm text-muted-foreground">
                   Pedido em <time dateTime={pedido.pedido_em}>{new Date(pedido.pedido_em).toLocaleString('pt-BR')}</time>
                 </p>
-                <div className="flex flex-wrap gap-2">
+                <div className="evve-actions flex flex-wrap gap-2">
                   <Button disabled={enviando !== null} onClick={() => decidir(pedido.grupo_id, true, pedido.instagram)}>Aprovar selo</Button>
                   <Button variant="outline" disabled={enviando !== null} onClick={() => decidir(pedido.grupo_id, false, pedido.instagram)}>Recusar</Button>
                 </div>

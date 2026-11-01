@@ -294,7 +294,7 @@ export function Desistencia({
                   : 'Não há valor a devolver.'}{' '}
                 A vaga é liberada e não dá para desfazer.
               </p>
-              <div className="flex flex-wrap gap-2">
+              <div className="evve-actions flex flex-wrap gap-2">
                 <Button variant="destructive" size="sm" onClick={confirmar} disabled={ocupado}>
                   Confirmar desistência
                 </Button>

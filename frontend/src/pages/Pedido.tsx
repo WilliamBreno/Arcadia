@@ -72,9 +72,9 @@ export default function Pedido() {
       {banner && (
         <div className={`mb-6 rounded-lg border p-3 text-sm ${banner.classe}`}>
           {banner.texto}{' '}
-          <button type="button" onClick={() => refetch()} className="underline underline-offset-4">
+          <Button variant="link" size="sm" type="button" onClick={() => refetch()} className="underline underline-offset-4">
             Atualizar status
-          </button>
+          </Button>
         </div>
       )}
 

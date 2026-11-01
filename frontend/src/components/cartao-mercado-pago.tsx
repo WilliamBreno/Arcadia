@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button'
 import { CardPayment, initMercadoPago, StatusScreen } from '@mercadopago/sdk-react'
 import { useEffect, useRef, useState } from 'react'
 
@@ -65,7 +66,7 @@ export default function CartaoMercadoPago({ publicKey, pedidoId, totalCentavos, 
             additionalInfo: { externalResourceURL: desafio.desafio_url, creq: desafio.desafio_creq },
           }}
         />
-        <button
+        <Button variant="link" size="sm"
           type="button"
           className="self-start text-sm text-muted-foreground underline underline-offset-4"
           onClick={() => {
@@ -74,7 +75,7 @@ export default function CartaoMercadoPago({ publicKey, pedidoId, totalCentavos, 
           }}
         >
           Tentar com outro cartão
-        </button>
+        </Button>
       </div>
     )
   }

@@ -85,7 +85,7 @@ export function AvaliarFicha({ slug, fichaId }: { slug: string; fichaId: number 
       ))}
       {erro && <p className="text-xs text-destructive">{erro}</p>}
       {!finalizada && (
-        <div className="flex gap-2">
+        <div className="evve-actions flex gap-2">
           <Button size="sm" variant="outline" disabled={salvando} onClick={() => enviar(false)}>
             Salvar rascunho
           </Button>

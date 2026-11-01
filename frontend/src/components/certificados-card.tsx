@@ -117,7 +117,7 @@ export function CertificadosCard({ eventoId }: { eventoId: number }) {
               </div>
             </>
           )}
-          <div className="flex flex-wrap gap-2">
+          <div className="evve-actions flex flex-wrap gap-2">
             <Button onClick={salvar}>Salvar</Button>
             {data.config.ativo && data.resumo.evento_terminou && (
               <Button variant="outline" onClick={emitir}>

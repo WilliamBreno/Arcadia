@@ -273,7 +273,7 @@ export default function AdminColecoes() {
                 {aviso}
               </p>
             )}
-            <div className="flex gap-2">
+            <div className="evve-actions flex gap-2">
               <Button type="submit" disabled={salvando}>
                 {salvando ? 'Salvando…' : 'Salvar coleção'}
               </Button>
@@ -315,7 +315,7 @@ export default function AdminColecoes() {
                     </p>
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="evve-actions flex gap-2">
                   <Button
                     size="sm"
                     variant="outline"

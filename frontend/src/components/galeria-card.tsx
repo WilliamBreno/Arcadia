@@ -55,7 +55,7 @@ export function GaleriaCard({ eventoId, slug }: { eventoId: number; slug: string
                 <div key={r.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-border p-2">
                   <img src={r.url} alt="" className="size-16 rounded-md object-cover" />
                   <p className="min-w-0 flex-1 text-sm text-foreground">{r.motivo || 'Sem motivo informado.'}</p>
-                  <div className="flex gap-2">
+                  <div className="evve-actions flex gap-2">
                     <Button size="sm" variant="destructive" onClick={() => rodar(() => decidirRemocao(slug, r.id, false), [['org-galeria', slug]])}>
                       Remover foto
                     </Button>

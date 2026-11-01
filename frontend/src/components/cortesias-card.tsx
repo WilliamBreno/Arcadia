@@ -118,7 +118,7 @@ export function CortesiasCard({ eventoId, tipos }: { eventoId: number; tipos: Ti
         </div>
         {erro && <p className="text-sm text-destructive">{erro}</p>}
 
-        <div className="flex gap-2 border-t border-border pt-4">
+        <div className="evve-actions flex gap-2 border-t border-border pt-4">
           <Button variant="outline" size="sm" onClick={() => exportar('compradores')}>
             Exportar compradores (CSV)
           </Button>

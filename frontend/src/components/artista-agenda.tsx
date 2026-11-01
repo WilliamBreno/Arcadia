@@ -95,7 +95,7 @@ export function ArtistaAgenda({ id }: { id: number }) {
             <h2 aria-live="polite" className="text-lg font-semibold capitalize">{mes.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</h2>
             <p className="text-xs text-muted-foreground">{apresentacoes} {apresentacoes === 1 ? 'apresentação' : 'apresentações'} · {bloqueios} {bloqueios === 1 ? 'bloqueio' : 'bloqueios'}</p>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="evve-actions flex items-center gap-1">
             <Button type="button" size="sm" variant="outline" disabled={ocupado} onClick={() => selecionar(hoje)}>Hoje</Button>
             <Button type="button" size="icon" variant="ghost" aria-label="Mês anterior" disabled={ocupado} onClick={() => navegar(-1)}><ChevronLeft className="size-4" /></Button>
             <Button type="button" size="icon" variant="ghost" aria-label="Próximo mês" disabled={ocupado} onClick={() => navegar(1)}><ChevronRight className="size-4" /></Button>
@@ -195,7 +195,7 @@ export function ArtistaAgenda({ id }: { id: number }) {
           </fieldset>
           {erro && <p role="alert" className="text-sm text-destructive">{erro}</p>}
           {ok && <p role="status" className="text-sm">{ok}</p>}
-          <div className="flex flex-wrap gap-2">
+          <div className="evve-actions flex flex-wrap gap-2">
             <Button type="submit" disabled={ocupado || isLoading || !!error}>{ocupado ? 'Salvando…' : d.id ? 'Salvar alterações' : 'Adicionar data'}</Button>
             {d.id > 0 && <Button type="button" variant="ghost" disabled={ocupado} onClick={() => setD(entradaNova(selecionado))}>Cancelar edição</Button>}
           </div>

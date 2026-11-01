@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button'
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { api, ApiError } from '@/lib/api'
@@ -23,6 +24,6 @@ export function MunicipioArtista({ id, label, valor, onChange, required = false 
         </select>
       </div>
     </div>
-    {error && <p role="alert" className="text-xs text-destructive">{error instanceof ApiError ? error.message : 'Não foi possível buscar as cidades.'} <button type="button" className="underline" onClick={() => refetch()}>Tentar novamente</button></p>}
+    {error && <p role="alert" className="text-xs text-destructive">{error instanceof ApiError ? error.message : 'Não foi possível buscar as cidades.'} <Button variant="link" size="sm" type="button" className="underline" onClick={() => refetch()}>Tentar novamente</Button></p>}
   </fieldset>
 }

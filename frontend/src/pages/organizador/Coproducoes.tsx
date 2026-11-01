@@ -61,7 +61,7 @@ export default function Coproducoes() {
                       ? 'O organizador principal propôs tirar você da coprodução.'
                       : `O organizador principal propôs mudar sua parte de ${formatarBP(c.percentual_bp)} para ${formatarBP(c.proposto_bp)}.`}
                 </p>
-                <div className="flex gap-2">
+                <div className="evve-actions flex gap-2">
                   <Button size="sm" onClick={() => executar(() => api(`/org/coproducoes/${c.id}/responder`, { method: 'POST', body: { aceitar: true } }))}>
                     Aceitar
                   </Button>

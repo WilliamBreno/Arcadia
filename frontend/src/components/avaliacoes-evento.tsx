@@ -143,7 +143,7 @@ export function AvaliacoesDoEvento({ slug, eventoComecou }: { slug: string; even
               {erro}
             </p>
           )}
-          <div className="flex gap-2">
+          <div className="evve-actions flex gap-2">
             <Button type="submit" disabled={salvando}>
               {salvando ? 'Salvando…' : minhaAv ? 'Salvar alteração' : 'Enviar avaliação'}
             </Button>

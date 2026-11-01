@@ -119,7 +119,7 @@ export function ExtrasCard({ eventoId, tipos }: { eventoId: number; tipos: TipoI
               <label className="flex items-center gap-2 text-sm text-foreground">
                 <input type="checkbox" checked={fa.ativo} onChange={(e) => setFa({ ...fa, ativo: e.target.checked })} /> À venda
               </label>
-              <div className="flex gap-2">
+              <div className="evve-actions flex gap-2">
                 <Button size="sm" onClick={salvarAdicional} disabled={!fa.nome.trim() || reais(fa.preco) < 0}>
                   Salvar adicional
                 </Button>
@@ -199,7 +199,7 @@ export function ExtrasCard({ eventoId, tipos }: { eventoId: number; tipos: TipoI
                 O preço é dividido entre os itens na proporção do preço de cada um; a taxa e o reembolso continuam por item. Com vendas, o preço e os
                 itens não mudam.
               </p>
-              <div className="flex gap-2">
+              <div className="evve-actions flex gap-2">
                 <Button size="sm" onClick={salvarPacote} disabled={!fp.nome.trim() || reais(fp.preco) <= 0}>
                   Salvar pacote
                 </Button>

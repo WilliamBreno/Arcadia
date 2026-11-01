@@ -47,6 +47,7 @@ import { GaleriaCard } from '@/components/galeria-card'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Carregando } from '@/components/carregando'
+import { ExternalLink, MessageCircle, ShieldCheck } from 'lucide-react'
 
 function paraDatetimeLocal(iso: string | null): string {
   if (!iso) return ''
@@ -184,13 +185,21 @@ export default function EventoEditar() {
   return (
     <main className="mx-auto max-w-2xl px-4 py-12">
       <VoltarLink to="/organizador/eventos">Voltar aos meus eventos</VoltarLink>
-      <Link to={`/chat-evento/${id}`} className="mb-4 inline-block text-sm underline">Abrir chat da equipe</Link>
-      {evento.status !== 'rascunho' && <Link to={`/e/${evento.slug}/mural/moderacao`} className="mb-4 ml-4 inline-block text-sm underline">Revisar mural do evento</Link>}
-      <h1 className="mb-6 text-2xl font-semibold text-foreground">
-        {evento.titulo} <span className="text-sm font-normal text-muted-foreground">({evento.status})</span>
+      <h1 className="mb-3 text-2xl font-semibold text-foreground">
+        {evento.titulo} <span className="ml-1 inline-flex rounded-full border border-border bg-card px-2.5 py-1 align-middle text-xs font-medium text-muted-foreground">{evento.status}</span>
       </h1>
+      <div className="evve-actions mb-6">
+        <Link to={`/chat-evento/${id}`} className={buttonVariants({ variant: 'outline', size: 'sm' })}><MessageCircle aria-hidden="true" />Chat da equipe</Link>
+        {evento.status !== 'rascunho' && <>
+          <Link to={`/e/${evento.slug}/mural/moderacao`} className={buttonVariants({ variant: 'outline', size: 'sm' })}><ShieldCheck aria-hidden="true" />Revisar mural</Link>
+          <Link to={`/e/${evento.slug}`} className={buttonVariants({ variant: 'ghost', size: 'sm' })}><ExternalLink aria-hidden="true" />Ver evento</Link>
+        </>}
+      </div>
+      <nav aria-label="Seções do evento" className="mb-6 flex flex-wrap gap-1 rounded-2xl border border-border bg-card p-2">
+        {[['evento-basico', 'Informações'], ['evento-ingressos', 'Ingressos'], ['evento-vendas', 'Vendas'], ['evento-participantes', 'Participantes'], ['evento-publicacao', 'Publicação']].map(([alvo, nome]) => <a key={alvo} href={`#${alvo}`} className="evve-nav-link">{nome}</a>)}
+      </nav>
 
-      <Card className="mb-6">
+      <Card id="evento-basico" className="mb-6 scroll-mt-24">
         <CardHeader>
           <CardTitle>Informações básicas</CardTitle>
         </CardHeader>
@@ -370,7 +379,7 @@ export default function EventoEditar() {
       <SessoesCard eventoId={Number(id)} />
       {evento.status === 'rascunho' && <ExcluirRecurso url={`/org/eventos/${id}`} titulo="Excluir rascunho" descricao="Remove o evento e suas configurações. Rascunhos com pedidos, inscrições ou outros registros protegidos não podem ser excluídos." destino="/organizador/eventos" />}
 
-      <TiposIngressoCard eventoId={Number(id)} tipos={tiposIngresso ?? []} carregando={carregandoIngressos} falhaCarregamento={!!erroListaIngressos} erroInicial={(location.state as { erroIngressos?: string } | null)?.erroIngressos} />
+      <section id="evento-ingressos" aria-label="Ingressos do evento" className="scroll-mt-24"><TiposIngressoCard eventoId={Number(id)} tipos={tiposIngresso ?? []} carregando={carregandoIngressos} falhaCarregamento={!!erroListaIngressos} erroInicial={(location.state as { erroIngressos?: string } | null)?.erroIngressos} /></section>
 
       <LugaresCard eventoId={Number(id)} tipos={tiposIngresso ?? []} />
 
@@ -380,7 +389,7 @@ export default function EventoEditar() {
 
       <CertificadosCard eventoId={Number(id)} />
 
-      <VendasCard eventoId={Number(id)} />
+      <section id="evento-vendas" aria-label="Vendas do evento" className="scroll-mt-24"><VendasCard eventoId={Number(id)} /></section>
 
       <FinanceiroCard eventoId={Number(id)} />
 
@@ -413,7 +422,7 @@ export default function EventoEditar() {
 
       <GaleriaCard eventoId={Number(id)} slug={evento.slug} />
 
-      <ParticipantesCard eventoId={Number(id)} />
+      <section id="evento-participantes" aria-label="Participantes do evento" className="scroll-mt-24"><ParticipantesCard eventoId={Number(id)} /></section>
 
       {evento.modo_participantes !== 'nenhum' && (
         <>
@@ -442,7 +451,7 @@ export default function EventoEditar() {
 
       <StaffCard eventoId={Number(id)} />
 
-      <Card className="mt-6">
+      <Card id="evento-publicacao" className="mt-6 scroll-mt-24">
         <CardHeader>
           <CardTitle>Publicação</CardTitle>
         </CardHeader>
@@ -598,7 +607,7 @@ function TiposIngressoCard({ eventoId, tipos, erroInicial, carregando, falhaCarr
                     : ''}
               </p>
             </div>
-            <div className="flex shrink-0 flex-wrap gap-2">
+            <div className="evve-actions flex shrink-0 flex-wrap gap-2">
               <Button type="button" variant="outline" size="sm" disabled={ocupado !== null} onClick={() => alternarVendas(t)}>{t.ativo ? 'Desativar vendas' : 'Reativar vendas'}</Button>
               <Button type="button" variant="destructive" size="sm" disabled={ocupado !== null} onClick={() => excluir(t.id)}>{ocupado === t.id ? 'Aguarde…' : 'Excluir'}</Button>
             </div>
@@ -1052,7 +1061,7 @@ function ParticipantesCard({ eventoId }: { eventoId: number }) {
                     {f.status === 'lista_espera' && ' · lista de espera'}
                   </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="evve-actions flex gap-2">
                   <Button size="sm" onClick={() => aprovar(f.id)}>
                     Aprovar
                   </Button>

@@ -143,7 +143,7 @@ export default function Crm() {
               {msg.texto}
             </p>
           )}
-          <div className="flex flex-wrap gap-2">
+          <div className="evve-actions flex flex-wrap gap-2">
             <Button variant="outline" disabled={!podeEnviar} onClick={() => enviar(true)}>
               Enviar teste para mim
             </Button>

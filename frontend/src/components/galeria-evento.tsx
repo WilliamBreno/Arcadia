@@ -203,7 +203,7 @@ function VerFoto({
             ))}
           </p>
         )}
-        <div className="flex flex-wrap gap-2">
+        <div className="evve-actions flex flex-wrap gap-2">
           {logado && (
             <Button size="sm" variant={marcada ? 'outline' : 'default'} onClick={marcar}>
               {marcada ? 'Tirar minha marcação' : 'Sou eu nesta foto'}
@@ -228,7 +228,7 @@ function VerFoto({
               onChange={(e) => setMotivo(e.target.value)}
               className="rounded-lg border border-border bg-background px-2.5 py-2"
             />
-            <div className="flex gap-2">
+            <div className="evve-actions flex gap-2">
               <Button size="sm" variant="destructive" onClick={confirmarRemocao}>
                 Tirar a foto da galeria
               </Button>

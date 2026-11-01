@@ -50,18 +50,18 @@ export function DateInput({ className, ref, ...props }: React.ComponentProps<'in
   const fimAno = Math.max(new Date().getFullYear() + 30, Number(max.slice(0, 4)) || 0, ano)
   return (
     <Popover.Root open={aberto} onOpenChange={abrir}>
-      <div className={cn('flex h-10 min-w-0 items-center rounded-lg border border-input bg-background focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30', className)}>
+      <div className={cn('flex h-11 min-w-0 items-center rounded-xl border border-input bg-card shadow-xs focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/20', className)}>
         <InputPrimitive {...props} ref={node => { const el = node as HTMLInputElement | null; input.current = el; if (typeof ref === 'function') ref(el); else if (ref) ref.current = el }} data-slot="input" lang="pt-BR" className="evve-date h-full w-full min-w-0 rounded-l-lg bg-transparent px-2 text-base outline-none disabled:opacity-50 md:text-sm" />
-        <Popover.Trigger type="button" disabled={props.disabled || props.readOnly} aria-label={`Abrir calendário${props.id ? `: ${props.id}` : ''}`} className="flex h-full shrink-0 items-center rounded-r-lg border-l border-input px-2 text-muted-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50">
+        <Popover.Trigger type="button" disabled={props.disabled || props.readOnly} aria-label={`Abrir calendário${props.id ? `: ${props.id}` : ''}`} className="flex h-full w-11 shrink-0 items-center justify-center rounded-r-xl border-l border-input text-primary hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50">
           <CalendarDays className="size-4" />
         </Popover.Trigger>
       </div>
-      <Popover.Portal><Popover.Positioner sideOffset={8} align="end" className="z-50"><Popover.Popup className="w-72 max-w-full rounded-xl border border-border bg-background p-3 text-foreground shadow-xl">
+      <Popover.Portal><Popover.Positioner sideOffset={8} align="end" className="z-50"><Popover.Popup className="w-80 max-w-full rounded-2xl border border-border bg-popover p-4 text-popover-foreground shadow-xl">
         <Popover.Title className="sr-only">Escolher data</Popover.Title>
         <div className="mb-3 flex items-center gap-1">
           <button type="button" aria-label="Mês anterior" onClick={() => setMes(new Date(ano, m - 1, 1))} className="rounded-md p-1 hover:bg-muted"><ChevronLeft className="size-4" /></button>
-          <select aria-label="Mês" className="min-w-0 flex-1 rounded-md bg-muted p-1 text-sm" value={m} onChange={e => setMes(new Date(ano, Number(e.target.value), 1))}>{meses.map((nome, i) => <option key={nome} value={i}>{nome}</option>)}</select>
-          <select aria-label="Ano" className="rounded-md bg-muted p-1 text-sm" value={ano} onChange={e => setMes(new Date(Number(e.target.value), m, 1))}>{Array.from({ length: fimAno - inicioAno + 1 }, (_, i) => inicioAno + i).map(a => <option key={a}>{a}</option>)}</select>
+          <select data-compact aria-label="Mês" className="min-w-0 flex-1 rounded-md bg-muted p-1 text-sm" value={m} onChange={e => setMes(new Date(ano, Number(e.target.value), 1))}>{meses.map((nome, i) => <option key={nome} value={i}>{nome}</option>)}</select>
+          <select data-compact aria-label="Ano" className="rounded-md bg-muted p-1 text-sm" value={ano} onChange={e => setMes(new Date(Number(e.target.value), m, 1))}>{Array.from({ length: fimAno - inicioAno + 1 }, (_, i) => inicioAno + i).map(a => <option key={a}>{a}</option>)}</select>
           <button type="button" aria-label="Próximo mês" onClick={() => setMes(new Date(ano, m + 1, 1))} className="rounded-md p-1 hover:bg-muted"><ChevronRight className="size-4" /></button>
         </div>
         <div className="grid grid-cols-7 gap-1 text-center text-sm">

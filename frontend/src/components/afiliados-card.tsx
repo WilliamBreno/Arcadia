@@ -195,7 +195,7 @@ function LinhaAfiliado({
             </p>
           )}
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="evve-actions flex flex-wrap gap-2">
           {a.liberado && a.a_pagar_centavos > 0 && (
             <Button size="sm" onClick={registrarPagamento}>
               Registrar pagamento

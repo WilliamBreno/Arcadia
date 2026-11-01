@@ -53,24 +53,24 @@
 :root {
     /* Item 11.7: verde da marca, só para detalhes de ícones de coleção. */
     --marca: #1a8f5a;
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
+    --background: #f7f9f8;
+    --foreground: #172c24;
     --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
+    --card-foreground: #172c24;
     --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
+    --popover-foreground: #172c24;
+    --primary: #126b47;
+    --primary-foreground: #ffffff;
+    --secondary: #eaf0ec;
+    --secondary-foreground: #2c4d3e;
+    --muted: #edf2ef;
+    --muted-foreground: #5c6f65;
+    --accent: #e3f2e9;
+    --accent-foreground: #145336;
     --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
+    --border: #dfe8e2;
+    --input: #cedbd3;
+    --ring: #26875c;
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
@@ -89,24 +89,24 @@
 
 .dark {
     --marca: #4cc08a;
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
+    --background: #101815;
+    --foreground: #eef5f0;
+    --card: #18231d;
+    --card-foreground: #eef5f0;
+    --popover: #1c2922;
+    --popover-foreground: #eef5f0;
+    --primary: #75dbac;
+    --primary-foreground: #102e20;
+    --secondary: #25372d;
+    --secondary-foreground: #dbece1;
+    --muted: #223128;
+    --muted-foreground: #a2b7a9;
+    --accent: #284835;
+    --accent-foreground: #b7f2ce;
     --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
+    --border: #2d4034;
+    --input: #3c5143;
+    --ring: #75dbac;
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
@@ -131,7 +131,56 @@
     }
   html {
     @apply font-sans;
+    scroll-padding-top: 7rem;
     }
+  button, a, input, textarea, select { -webkit-tap-highlight-color: transparent; }
+  button:not(:disabled), select:not(:disabled), summary { cursor: pointer; }
+  button:focus-visible, a:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+  input[type=checkbox], input[type=radio] { accent-color: var(--primary); }
+}
+
+/* Controles compartilhados: a mesma hierarquia em telas públicas e painéis. */
+.evve-button { max-width: 100%; }
+.evve-button svg { width: 1rem; height: 1rem; flex-shrink: 0; pointer-events: none; }
+.evve-button:active:not(:disabled) { filter: brightness(0.97); }
+.evve-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.625rem; min-width: 0; }
+.evve-actions > * { max-width: 100%; }
+.evve-menu-popup { max-width: calc(100vw - 2rem); max-height: min(32rem, var(--available-height)); transform-origin: var(--transform-origin); }
+.evve-menu-item { display: flex; min-height: 2.75rem; align-items: center; gap: 0.75rem; border-radius: 0.625rem; padding: 0.625rem 0.75rem; font-size: 0.875rem; line-height: 1.4; outline: none; cursor: pointer; }
+.evve-menu-item[data-highlighted] { background: var(--accent); color: var(--accent-foreground); }
+.evve-menu-item[data-disabled] { pointer-events: none; opacity: 0.45; }
+.evve-nav-link { display: inline-flex; min-height: 2.75rem; align-items: center; gap: 0.5rem; border-radius: 0.75rem; padding: 0.625rem 0.875rem; font-size: 0.875rem; font-weight: 500; color: var(--muted-foreground); white-space: nowrap; transition: background-color 160ms, color 160ms; }
+.evve-nav-link:hover, .evve-nav-link[aria-current=page] { background: var(--accent); color: var(--accent-foreground); }
+.evve-nav-link[aria-current=page] { font-weight: 650; }
+.evve-mobile-menu { padding-top: max(1.25rem, env(safe-area-inset-top)); padding-bottom: max(1.25rem, env(safe-area-inset-bottom)); }
+footer nav > a { display: inline-flex; min-height: 2.5rem; align-items: center; border-radius: 0.5rem; }
+
+/* O select continua nativo para preservar teclado, leitores e formulários. */
+select:not([multiple]):not([size]) {
+  min-width: 0; height: 2.75rem; border: 1px solid var(--input); border-radius: 0.75rem;
+  appearance: none; padding: 0.5rem 2.5rem 0.5rem 0.875rem;
+  background-color: var(--card); color: var(--foreground); font-size: 0.875rem; line-height: 1.5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235c6f65' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 1rem;
+  box-shadow: 0 1px 2px rgb(18 51 35 / 3%); transition: border-color 160ms, box-shadow 160ms;
+}
+.dark select:not([multiple]):not([size]) { color-scheme: dark; }
+select:not([multiple]):not([size]):hover:not(:disabled) { border-color: var(--ring); }
+select:not([multiple]):not([size]):focus-visible { outline: none; border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 18%, transparent); }
+select:disabled { opacity: 0.5; cursor: not-allowed; }
+select[aria-invalid=true] { border-color: var(--destructive); }
+select[data-compact]:not([multiple]):not([size]) { height: 2.25rem; padding-left: 0.5rem; padding-right: 1.75rem; background-position: right 0.375rem center; }
+
+@media (max-width: 639px) {
+  .evve-actions > .evve-button { flex: 1 1 auto; }
+  select:not([multiple]):not([size]) { font-size: 1rem; max-width: 100%; }
+  select[data-compact]:not([multiple]):not([size]) { font-size: 0.875rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .evve-button, .evve-nav-link, .evve-menu-popup { transition: none; animation: none; }
 }
 /* Movimento (item 6.3): entrada dos blocos e troca do valor do simulador.
    Só transform e opacidade; quem pede menos movimento vê tudo parado. */

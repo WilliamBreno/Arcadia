@@ -71,7 +71,7 @@ export default function OrcamentoArtista() {
     </section>
     {!fechado && <section className="flex flex-col gap-3 rounded-xl border border-border p-4">
       <h2 className="font-semibold">Gerenciar pedido</h2><Label htmlFor="motivo-pedido">Motivo para cancelar ou recusar</Label><Textarea id="motivo-pedido" maxLength={1000} value={motivo} onChange={e => setMotivo(e.target.value)} />
-      <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={ocupado} onClick={() => agir('cancelar')}>Cancelar pedido</Button>
+      <div className="evve-actions flex flex-wrap gap-2"><Button variant="outline" disabled={ocupado} onClick={() => agir('cancelar')}>Cancelar pedido</Button>
         {!p.sou_cliente && p.status !== 'aceito' && <Button variant="outline" disabled={ocupado} onClick={() => agir('recusar')}>Recusar pedido</Button>}
         {!p.sou_cliente && p.status === 'aceito' && <Button variant="outline" disabled={ocupado} onClick={() => agir('realizado')}>Marcar como realizado</Button>}
       </div><p className="text-xs text-muted-foreground">Cancelar uma contratação confirmada libera a data reservada. Acertos de pagamento são feitos diretamente entre as partes.</p>

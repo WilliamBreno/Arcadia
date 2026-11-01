@@ -34,7 +34,7 @@ function Revisao({ slug, post, atualizar }: { slug: string; post: PostMural; atu
      </div>
      {!!post.denuncias && <div className="flex flex-col gap-2"><Button type="button" variant="outline" size="sm" className="self-start" onClick={() => setVerDenuncias(!verDenuncias)}>Ver denúncias ({post.denuncias})</Button>{verDenuncias && <ul className="list-disc pl-5 text-sm">{denuncias.data?.map(d => <li key={d.id}>{d.motivo}</li>)}</ul>}{denuncias.error && <p role="alert" className="text-sm text-destructive">Não foi possível carregar as denúncias.</p>}</div>}
      <Label htmlFor={`motivo-${post.id}`}>Orientação para o autor (obrigatória para rejeitar)</Label><Textarea id={`motivo-${post.id}`} maxLength={500} rows={2} value={motivo} onChange={e => setMotivo(e.target.value)} />
-     <div className="flex flex-wrap gap-2">
+     <div className="evve-actions flex flex-wrap gap-2">
        {post.status !== 'aprovado' && <Button type="button" disabled={ocupado || analisando || (!!alerta && !ciente)} onClick={() => decidir('aprovar')}>Aprovar publicação</Button>}
        {post.status !== 'rejeitado' && <Button type="button" variant="outline" disabled={ocupado || !motivo.trim()} onClick={() => decidir('rejeitar')}>Rejeitar</Button>}
        {post.status === 'aprovado' && <><Button type="button" variant="outline" disabled={ocupado} onClick={() => decidir(post.destaque ? 'desdestacar' : 'destacar')}>{post.destaque ? 'Retirar dos melhores momentos' : 'Destacar melhor momento'}</Button><Button type="button" variant="outline" disabled={ocupado} onClick={() => decidir('ocultar')}>Ocultar para revisar</Button></>}
@@ -55,7 +55,7 @@ function Painel({slug}:{slug:string}) {
    {isLoading&&<p role="status">Carregando publicações…</p>}{error&&<p role="alert" className="text-destructive">{error instanceof ApiError?error.message:'Não foi possível carregar as publicações.'}</p>}
    {!error&&data?.length===0&&<p className="text-sm text-muted-foreground">Nenhuma publicação nesta situação.</p>}
    {!error&&data?.map(p=><Revisao key={`${p.id}-${p.status}`} slug={slug} post={p} atualizar={atualizar} />)}
-   <div className="flex flex-wrap gap-2">{antes>0&&<Button variant="outline" onClick={()=>setAntes(0)}>Voltar às mais recentes</Button>}{!error&&data?.length===20&&<Button variant="outline" onClick={()=>setAntes(data[data.length-1].id)}>Carregar anteriores</Button>}</div>
+   <div className="evve-actions flex flex-wrap gap-2">{antes>0&&<Button variant="outline" onClick={()=>setAntes(0)}>Voltar às mais recentes</Button>}{!error&&data?.length===20&&<Button variant="outline" onClick={()=>setAntes(data[data.length-1].id)}>Carregar anteriores</Button>}</div>
    {!error&&!isLoading&&<MuralStories slug={slug} />}
  </main>
 }

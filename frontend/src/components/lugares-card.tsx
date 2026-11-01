@@ -107,7 +107,7 @@ export function LugaresCard({ eventoId, tipos }: { eventoId: number; tipos: Tipo
                         <Input id={`setor-nome-${st.id}`} value={editando.nome} onChange={(e) => setEditando({ ...editando, nome: e.target.value })} />
                       </div>
                       <TiposSetor tipos={tiposDePlateia} marcados={editando.tipos} aoMarcar={(id) => setEditando({ ...editando, tipos: marcar(editando.tipos, id) })} />
-                      <div className="flex gap-2">
+                      <div className="evve-actions flex gap-2">
                         <Button
                           size="sm"
                           disabled={salvando}
@@ -163,7 +163,7 @@ export function LugaresCard({ eventoId, tipos }: { eventoId: number; tipos: Tipo
                           ))}
                         </div>
                       )}
-                      <div className="flex gap-2">
+                      <div className="evve-actions flex gap-2">
                         <Button size="sm" variant="outline" onClick={() => setEditando({ id: st.id, nome: st.nome, tipos: st.tipo_ingresso_ids })}>
                           Editar
                         </Button>

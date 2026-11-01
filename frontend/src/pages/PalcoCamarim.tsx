@@ -149,7 +149,7 @@ function AbaPalco({ eventoId, estado, agir }: PropsAba) {
         ) : (
           <p className="mt-2 text-foreground">Ninguém. {proximos[0] ? `O próximo é ${proximos[0].nome}.` : 'A fila acabou.'}</p>
         )}
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="evve-actions mt-4 flex flex-wrap gap-2">
           <Button size="lg" onClick={() => agir(() => proximo(eventoId))}>
             {proximos[0] ? `Chamar próximo: ${proximos[0].nome}` : atual ? 'Encerrar (fila acabou)' : 'Fila vazia'}
           </Button>

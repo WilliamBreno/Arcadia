@@ -30,7 +30,7 @@ export default function ArtistaGestaoConvite() {
       <p>Você foi convidado para ser {data.papel === 'lider' ? 'líder' : 'cogestor'} de <strong>{data.grupo_nome}</strong>.</p>
       <p className="text-sm text-muted-foreground">{data.papel === 'lider' ? `Você assumirá a liderança. O líder atual ${data.antigo_cogestor ? 'continuará como cogestor' : 'sairá da gestão'}.` : 'Você poderá editar perfil, integrantes, portfólio e agenda, usando sua própria conta e senha.'}</p>
       <p className="text-sm text-muted-foreground">Válido até {new Date(data.expira_em).toLocaleDateString('pt-BR')}.</p>
-      <div className="flex flex-wrap gap-2"><Button disabled={ocupado} onClick={() => decidir(true)}>Aceitar convite</Button><Button variant="outline" disabled={ocupado} onClick={() => decidir(false)}>Recusar</Button></div>
+      <div className="evve-actions flex flex-wrap gap-2"><Button disabled={ocupado} onClick={() => decidir(true)}>Aceitar convite</Button><Button variant="outline" disabled={ocupado} onClick={() => decidir(false)}>Recusar</Button></div>
     </>}
     {erro && <p role="alert" className="text-sm text-destructive">{erro}</p>}
     <Link to="/meus-artistas" className="text-sm underline">Meus artistas</Link>

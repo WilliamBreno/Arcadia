@@ -143,7 +143,7 @@ export function EntrarComCodigo({ titulo = 'Entre para continuar', aoEntrar, vol
             {enviando ? 'Entrando…' : precisaNome ? 'Criar conta e continuar' : 'Entrar e continuar'}
           </Button>
           <div className="flex flex-wrap justify-between gap-2 text-sm">
-            <button
+            <Button variant="link" size="sm"
               type="button"
               className="text-muted-foreground underline underline-offset-4 hover:text-foreground"
               onClick={() => {
@@ -153,15 +153,15 @@ export function EntrarComCodigo({ titulo = 'Entre para continuar', aoEntrar, vol
               }}
             >
               Trocar e-mail
-            </button>
-            <button
+            </Button>
+            <Button variant="link" size="sm"
               type="button"
               disabled={espera > 0 || enviando}
               onClick={() => pedirCodigo()}
               className="text-muted-foreground underline underline-offset-4 hover:text-foreground disabled:no-underline disabled:opacity-60"
             >
               {espera > 0 ? `Reenviar em ${espera}s` : 'Reenviar código'}
-            </button>
+            </Button>
           </div>
         </form>
       )}

@@ -93,7 +93,7 @@ export function CriacaoRapida({ titulo, categoria, aoPreencher }: { titulo: stri
         Criar em 2 minutos
       </h2>
       <p className="text-sm text-muted-foreground">Traga os dados de uma página que você já tem ou peça um rascunho de texto e lotes.</p>
-      <div role="tablist" aria-label="Como começar" className="mt-3 flex gap-2">
+      <div role="tablist" aria-label="Como começar" className="evve-actions mt-3 flex gap-2">
         <Button type="button" size="sm" role="tab" aria-selected={aba === 'link'} variant={aba === 'link' ? 'default' : 'outline'} onClick={() => setAba('link')}>
           <Link2 className="size-4" aria-hidden="true" />
           Importar de um link
