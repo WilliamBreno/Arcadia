@@ -299,13 +299,16 @@ func (s *PlataformaService) CriarCobrancaDestaque(organizadorID, usuarioID int64
 	return c, err
 }
 
+// diaDestaque mantém o calendário da compra sem depender do fuso do banco.
+func diaDestaque(agora time.Time) string { return agora.Format("2006-01-02") }
+
 // Patrocinados: eventos com destaque pago hoje no lugar.
 func (s *PlataformaService) Patrocinados(alvoTipo, alvoValor string, limite int) ([]domain.Evento, error) {
 	var eventos []domain.Evento
 	err := s.db.Raw(`SELECT e.* FROM eventos e JOIN destaques d ON d.evento_id = e.id
-		WHERE d.alvo_tipo = ? AND d.alvo_valor = ? AND d.dia = CURRENT_DATE AND d.status = 'pago'
+		WHERE d.alvo_tipo = ? AND d.alvo_valor = ? AND d.dia = ?::date AND d.status = 'pago'
 		AND e.status = 'publicado' AND e.visibilidade = 'publico' AND e.inicio_em > now()
-		ORDER BY d.criado_em LIMIT ?`, alvoTipo, alvoValor, limite).Scan(&eventos).Error
+		ORDER BY d.criado_em LIMIT ?`, alvoTipo, alvoValor, diaDestaque(time.Now()), limite).Scan(&eventos).Error
 	return eventos, err
 }
 
@@ -558,6 +561,7 @@ func (s *PlataformaService) Confirmar(p *pagamento.Pagamento) error {
 // ReembolsarDestaquesDoEvento: evento cancelado devolve os dias de
 // destaque depois de hoje (hoje já está no ar; os incluídos no Pro só saem).
 func (s *PlataformaService) ReembolsarDestaquesDoEvento(eventoID int64) {
+	hoje := diaDestaque(time.Now())
 	var linhas []struct {
 		CobrancaID  int64
 		MPPaymentID string
@@ -565,8 +569,8 @@ func (s *PlataformaService) ReembolsarDestaquesDoEvento(eventoID int64) {
 	}
 	s.db.Raw(`SELECT d.cobranca_id, c.mp_payment_id, SUM(d.valor_centavos) AS valor FROM destaques d
 		JOIN cobrancas_plataforma c ON c.id = d.cobranca_id
-		WHERE d.evento_id = ? AND d.status = 'pago' AND d.dia > CURRENT_DATE AND c.mp_payment_id IS NOT NULL
-		GROUP BY d.cobranca_id, c.mp_payment_id`, eventoID).Scan(&linhas)
+		WHERE d.evento_id = ? AND d.status = 'pago' AND d.dia > ?::date AND c.mp_payment_id IS NOT NULL
+		GROUP BY d.cobranca_id, c.mp_payment_id`, eventoID, hoje).Scan(&linhas)
 	for _, l := range linhas {
 		if l.Valor > 0 {
 			if _, err := s.mp.Reembolsar(l.MPPaymentID, l.Valor); err != nil {
@@ -575,9 +579,9 @@ func (s *PlataformaService) ReembolsarDestaquesDoEvento(eventoID int64) {
 			}
 			s.db.Exec(`UPDATE cobrancas_plataforma SET reembolsado_centavos = reembolsado_centavos + ? WHERE id = ?`, l.Valor, l.CobrancaID)
 		}
-		s.db.Exec(`UPDATE destaques SET status = 'devolvido' WHERE cobranca_id = ? AND status = 'pago' AND dia > CURRENT_DATE`, l.CobrancaID)
+		s.db.Exec(`UPDATE destaques SET status = 'devolvido' WHERE cobranca_id = ? AND status = 'pago' AND dia > ?::date`, l.CobrancaID, hoje)
 	}
-	s.db.Exec(`UPDATE destaques SET status = 'cancelado' WHERE evento_id = ? AND status IN ('pago', 'reservado') AND dia >= CURRENT_DATE AND valor_centavos = 0`, eventoID)
+	s.db.Exec(`UPDATE destaques SET status = 'cancelado' WHERE evento_id = ? AND status IN ('pago', 'reservado') AND dia >= ?::date AND valor_centavos = 0`, eventoID, hoje)
 }
 
 // AvisarVencimentoPro: e-mail 5 dias antes de o Pro acabar (uma vez por
